@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grid() { return grid; }, onTrailHit, at, collect, get items() { return items; }, DIFFS };
+  get wave() { return wave; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, get items() { return items; }, DIFFS };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -102,7 +102,21 @@ const mid = ropeRun(21, 8, 30), near = ropeRun(24, 8, 240);
 console.log(`corde : sans trou ${free} cases en 0,5 s | trou à 4 cases du fil : ${mid.dx} cases (corde ${mid.roped} frames)`);
 console.log(`corde : trou à 1,5 case du fil : fil ${near.len0} -> ${near.len} (tiré en arrière : ${near.len < near.len0 / 2})`);
 
-// 5) Parties aléatoires
+// 5) Super bonus
+function fresh() { g.newGame(1, 3); g.setDir('down'); step(2); g.foes.length = 0; }
+fresh(); g.announce({ type: 'sterr', x: 25.5, y: 33.5 });
+const f0 = g.S.filled; g.collect({ type: "sterr", x: 25.5, y: 33.5, done: false, age: 0 }); const f1 = g.S.filled; step(120);
+console.log(`super bombe : +${((f1 - f0) / g.S.interior * 100).toFixed(1)} % du terrain`);
+fresh(); g.setDir('down'); step(10);
+g.collect({ type: 'sspd', x: 25.5, y: 5.5, done: false, age: 0 });
+step(40); g.setDir('right'); step(2); const xs = g.P.x; step(10);
+console.log(`super vitesse : ${g.P.x - xs} cases en 10 frames (normal ~3) | power.hyp ${g.power.hyp.toFixed(1)}`);
+step(700); console.log(`super vitesse terminée : ${g.power.hyp === 0}`);
+fresh(); g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); step(60);
+const l1 = g.S.lives; g.S.lives = 8; g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); step(60);
+console.log(`super vie : 3 -> ${l1} vies, 8 -> ${g.S.lives} (max 9)`);
+
+// 6) Parties aléatoires
 let tot = 0;
 for (const [d, L] of [[0, 1], [1, 1], [1, 13], [2, 13], [2, 21], [2, 25], [0, 25]]) {
   const c = play(d, L, 6000, 12345 + d * 7 + L);

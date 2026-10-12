@@ -67,7 +67,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);ove
 @keyframes supchip{0%,100%{box-shadow:0 0 6px #ffd23f}50%{box-shadow:0 0 14px #ff7a4d}}
 .stage.super canvas{animation:supglow .8s linear infinite}
 @keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
-@media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}}
+.chip.hyp{color:#9ff3ff;border-color:#46d9ff;animation:hypchip .3s steps(2) infinite}
+.chip.hyp b{background:#fff;box-shadow:0 0 6px #46d9ff}
+@keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
+.lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
+@keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
+@media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i{animation:none}}
 .stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
 canvas{display:block;border-radius:4px;box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55);touch-action:none}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -143,7 +148,7 @@ details li b{color:var(--text);font-weight:600}
 
   <div class="testbar" id="testbar" hidden>
     <div class="trow"><span class="k">BONUS</span>
-      <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button>
+      <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button>
     </div>
     <div class="trow"><span class="k">ENNEMIS</span>
       <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="eat">+RONGEUR</button><button class="mini" id="tclear">VIDER</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="tquit">QUITTER</button>
@@ -177,14 +182,14 @@ const THEMES = {
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#9aa6ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
-    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
+    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
     ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', eat:'#0b1838', eatLo:'#8fbaf2',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
-    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
+    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838', sterr:'#0b1838', sspd:'#0b1838', slife:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
 };
 
 const ITEM = {
@@ -192,8 +197,13 @@ const ITEM = {
   spd: { label: 'VITESSE', medium: 'land' },
   life:{ label: '+1 VIE', medium: 'sea' },
   terr:{ label: 'TERRITOIRE', medium: 'sea' },
-  sup: { label: '', medium: 'sea' }
+  sup: { label: '', medium: 'sea' },
+  sterr: { label: '', medium: 'sea' },
+  sspd: { label: '', medium: 'land' },
+  slife: { label: '', medium: 'sea' }
 };
+// Versions « super » (rares) : type super -> bonus de base dont elles reprennent l'icône
+const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life' };
 
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte et te fige.'],
@@ -229,8 +239,8 @@ const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, in
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
-const power = { inv: 0, spd: 0, sup: 0 };
-let slow = 0, superFlash = 0, musicT = 0, musicStep = 0, combo = 0;
+const power = { inv: 0, spd: 0, sup: 0, hyp: 0 };
+let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1;
 
 /* ---------- Son ---------- */
@@ -265,7 +275,12 @@ const sfx = {
   dissolve(){ tone(700,.35,'triangle',.04,-500); },
   smash(){ tone(160,.3,'square',.06,-100); tone(1200,.15,'triangle',.04,-900,.02); },
   warn(){ tone(1200,.05,'square',.02); },
-  tick(){ tone(660,.04,'square',.025); }
+  tick(){ tone(660,.04,'square',.025); },
+  rare(){ [1047,1319,1568,2093,1568,2093,2637].forEach((f,i)=>tone(f,.07,'sine',.035,0,i*.05)); },
+  bomb(){ tone(55,1.4,'sawtooth',.09,-25); tone(110,1,'square',.06,-80,.02); tone(900,.8,'sawtooth',.03,-850,.05); [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'square',.04,0,.45+i*.07)); },
+  zap(){ for(let i=0;i<6;i++) tone(1800-i*200+Math.random()*300,.05,'sawtooth',.04,-900,i*.04); [880,1320,1760,2640].forEach((f,i)=>tone(f,.12,'square',.035,0,.28+i*.05)); },
+  crackle(){ tone(2400+Math.random()*1600,.025,'sawtooth',.012,-1500); },
+  lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
 
 /* ---------- Taille et dessin du terrain ---------- */
@@ -379,7 +394,7 @@ function setupLevel(L) {
   if (S.test) S.comp = { out: 1, inn: 1, perf: 0, amph: 0, eat: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
-  trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; reveal = null; invuln = 0;
+  trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
   P = newPlayer();
   foes = [];
   const C = S.comp;
@@ -389,7 +404,7 @@ function setupLevel(L) {
   for (let i = 0; i < C.amph; i++) foes.push(makeFoe('amph', C.sp));
   for (let i = 0; i < C.eat; i++) foes.push(makeFoe('eat', C.sp));
   items = []; S.bonusLeft = C.bonus ? 2 : 0; S.bonusWait = 1.5; stage.classList.remove('super'); combo = 0;
-  power.inv = 0; power.spd = 0; power.sup = 0;
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -468,7 +483,7 @@ function setDir(d) {
   P.next = v;
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
-const stepTime = () => power.spd > 0 ? STEP / 1.75 : STEP;
+const stepTime = () => power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP;
 function stepPlayer() {
   if (P.next) {
     const rev = P.drawing && P.next.x === -P.dir.x && P.next.y === -P.dir.y;
@@ -756,7 +771,7 @@ function superMusic(dt) {
 }
 function superOn(it) {
   power.sup = POWER_T; power.inv = 0; combo = 0; musicT = 0; musicStep = 0;
-  slow = 0.6; superFlash = 1; shake = REDUCED ? 0 : 1;
+  slow = 0.6; superFlash = 1; superTint = '255,226,122'; shake = REDUCED ? 0 : 1;
   rings.push({ x: it.x, y: it.y, r: 0, max: 70, age: 0, color: T.rainbow ? '#ffe27a' : T.shock, big: true });
   for (let k = 0; k < 4; k++) burst(it.x, it.y, T.rainbow ? `hsl(${k * 90},100%,65%)` : T.ball, 30, 18);
   popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'SUPER CASQUE !', age: -0.1, color: T.rainbow ? '#ffe27a' : T.ball, big: true, hue: true });
@@ -785,7 +800,7 @@ function crash() {
   if (power.inv > 0 || power.sup > 0) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
-  power.spd = 0; powersHud();
+  power.spd = 0; power.hyp = 0; powersHud();
   sfx.crash();
 }
 function updateCrash(dt) {
@@ -815,7 +830,11 @@ function updateCrash(dt) {
 function pickType() {
   const pool = [['terr', 3], ['inv', 3], ['spd', 2.5]];
   if (S.lives < 9) pool.push(['life', 1.5]);
-  if (S.level >= 3) pool.push(['sup', 0.55]);
+  // super bonus : rares (environ 1 bonus sur 8 en tout), à partir du niveau 3
+  if (S.level >= 3) {
+    pool.push(['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35]);
+    if (S.lives < 9) pool.push(['slife', 0.3]);
+  }
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;
   for (const [t, w] of pool) { if ((r -= w) <= 0) return t; }
   return 'inv';
@@ -835,8 +854,15 @@ function spawnItem() {
   const a = Math.PI / 4 + ((Math.random() * 4) | 0) * Math.PI / 2;
   const mob = S.comp.mobile ? 2.2 : 0;
   items.push({ type, x: x + .5, y: y + .5, vx: Math.cos(a) * mob, vy: Math.sin(a) * mob, age: 0, ttl: Math.max(9, 18 - S.comp.p * 0.6), done: false });
-  sfx.appear();
+  announce(items[items.length - 1]);
   return true;
+}
+// Un super bonus s'annonce : carillon, « RARE ! » et onde dorée
+function announce(it) {
+  if (!SUPER[it.type]) { sfx.appear(); return; }
+  sfx.rare();
+  popups.push({ x: it.x, y: it.y - 2, text: 'RARE !', age: 0, color: T.rainbow ? '#ffd23f' : T.ball, hue: true });
+  rings.push({ x: it.x, y: it.y, r: 0, max: 6, age: 0, color: T.rainbow ? '#ffd23f' : T.shock });
 }
 function moveItem(it, dt) {
   if (!it.vx && !it.vy) return;
@@ -859,12 +885,53 @@ function collect(it) {
   if (it.type === 'life') { S.lives = Math.min(9, S.lives + 1); hud(); sfx.power(); }
   else if (it.type === 'sup') superOn(it);
   else if (it.type === 'terr') territoryBurst(it);
+  else if (it.type === 'sterr') superBomb(it);
+  else if (it.type === 'sspd') superSpeed(it);
+  else if (it.type === 'slife') superLife(it);
   else { power[it.type] = POWER_T; sfx.power(); }
   powersHud();
 }
-function territoryBurst(it) {
+// Entrée en scène commune des super bonus : ralenti, flash teinté, grand titre arc-en-ciel
+function superIntro(it, text, tint) {
+  slow = 0.6; superFlash = 1; superTint = tint; shake = REDUCED ? 0 : 1;
+  popups.push({ x: COLS / 2, y: ROWS / 2 - 7, text, age: -0.1, color: T.items[it.type], big: true, hue: true });
+}
+// Super Bombe : 30 % du terrain d'un coup, explosion géante
+function superBomb(it) {
+  superIntro(it, 'SUPER BOMBE !', '255,255,255');
+  shake = REDUCED ? 0 : 1.8;
+  rings.push({ x: it.x, y: it.y, r: 0, max: 18, age: 0, color: '#ffffff', fill: true });
+  [['#ffffff', 22], ['#ffd23f', 32], ['#ff7a4d', 46]].forEach(([c, m]) => rings.push({ x: it.x, y: it.y, r: 0, max: T.rainbow ? m : m * .8, age: 0, color: T.rainbow ? c : T.shock, big: true }));
+  for (const c of ['#ffffff', '#ffd23f', '#ff7a4d', '#ff4d4d']) burst(it.x, it.y, T.rainbow ? c : T.ball, 45, 26);
+  sfx.bomb();
+  territoryBurst(it, 0.3, true);
+}
+// Super Vitesse : vitesse x4 pendant 10 s, des éclairs frappent le vaisseau
+function superSpeed(it) {
+  superIntro(it, 'SUPER VITESSE !', '159,243,255');
+  power.hyp = POWER_T; power.spd = 0;
+  const pp = playerPos();
+  for (let k = 0; k < 4; k++) bolts.push({ x0: pp.x + (Math.random() - .5) * 30, y0: -1, x1: pp.x, y1: pp.y, age: -k * 0.07, max: 0.45, follow: true });
+  burst(pp.x, pp.y, T.rainbow ? '#9ff3ff' : T.ball, 50, 20); burst(pp.x, pp.y, '#ffffff', 25, 14);
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: 30, age: 0, color: T.rainbow ? '#46d9ff' : T.shock, big: true });
+  sfx.zap();
+}
+// Super Vie : +3 vies
+function superLife(it) {
+  const gain = Math.min(9, S.lives + 3) - S.lives;
+  S.lives += gain; hud();
+  superIntro(it, 'SUPER VIE !', '255,93,143');
+  for (let k = 0; k < 3; k++) {
+    popups.push({ x: it.x + (k - 1) * 3.2, y: it.y - 1.5, text: k < gain ? '+1 VIE' : 'MAX', age: -0.25 - k * 0.22, color: T.items.slife });
+    rings.push({ x: it.x, y: it.y, r: 0, max: 14 + k * 12, age: 0, color: T.rainbow ? ['#ff5d8f', '#ffd23f', '#ffffff'][k] : T.shock, big: k === 2 });
+  }
+  for (const c of ['#ff5d8f', '#ff9fc0', '#ffd23f']) burst(it.x, it.y, T.rainbow ? c : T.ball, 35, 16);
+  const lv = $('lives'); lv.classList.remove('boost'); void lv.offsetWidth; lv.classList.add('boost');
+  sfx.lifeUp();
+}
+function territoryBurst(it, frac = 0.1, big = false) {
   const cx = Math.floor(it.x), cy = Math.floor(it.y), ox = cx + .5, oy = cy + .5;
-  const R = Math.sqrt(S.interior * 0.1 / Math.PI);
+  const R = Math.sqrt(S.interior * frac / Math.PI);
   const seen = new Uint8Array(N), q = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const x = cx + dx, y = cy + dy;
@@ -882,12 +949,20 @@ function territoryBurst(it) {
   }
   for (const i of q) grid[i] = 1;
   for (const e of seaSeeds()) if (grid[at(Math.floor(e.x), Math.floor(e.y))] !== 0) pushOut(e, ox, oy, R);
-  const list = q.map(i => ({ i, t: Math.hypot(i % COLS + .5 - ox, ((i / COLS) | 0) + .5 - oy) / R * 0.7 }));
+  const list = q.map(i => ({ i, t: Math.hypot(i % COLS + .5 - ox, ((i / COLS) | 0) + .5 - oy) / R * (big ? 1.1 : 0.7) }));
   list.sort((a, b) => a.t - b.t);
   startReveal(list);
-  rings.push({ x: ox, y: oy, r: 0, max: R, age: 0, color: T.items.terr });
-  sfx.terr();
-  if (q.length) awardCells(q.length, { x: ox, y: oy }, false);
+  if (big) {
+    // débris projetés depuis le bord de l'explosion
+    for (let k = 0; k < 70; k++) {
+      const a = Math.random() * Math.PI * 2, v = 6 + Math.random() * 14;
+      particles.push({ x: ox + Math.cos(a) * R * .3, y: oy + Math.sin(a) * R * .3, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .7 + Math.random() * .7, color: Math.random() < .5 ? T.landP : (T.rainbow ? '#ffd23f' : T.ball), size: .3 + Math.random() * .4 });
+    }
+  } else {
+    rings.push({ x: ox, y: oy, r: 0, max: R, age: 0, color: T.items.terr });
+    sfx.terr();
+  }
+  if (q.length) awardCells(q.length, { x: ox, y: oy }, big);
   checkGoal();
 }
 function pushOut(e, ox, oy, R) {
@@ -921,7 +996,7 @@ function updateItems(dt) {
     if (ITEM[it.type].medium === 'sea' && grid[at(Math.floor(it.x), Math.floor(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
-  for (const k of ['inv', 'spd', 'sup']) if (power[k] > 0) {
+  for (const k of ['inv', 'spd', 'sup', 'hyp']) if (power[k] > 0) {
     const before = power[k];
     power[k] = Math.max(0, power[k] - dt);
     if (before > 2 && power[k] <= 2) sfx.warn();
@@ -930,14 +1005,16 @@ function updateItems(dt) {
 }
 let powersSig = '';
 function powersHud() {
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0);
+  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0);
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig;
     el.innerHTML = (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
       + (power.inv > 0 ? `<div class="chip inv"><b></b><span>CASQUE</span><div class="t"><i id="tinv"></i></div></div>` : '')
-      + (power.spd > 0 ? `<div class="chip spd"><b></b><span>VITESSE</span><div class="t"><i id="tspd"></i></div></div>` : '');
+      + (power.spd > 0 ? `<div class="chip spd"><b></b><span>VITESSE</span><div class="t"><i id="tspd"></i></div></div>` : '')
+      + (power.hyp > 0 ? `<div class="chip hyp"><b></b><span>SUPER VITESSE</span><div class="t"><i id="thyp"></i></div></div>` : '');
   }
+  const h = $('thyp'); if (h) h.style.width = (power.hyp / POWER_T * 100) + '%';
   const a = $('tinv'), b = $('tspd');
   if (a) a.style.width = (power.inv / POWER_T * 100) + '%';
   if (b) b.style.width = (power.spd / POWER_T * 100) + '%';
@@ -963,7 +1040,7 @@ function update(dt) {
     if (S.phase === 'play') updateFoes(dt);
     if (S.phase === 'play') updateItems(dt);
     if (invuln > 0) invuln -= dt;
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0) powersHud();
     if (power.sup > 0) superMusic(dt);
   } else if (ph === 'crash') {
     updateCrash(dt);
@@ -1004,6 +1081,14 @@ function update(dt) {
     for (const p of popups) p.age += dt;
     popups = popups.filter(p => p.age < (p.big ? 1.4 : 1));
     for (const r of rings) { r.age += dt; r.r = Math.min(r.max, r.r + dt * (r.max / 0.6)); }
+    for (const b of bolts) b.age += dt;
+    bolts = bolts.filter(b => b.age < b.max);
+    // Super Vitesse : étincelles et crépitements tant que le vaisseau file
+    if (power.hyp > 0 && ph === 'play' && P && (P.dir.x || P.dir.y)) {
+      if (Math.random() < .3) sfx.crackle();
+      const pp = playerPos();
+      for (let k = 0; k < 2; k++) particles.push({ x: pp.x, y: pp.y, vx: (Math.random() - .5) * 7 - P.dir.x * 5, vy: (Math.random() - .5) * 7 - P.dir.y * 5, life: 0, max: .3, color: Math.random() < .5 ? '#ffffff' : (T.rainbow ? '#9ff3ff' : T.ball), size: .14, ng: 1 });
+    }
     rings = rings.filter(r => r.age < 0.9);
     shake = Math.max(0, shake - dt * 2.2);
     flash = Math.max(0, flash - dt * 2.5);
@@ -1031,6 +1116,12 @@ function render() {
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
   for (const r of rings) {
+    if (r.fill) {
+      // boule de feu de la Super Bombe
+      ctx.globalAlpha = Math.max(0, .75 * (1 - r.age / 0.9)); glowOn(r.color, 3);
+      ctx.fillStyle = r.color; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.fill(); glowOff();
+      ctx.globalAlpha = 1; continue;
+    }
     ctx.strokeStyle = r.color; ctx.globalAlpha = Math.max(0, 1 - r.age / 0.9); ctx.lineWidth = r.big ? .8 : .3;
     glowOn(r.color, 1); ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.stroke(); glowOff();
     ctx.globalAlpha = 1;
@@ -1067,9 +1158,12 @@ function drawFx() {
   for (const p of popups) {
     if (p.age < 0) continue;
     const life = p.big ? 1.4 : 1, a = Math.min(1, (life - p.age) / 0.35);
-    const sz = p.big ? (p.text.length > 8 ? 3 : 4) + Math.min(1, p.age * 6) * 1.2 : 1.5;
+    let sz = p.big ? (p.text.length > 8 ? 3 : 4) + Math.min(1, p.age * 6) * 1.2 : 1.5;
     ctx.globalAlpha = a;
     ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`;
+    // les grands titres restent dans le terrain
+    const tw = ctx.measureText(p.text).width;
+    if (p.big && tw > COLS - 4) { sz *= (COLS - 4) / tw; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`; }
     ctx.fillStyle = T.textShadow; ctx.fillText(p.text, p.x + .15, p.y - p.age * 2.2 + .15);
     ctx.fillStyle = p.hue && T.rainbow ? `hsl(${(time * 360) % 360},100%,65%)` : p.color; ctx.fillText(p.text, p.x, p.y - p.age * 2.2);
   }
@@ -1083,8 +1177,39 @@ function drawFx() {
     ctx.fillStyle = T.danger; ctx.fillText('CRASH !', COLS/2, ROWS/2);
     ctx.globalAlpha = 1;
   }
-  if (superFlash > 0) { ctx.fillStyle = T.rainbow ? `rgba(255,226,122,${superFlash * 0.45})` : `rgba(11,24,56,${superFlash * 0.3})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
+  // éclairs (ramassage de la Super Vitesse)
+  for (const b of bolts) {
+    if (b.age < 0) continue;
+    const a = 1 - b.age / b.max;
+    ctx.globalAlpha = a; ctx.lineJoin = 'miter';
+    const tp = b.follow && P ? playerPos() : { x: b.x1, y: b.y1 };
+    glowOn('#9ff3ff', 2.5);
+    bolt(b.x0, b.y0, tp.x, tp.y, 1.6, T.rainbow ? '#e9fdff' : T.shock, .32);
+    glowOff();
+    ctx.globalAlpha = 1;
+  }
+  // traits de vitesse sur tout le terrain pendant la Super Vitesse
+  if (power.hyp > 0 && P && (P.dir.x || P.dir.y) && S.phase === 'play') {
+    ctx.strokeStyle = T.rainbow ? 'rgba(159,243,255,0.22)' : 'rgba(11,24,56,0.15)'; ctx.lineWidth = .12;
+    ctx.beginPath();
+    for (let k = 0; k < 9; k++) {
+      const L = 6 + Math.random() * 14;
+      if (P.dir.x) { const y = Math.random() * ROWS, x = Math.random() * COLS; ctx.moveTo(x, y); ctx.lineTo(x - P.dir.x * L, y); }
+      else { const x = Math.random() * COLS, y = Math.random() * ROWS; ctx.moveTo(x, y); ctx.lineTo(x, y - P.dir.y * L); }
+    }
+    ctx.stroke();
+  }
+  if (superFlash > 0) { ctx.fillStyle = T.rainbow ? `rgba(${superTint},${superFlash * 0.45})` : `rgba(11,24,56,${superFlash * 0.3})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
+}
+
+// Éclair en zigzag de (x0, y0) à (x1, y1)
+function bolt(x0, y0, x1, y1, jag, color, w) {
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, n = Math.max(3, Math.round(d / 1.6)), nx = -dy / d, ny = dx / d;
+  ctx.beginPath(); ctx.moveTo(x0, y0);
+  for (let k = 1; k < n; k++) { const u = k / n, o = (Math.random() - .5) * 2 * jag; ctx.lineTo(x0 + dx * u + nx * o, y0 + dy * u + ny * o); }
+  ctx.lineTo(x1, y1);
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
 }
 
 function drawTrail(pp) {
@@ -1109,7 +1234,7 @@ function drawTrail(pp) {
   }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const sup = power.sup > 0 && !dead;
-  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
+  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
   glowOn(tc, sup ? 1.8 : .9);
   ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.78 : 0.5; ctx.stroke();
   if (sup) { ctx.strokeStyle = T.rainbow ? `hsl(${(time * 300) % 360},100%,70%)` : T.empty; ctx.lineWidth = .3; ctx.stroke(); }
@@ -1158,6 +1283,29 @@ function drawPlayer(pp) {
     }
     ctx.globalAlpha = 1;
   }
+  if (power.hyp > 0) {
+    const elec = T.rainbow ? '#9ff3ff' : T.trail, blink = power.hyp < 2 && Math.floor(time * 10) % 2 === 0;
+    // images fantômes du vaisseau
+    P.ghosts = P.ghosts || [];
+    if (S.phase === 'play') { P.ghosts.unshift({ x: pp.x, y: pp.y }); if (P.ghosts.length > 9) P.ghosts.pop(); }
+    ctx.fillStyle = elec;
+    for (let k = 1; k < P.ghosts.length; k++) {
+      const g = P.ghosts[k];
+      ctx.globalAlpha = (1 - k / P.ghosts.length) * .5; ctx.fillRect(g.x - .42, g.y - .42, .84, .84);
+    }
+    ctx.globalAlpha = 1;
+    // arcs électriques autour du vaisseau
+    if (!blink) {
+      glowOn('#46d9ff', 2);
+      for (let k = 0; k < 3; k++) {
+        const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 1.2;
+        bolt(pp.x, pp.y, pp.x + Math.cos(a) * r, pp.y + Math.sin(a) * r, .35, k || !T.rainbow ? elec : '#ffffff', .09);
+      }
+      ctx.strokeStyle = elec; ctx.lineWidth = .12;
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.05 + Math.random() * .15, 0, Math.PI * 2); ctx.stroke();
+      glowOff();
+    }
+  } else if (P.ghosts) P.ghosts.length = 0;
   if (power.spd > 0 && (P.dir.x || P.dir.y)) {
     ctx.strokeStyle = T.rainbow ? 'rgba(70,217,255,0.55)' : T.trail; ctx.lineWidth = .12;
     for (let k = -1; k <= 1; k++) {
@@ -1367,7 +1515,14 @@ function drawSuperItem(it) {
     ctx.save(); ctx.translate(Math.cos(a) * r, Math.sin(a) * r); ctx.rotate(time * 3);
     ctx.fillRect(-tw, -.03, tw * 2, .06); ctx.fillRect(-.03, -tw, .06, tw * 2); ctx.restore();
   }
-  if (!(ending && Math.floor(left * 4) % 2 === 0)) {
+  if (!(ending && Math.floor(left * 4) % 2 === 0) && it.type !== 'sup') {
+    // icône du bonus de base, en grand, coiffée d'une couronne
+    ctx.save(); ctx.translate(0, .14); ctx.scale(1.2, 1.2); glowOn(T.items[it.type], 1.6);
+    itemIcon(SUPER[it.type], T.items[it.type]);
+    glowOff(); ctx.restore();
+    ctx.fillStyle = gold;
+    ctx.beginPath(); ctx.moveTo(-.34, -.6); ctx.lineTo(-.34, -.9); ctx.lineTo(-.17, -.72); ctx.lineTo(0, -.98); ctx.lineTo(.17, -.72); ctx.lineTo(.34, -.9); ctx.lineTo(.34, -.6); ctx.closePath(); ctx.fill();
+  } else if (!(ending && Math.floor(left * 4) % 2 === 0)) {
     // casque doré + couronne
     ctx.fillStyle = gold;
     ctx.beginPath(); ctx.arc(0, .22, .52, Math.PI, 0); ctx.lineTo(.52, .4); ctx.lineTo(-.52, .4); ctx.closePath(); ctx.fill();
@@ -1380,7 +1535,7 @@ function drawSuperItem(it) {
   ctx.restore();
 }
 function drawItem(it) {
-  if (it.type === 'sup') { drawSuperItem(it); return; }
+  if (SUPER[it.type]) { drawSuperItem(it); return; }
   const color = T.items[it.type], left = it.ttl - it.age, ending = left < 2.5;
   const pop = Math.min(1, it.age * 4), bob = it.vx || it.vy ? 0 : Math.sin(time * 3 + it.x) * 0.15;
   const r = 0.95 * pop;
@@ -1405,17 +1560,22 @@ function drawItem(it) {
   // le cœur du bonus clignote 2 fois par seconde avant de disparaître
   if (ending && Math.floor(left * 4) % 2 === 0) { ctx.restore(); return; }
   ctx.scale(pop, pop);
+  itemIcon(it.type, color);
+  ctx.restore();
+}
+// Icône d'un bonus, centrée sur l'origine (sert aussi aux super bonus)
+function itemIcon(type, color) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  if (it.type === 'spd') {
+  if (type === 'spd') {
     ctx.moveTo(.12,-.58); ctx.lineTo(-.32,.06); ctx.lineTo(-.02,.06); ctx.lineTo(-.14,.58); ctx.lineTo(.32,-.08); ctx.lineTo(.02,-.08); ctx.closePath(); ctx.fill();
-  } else if (it.type === 'inv') {
+  } else if (type === 'inv') {
     ctx.fillStyle = T.rainbow ? '#fff4c0' : color;
     ctx.arc(0, .14, .46, Math.PI, 0); ctx.lineTo(.46, .3); ctx.lineTo(-.46, .3); ctx.closePath(); ctx.fill();
     ctx.fillRect(-.56, .26, 1.12, .12);
     ctx.fillStyle = T.itemInk; ctx.fillRect(-.3, -.02, .6, .14);
     ctx.fillStyle = T.rainbow ? '#ffd23f' : T.itemInk; ctx.fillRect(-.05, -.32, .1, .22);
-  } else if (it.type === 'life') {
+  } else if (type === 'life') {
     ctx.moveTo(0,.48); ctx.bezierCurveTo(-.62,.05,-.4,-.55,0,-.22); ctx.bezierCurveTo(.4,-.55,.62,.05,0,.48); ctx.fill();
   } else {
     ctx.arc(0, 0, .2, 0, Math.PI*2); ctx.fill();
@@ -1426,7 +1586,6 @@ function drawItem(it) {
     }
     ctx.strokeStyle = color; ctx.lineWidth = .06; ctx.beginPath(); ctx.arc(0, 0, .3, 0, Math.PI*2); ctx.stroke();
   }
-  ctx.restore();
 }
 
 let last = performance.now();
@@ -1493,7 +1652,7 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  power.inv = 0; power.spd = 0; power.sup = 0; powersHud();
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; powersHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
   store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives });
@@ -1573,7 +1732,7 @@ function startDemo() {
   for (let y = B; y < 14; y++) for (let x = 34; x < COLS - B; x++) grid[at(x,y)] = 1;
   foes = [makeFoe('out', .8), makeFoe('perf', .8), makeFoe('amph', .8)];
   foes[2].y = 30;
-  items = []; trail = []; erased = []; wave = null; P = null; power.inv = 0; power.spd = 0; power.sup = 0;
+  items = []; trail = []; erased = []; wave = null; P = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0;
   S.filled = 0; reveal = null; drawBoard();
 }
 function togglePause() {
@@ -1599,7 +1758,7 @@ function testItem(type) {
   cands.sort((a, b) => a[0] - b[0]);
   const pick = cands[(Math.random() * Math.min(12, cands.length)) | 0];
   items.push({ type, x: pick[1] + .5, y: pick[2] + .5, vx: 0, vy: 0, age: 0, ttl: 30, done: false });
-  sfx.appear();
+  announce(items[items.length - 1]);
 }
 function testFoe(kind) {
   if (!S.test || !P) return;

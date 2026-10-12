@@ -92,10 +92,20 @@ Ils apparaissent sur les **niveaux impairs**, une fois **10 %** du terrain conqu
 | Clé | Bonus | Où | Effet |
 |---|---|---|---|
 | `inv` | **Casque** | zone à conquérir | 10 s. **Fidèle à l'original** : les ennemis n'ont aucun effet. On passe à travers, ils traversent le fil sans le toucher, et le trou noir n'aspire plus. Croiser son propre fil le dissout au lieu de crasher. |
-| `sup` | **Super Casque** (rare, dès le niveau 3, environ 5 % des bonus) | zone à conquérir | 10 s. Le **fil devient un mur** (tous les ennemis rebondissent dessus, perforateur et trou noir compris). Le joueur **détruit** les ennemis qu'il touche, avec des **combos** (×2, ×3…). Gros effet visuel : ralenti, flash doré, onde géante, texte arc-en-ciel, musique en boucle, cadre arc-en-ciel, fil doré scintillant. Idée de Fabien. |
+| `sup` | **Super Casque** (rare) | zone à conquérir | 10 s. Le **fil devient un mur** (tous les ennemis rebondissent dessus, perforateur et trou noir compris). Le joueur **détruit** les ennemis qu'il touche, avec des **combos** (×2, ×3…). Gros effet visuel : ralenti, flash doré, onde géante, texte arc-en-ciel, musique en boucle, cadre arc-en-ciel, fil doré scintillant. Idée de Fabien. |
 | `spd` | Vitesse | **sur le terrain conquis** (doc original) | 10 s, ×1,75. |
 | `life` | Vie | zone à conquérir | +1 vie (max 9). |
 | `terr` | Territoire | zone à conquérir | Conquiert d'un coup une zone ronde d'environ 10 % du terrain autour du bonus. Le joueur **n'est plus figé** pendant l'expansion (il l'était dans le doc original, retiré à la demande de Fabien), et les ennemis pris dedans sont repoussés. |
+
+### Super bonus (cartes rares, idée de Fabien : « il faut que ce soit impressionnant »)
+
+Chaque bonus a une version super, rare : à partir du niveau 3, poids `sup` 0,45, `sterr` 0,35, `sspd` 0,35, `slife` 0,3 (si moins de 9 vies) contre ~10 pour les bonus normaux, soit environ 1 bonus sur 8. La table `SUPER` relie chaque super à son bonus de base (dont il reprend l'icône). Tous partagent le même look (`drawSuperItem` : rayons arc-en-ciel, halo, étincelles, icône en couleur vive + couronne ; casque doré pour `sup`) et s'annoncent à l'apparition (`announce` : carillon `sfx.rare`, « RARE ! », onde dorée). Au ramassage, `superIntro` : ralenti, flash teinté (`superTint`), tremblement, grand titre arc-en-ciel (les grands titres sont réduits pour tenir dans le terrain).
+
+| Clé | Super bonus | Où | Effet |
+|---|---|---|---|
+| `sterr` | **Super Bombe** | zone à conquérir | Conquiert d'un coup ~**30 %** du terrain (`territoryBurst(it, 0.3, true)`, compte comme un « MEGA ! »). Boule de feu blanche, 3 ondes de choc (blanc, or, orange), gerbes de particules, débris, gros tremblement, révélation en vague plus lente, son d'explosion grave. |
+| `sspd` | **Super Vitesse** | sur le terrain conquis | 10 s à **×4** (`power.hyp`, ~68 cases/s : traverser le terrain est quasi instantané, volontairement dur à contrôler). Éclairs qui tombent du haut sur le vaisseau (`bolts`), images fantômes, arcs électriques autour du vaisseau, traits de vitesse sur tout le terrain, fil cyan, crépitements. Remplace la Vitesse normale. |
+| `slife` | **Super Vie** | zone à conquérir | **+3 vies** (max 9). Flash rose, « +1 VIE » ×3 en cascade (« MAX » si plafonné), 3 ondes, les vies du HUD s'illuminent (classe CSS `boost`), arpège montant. |
 
 Historique de l'invincibilité, pour mémoire : 1) les ennemis étaient pulvérisés (trop fort), 2) ils étaient assommés 4 s (code `stunFoe`/`drawStun`, encore présent mais inutilisé), 3) version actuelle : casque original + Super Casque rare.
 
@@ -166,7 +176,7 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 - Amphibie transformé en trou noir qui aspire le vaisseau et tire son fil comme une corde.
 - Pas de vie offerte en fin de niveau.
 - Nouvel ennemi : le rongeur.
-- Super Casque (n'existe pas dans l'original).
+- Super Casque, Super Bombe, Super Vitesse et Super Vie (n'existent pas dans l'original).
 - 2 bonus par niveau bonus au lieu d'un, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
 - Score maison, contrôles tactiles, thème MyX-3 en option, effets modernes (particules, vague de remplissage, sons).
 
