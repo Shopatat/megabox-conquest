@@ -210,7 +210,7 @@ details li b{color:var(--text);font-weight:600}
 (() => {
 'use strict';
 const COLS = 50, ROWS = 66, B = 2, N = COLS * ROWS, STEP = 1 / 17, POWER_T = 10, MAX_LEVEL = 25;
-const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 0.85;
+const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.5;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DIFFS = [
@@ -220,7 +220,7 @@ const DIFFS = [
 ];
 
 const THEMES = {
-  color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, edge:'#dfe4ff',
+  color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, space:true, edge:'#dfe4ff',
     trail:'#ff7a4d', trailCore:'rgba(16,13,24,0.9)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
     ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', eat:'#ff9f43', eatLo:'#5c2600',
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
@@ -350,8 +350,43 @@ function drawBg() {
   const g = gctx.createRadialGradient(COLS/2,ROWS/2,2,COLS/2,ROWS/2,ROWS*0.75);
   g.addColorStop(0, T.vignette); g.addColorStop(1,'rgba(0,0,0,0)');
   gctx.fillStyle = g; gctx.fillRect(0,0,COLS,ROWS);
-  gctx.fillStyle = T.dot;
-  for (let y = 2; y < ROWS; y += 2) for (let x = 2; x < COLS; x += 2) gctx.fillRect(x-0.07,y-0.07,0.14,0.14);
+  if (!T.space) {
+    gctx.fillStyle = T.dot;
+    for (let y = 2; y < ROWS; y += 2) for (let x = 2; x < COLS; x += 2) gctx.fillRect(x-0.07,y-0.07,0.14,0.14);
+    return;
+  }
+  // espace : nébuleuses discrètes et champ d'étoiles (tirage fixe, identique à chaque redimensionnement)
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (const [x, y, r, c] of [[12, 18, 16, '140,90,255'], [38, 46, 18, '60,140,255'], [30, 10, 10, '255,80,170'], [8, 54, 11, '80,200,255']]) {
+    const n = gctx.createRadialGradient(x, y, 0, x, y, r);
+    n.addColorStop(0, `rgba(${c},0.13)`); n.addColorStop(1, `rgba(${c},0)`);
+    gctx.fillStyle = n; gctx.fillRect(0, 0, COLS, ROWS);
+  }
+  for (let k = 0; k < 170; k++) {
+    const x = rnd() * COLS, y = rnd() * ROWS, big = rnd() < .08, s = big ? .16 + rnd() * .08 : .05 + rnd() * .07;
+    const tint = rnd();
+    gctx.globalAlpha = big ? .9 : .25 + rnd() * .5;
+    gctx.fillStyle = tint < .15 ? '#ffd6f0' : tint < .35 ? '#cfe0ff' : '#ffffff';
+    gctx.beginPath(); gctx.arc(x, y, s, 0, Math.PI * 2); gctx.fill();
+  }
+  gctx.globalAlpha = 1;
+}
+// Quelques étoiles scintillent dans la zone à conquérir
+const TWINKLE = Array.from({ length: 22 }, (_, k) => ({ x: ((k * 37) % 46) + 2.5, y: ((k * 53) % 62) + 2.5, ph: k * 1.7, sp: 1.2 + (k % 5) * .4 }));
+function drawTwinkle() {
+  if (!T.space) return;
+  ctx.fillStyle = '#ffffff';
+  for (const s of TWINKLE) {
+    if (grid[at(Math.floor(s.x), Math.floor(s.y))] !== 0) continue;
+    const a = Math.max(0, Math.sin(time * s.sp + s.ph));
+    if (a < .05) continue;
+    ctx.globalAlpha = a * .85;
+    const r = .06 + a * .12;
+    ctx.fillRect(s.x - r * 2.2, s.y - .025, r * 4.4, .05); ctx.fillRect(s.x - .025, s.y - r * 2.2, .05, r * 4.4);
+    ctx.beginPath(); ctx.arc(s.x, s.y, r * .8, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 // Terrain conquis : dégradé lisse en diagonale (thème couleur) ou damier rétro (thème MyX-3)
 function landColor(x, y) {
@@ -572,7 +607,7 @@ function moveInto(nx, ny) {
 }
 // Amphibie = trou noir. De près, il aspire le vaisseau. S'il croise le fil, il l'avale (pas d'onde de choc) :
 // le vaisseau est ramené vers lui le long de son tracé, de plus en plus fort, jusqu'à ce qu'il regagne son terrain.
-const PULL_R = 9, GRAB_V0 = 3, GRAB_ACC = 9;
+const PULL_R = 9, GRAB_V0 = 4, GRAB_ACC = 10;
 function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
 function grabTrail(e) {
   if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab) return;
@@ -620,7 +655,7 @@ function updatePull(dt) {
   if (!best || bd > PULL_R) { P.pull = 0; P.pullAcc = 0; return; }
   const s = 1 - bd / PULL_R;
   P.pull = s;
-  P.pullAcc += dt * (3 + 18 * s * s);
+  P.pullAcc += dt * (4 + 26 * s * s);
   if (P.pullAcc < 1) return;
   P.pullAcc = 0;
   suckStep(best, s);
@@ -780,8 +815,13 @@ function moveAmph(e, dt) {
   if (e.x > COLS - R_AMPH) { e.x = COLS - R_AMPH; e.vx = -Math.abs(e.vx); }
   if (e.y < R_AMPH) { e.y = R_AMPH; e.vy = Math.abs(e.vy); }
   if (e.y > ROWS - R_AMPH) { e.y = ROWS - R_AMPH; e.vy = -Math.abs(e.vy); }
-  const cx = Math.floor(e.x), cy = Math.floor(e.y);
-  if (cell(cx, cy) === 2) grabTrail(e);
+  // dès que son horizon effleure le fil, il l'avale
+  if (P && P.drawing && !grab) {
+    const r = R_AMPH * .85;
+    for (let y = Math.floor(e.y - r); y <= Math.floor(e.y + r); y++) for (let x = Math.floor(e.x - r); x <= Math.floor(e.x + r); x++) {
+      if (cell(x, y) === 2 && Math.hypot(x + .5 - e.x, y + .5 - e.y) < r) { grabTrail(e); return; }
+    }
+  }
 }
 function moveFoe(e, dt) {
   if (e.stun > 0) {
@@ -800,7 +840,7 @@ function updateFoes(dt) {
   for (const e of foes) {
     moveFoe(e, dt);
     if (S.phase !== 'play' || e.stun > 0) continue;
-    const r = e.kind === 'amph' ? 1.2 : 0.9;
+    const r = e.kind === 'amph' ? R_AMPH + .25 : 0.9;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) {
       if (power.sup > 0) smash(e);
       else if (power.inv > 0) continue;
@@ -1171,9 +1211,11 @@ function render() {
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
   const ox = shake ? (Math.random()-.5) * shake * 0.8 : 0, oy = shake ? (Math.random()-.5) * shake * 0.8 : 0;
+  shX = ox; shY = oy;
   ctx.setTransform(scale,0,0,sy,ox*scale,oy*sy);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
   ctx.drawImage(board, 0, 0, COLS, ROWS);
+  drawTwinkle();
 
   for (const f of fresh) {
     ctx.fillStyle = `rgba(${T.fresh},${(1 - f.age/0.45) * 0.6})`;
@@ -1195,11 +1237,14 @@ function render() {
   }
   for (const it of items) drawItem(it);
   for (const e of foes) {
+    if (e.kind === 'amph') continue;
     ctx.globalAlpha = e.stun > 0 ? 0.55 : 1;
     drawFoe(e);
     ctx.globalAlpha = 1;
     if (e.stun > 0) drawStun(e);
   }
+  // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
+  for (const e of foes) if (e.kind === 'amph') drawAmph(e);
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
 }
@@ -1270,6 +1315,12 @@ function drawFx() {
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
 }
 
+// Chemin d'un rectangle aux coins arrondis
+function rrect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
 // Éclair en zigzag de (x0, y0) à (x1, y1)
 function bolt(x0, y0, x1, y1, jag, color, w) {
   const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, n = Math.max(3, Math.round(d / 1.6)), nx = -dy / d, ny = dx / d;
@@ -1281,8 +1332,6 @@ function bolt(x0, y0, x1, y1, jag, color, w) {
 
 function drawTrail(pp) {
   const dead = S.phase === 'crash';
-  ctx.fillStyle = T.trailFill;
-  for (let k = 0; k < trail.length; k++) if (!erased[k]) ctx.fillRect(trail[k] % COLS, (trail[k] / COLS) | 0, 1, 1);
   ctx.beginPath();
   let open = false;
   const last = trail.length - 1, hs = holes();
@@ -1300,14 +1349,16 @@ function drawTrail(pp) {
     else ctx.lineTo(x, y);
   }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // halo doux sous le fil (remplace les cases teintées)
+  ctx.strokeStyle = T.trailFill; ctx.lineWidth = 1.1; ctx.stroke();
   const sup = power.sup > 0 && !dead;
   const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
   glowOn(tc, sup ? 1.8 : .9);
-  ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.78 : 0.5; ctx.stroke();
+  ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.8 : 0.58; ctx.stroke();
   if (sup) { ctx.strokeStyle = T.rainbow ? `hsl(${(time * 300) % 360},100%,70%)` : T.empty; ctx.lineWidth = .3; ctx.stroke(); }
   glowOff();
-  ctx.strokeStyle = T.trailCore; ctx.lineWidth = 0.16; ctx.lineCap = 'butt';
-  ctx.setLineDash([0.22, 0.22]); ctx.lineDashOffset = -time * 1.5; ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'round';
+  ctx.strokeStyle = T.trailCore; ctx.lineWidth = 0.16; ctx.lineCap = 'round';
+  ctx.setLineDash([0.06, 0.36]); ctx.lineDashOffset = -time * 1.5; ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'round';
   if (wave) {
     for (const f of [wave.lo, wave.hi]) {
       const k = Math.round(Math.max(0, Math.min(last, f)));
@@ -1386,27 +1437,31 @@ function drawPlayer(pp) {
   P.morph += (target - P.morph) * 0.35;
   const m = P.morph;
   ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(Math.atan2(face.y, face.x));
+  ctx.lineJoin = 'round';
   if (m < 0.98) {
+    // sur le terrain : carré aux coins arrondis
     ctx.globalAlpha = 1 - m;
     glowOn(T.trail, .6);
-    ctx.fillStyle = sup && T.rainbow ? '#ffe27a' : T.playerLand; ctx.fillRect(-.42, -.42, .84, .84);
+    ctx.fillStyle = sup && T.rainbow ? '#ffe27a' : T.playerLand; rrect(-.42, -.42, .84, .84, .2); ctx.fill();
     glowOff();
-    ctx.fillStyle = T.playerLandInk; ctx.fillRect(-.2, -.2, .4, .4);
-    ctx.fillStyle = T.rainbow ? T.trail : T.playerLand; ctx.fillRect(-.1, -.1, .2, .2);
+    ctx.fillStyle = T.playerLandInk; rrect(-.21, -.21, .42, .42, .1); ctx.fill();
+    ctx.fillStyle = T.rainbow ? T.trail : T.playerLand; ctx.beginPath(); ctx.arc(0, 0, .11, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
   if (m > 0.02) {
+    // dans la zone à conquérir : petit vaisseau aux angles adoucis
     ctx.globalAlpha = m;
     glowOn(T.trail, 1.2);
-    ctx.fillStyle = sup && T.rainbow ? '#ffe27a' : T.playerSea;
+    const hull = sup && T.rainbow ? '#ffe27a' : T.playerSea;
+    ctx.fillStyle = hull; ctx.strokeStyle = hull; ctx.lineWidth = .14;
     ctx.beginPath();
-    ctx.moveTo(.75, 0); ctx.lineTo(.18, -.36); ctx.lineTo(-.42, -.36); ctx.lineTo(-.42, .36); ctx.lineTo(.18, .36); ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(-.62, -.62, .46, .2); ctx.fillRect(-.62, .42, .46, .2);
+    ctx.moveTo(.68, 0); ctx.lineTo(.16, -.33); ctx.lineTo(-.38, -.33); ctx.lineTo(-.38, .33); ctx.lineTo(.16, .33); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    rrect(-.62, -.62, .46, .2, .1); ctx.fill(); rrect(-.62, .42, .46, .2, .1); ctx.fill();
     ctx.fillRect(-.36, -.5, .14, .2); ctx.fillRect(-.36, .3, .14, .2);
     glowOff();
-    ctx.fillStyle = T.playerSeaInk;
-    ctx.beginPath(); ctx.moveTo(.42, 0); ctx.lineTo(.06, -.18); ctx.lineTo(-.24, -.18); ctx.lineTo(-.24, .18); ctx.lineTo(.06, .18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = T.playerSeaInk; ctx.strokeStyle = T.playerSeaInk; ctx.lineWidth = .08;
+    ctx.beginPath(); ctx.moveTo(.4, 0); ctx.lineTo(.06, -.16); ctx.lineTo(-.22, -.16); ctx.lineTo(-.22, .16); ctx.lineTo(.06, .16); ctx.closePath(); ctx.fill(); ctx.stroke();
     const fl = 0.18 + Math.random() * 0.22 + (power.spd > 0 ? 0.3 : 0);
     ctx.fillStyle = power.spd > 0 && T.rainbow ? '#46d9ff' : T.flame;
     ctx.beginPath(); ctx.moveTo(-.42, -.14); ctx.lineTo(-.42 - fl, 0); ctx.lineTo(-.42, .14); ctx.closePath(); ctx.fill();
@@ -1472,54 +1527,59 @@ function drawInn(e) {
   ctx.beginPath(); ctx.arc(Math.cos(a) * .1, Math.sin(a) * .1, .14, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
+// Trou noir : lentille gravitationnelle. Tout ce qui l'entoure (terrain conquis compris) est aspiré vers
+// le centre puis englouti dans le noir ; seul un fin anneau de lumière marque l'horizon.
+const LENS_R = 6, lensCv = document.createElement('canvas'), lctx = lensCv.getContext('2d');
+let shX = 0, shY = 0;
 function drawAmph(e) {
-  const onLand = cell(Math.floor(e.x), Math.floor(e.y)) === 1;
-  const R = R_AMPH, TAU = Math.PI * 2;
+  const R = R_AMPH, TAU = Math.PI * 2, sy = cv.height / ROWS;
+  // 1) copie de ce qui est déjà dessiné autour du trou
+  const cx = (e.x + shX) * scale, cy = (e.y + shY) * sy, rw = LENS_R * scale, rh = LENS_R * sy;
+  const w = Math.ceil(rw * 2), h = Math.ceil(rh * 2);
+  if (lensCv.width !== w || lensCv.height !== h) { lensCv.width = w; lensCv.height = h; }
+  lctx.clearRect(0, 0, w, h);
+  const sx0 = Math.max(0, cx - rw), sy0 = Math.max(0, cy - rh), sx1 = Math.min(cv.width, cx + rw), sy1 = Math.min(cv.height, cy + rh);
+  if (sx1 - sx0 >= 1 && sy1 - sy0 >= 1) lctx.drawImage(cv, sx0, sy0, sx1 - sx0, sy1 - sy0, sx0 - (cx - rw), sy0 - (cy - rh), sx1 - sx0, sy1 - sy0);
+  // 2) anneaux concentriques de plus en plus « rétrécis » : l'espace tombe vers le centre
+  for (let i = 0; i < 8; i++) {
+    const rd = LENS_R - (LENS_R - R) * i / 8, rs = rd + (LENS_R - rd) * .65, k = rd / rs;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(e.x, e.y, rd, 0, TAU); ctx.clip();
+    ctx.drawImage(lensCv, e.x - LENS_R * k, e.y - LENS_R * k, LENS_R * 2 * k, LENS_R * 2 * k);
+    ctx.restore();
+  }
   ctx.save(); ctx.translate(e.x, e.y);
-  // puits gravitationnel : l'espace s'assombrit vers le centre, limite de la zone d'aspiration en pointillés
-  const well = ctx.createRadialGradient(0, 0, R, 0, 0, PULL_R);
-  well.addColorStop(0, T.hole); well.addColorStop(.45, T.hole); well.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalAlpha = .6; ctx.fillStyle = well;
-  ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.fill();
-  // poussière qui tombe en spirale, de plus en plus vite près de l'horizon
+  // 3) obscurité : tout s'éteint en approchant de l'horizon
+  const dark = ctx.createRadialGradient(0, 0, R * .9, 0, 0, LENS_R);
+  dark.addColorStop(0, T.hole); dark.addColorStop(.3, T.hole); dark.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(0, 0, LENS_R, 0, TAU); ctx.fill();
+  const well = ctx.createRadialGradient(0, 0, LENS_R * .8, 0, 0, PULL_R);
+  well.addColorStop(0, 'rgba(0,0,0,0.35)'); well.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = well; ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.fill();
+  // 4) poussière qui tombe en spirale, de plus en plus vite près de l'horizon
   ctx.fillStyle = T.amphHi;
-  for (let k = 0; k < 26; k++) {
-    const f = (e.ph * .18 + k / 26) % 1, r = (PULL_R - R) * (1 - f) * (1 - f) + R;
-    const a = k * 2.4 + f * f * 9 + e.ph * .3;
-    ctx.globalAlpha = Math.min(1, f * 2) * .75;
-    ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, .05 + f * .07, 0, TAU); ctx.fill();
+  for (let k = 0; k < 22; k++) {
+    const f = (e.ph * .2 + k / 22) % 1, r = (PULL_R - R) * (1 - f) * (1 - f) + R;
+    const a = k * 2.4 + f * f * 10 + e.ph * .3;
+    ctx.globalAlpha = Math.min(1, f * 2) * (1 - f * .6) * .7;
+    ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, .04 + f * .06, 0, TAU); ctx.fill();
+  }
+  // traînées de matière qui tourbillonnent juste avant l'horizon
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) {
+    const a = -e.ph * 1.6 + k * TAU / 4, r = R * (1.25 + .12 * Math.sin(e.ph * 3 + k));
+    ctx.globalAlpha = .45; ctx.strokeStyle = T.amph; ctx.lineWidth = .14;
+    ctx.beginPath(); ctx.arc(0, 0, r, a, a + 1.1); ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  // disque d'accrétion incliné : la moitié arrière passe derrière l'horizon, la moitié avant devant
-  const DR = R + 1.75;
-  const disk = (a0, a1) => {
-    ctx.save(); ctx.rotate(-.18); ctx.scale(1, .26);
-    glowOn(T.amph, 2);
-    ctx.strokeStyle = T.amph; ctx.lineWidth = 1.1;
-    ctx.beginPath(); ctx.arc(0, 0, DR - .2, a0, a1); ctx.stroke();
-    ctx.strokeStyle = T.amphHi; ctx.lineWidth = .3;
-    ctx.beginPath(); ctx.arc(0, 0, DR - .55, a0, a1); ctx.stroke();
-    ctx.fillStyle = T.amphHi;
-    for (let k = 0; k < 7; k++) {
-      const a = (e.ph * .8 + k * TAU / 7) % TAU;
-      if (a < a0 || a > a1) continue;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * (DR - .2), Math.sin(a) * (DR - .2), .3, 0, TAU); ctx.fill();
-    }
-    glowOff(); ctx.restore();
-  };
-  disk(Math.PI, TAU);
-  // halo de lentille : la lumière du disque, courbée par la gravité, fait le tour de l'horizon
-  const puls = 1 + Math.sin(e.ph * 2) * 0.05;
-  glowOn(T.amphHi, 2.2);
-  ctx.strokeStyle = T.amph; ctx.lineWidth = .42;
-  ctx.beginPath(); ctx.arc(0, 0, R * 1.4 * puls, 0, TAU); ctx.stroke();
-  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .16;
-  ctx.beginPath(); ctx.arc(0, 0, R * 1.16 * puls, 0, TAU); ctx.stroke();
+  // 5) anneau de photons puis horizon des événements, noir absolu
+  const puls = 1 + Math.sin(e.ph * 2) * .04;
+  glowOn(T.amphHi, 2);
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .1;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.06 * puls, 0, TAU); ctx.stroke();
   glowOff();
-  // horizon des événements (inversé au-dessus de ton terrain)
-  ctx.fillStyle = onLand ? T.amphInv : T.hole;
+  ctx.fillStyle = T.hole;
   ctx.beginPath(); ctx.arc(0, 0, R * puls, 0, TAU); ctx.fill();
-  disk(0, Math.PI);
   ctx.restore();
 }
 // Fil avalé : entre le trou noir et le vaisseau, le fil s'illumine et file vers le trou, de plus en plus vite
@@ -1811,7 +1871,7 @@ function startDemo() {
 function togglePause() {
   if (S.phase === 'play') {
     S.pausedFrom = 'play'; S.phase = 'pause';
-    showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">MENU</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
+    showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">QUITTER LA PARTIE</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
     // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
     $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
