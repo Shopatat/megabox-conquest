@@ -174,7 +174,7 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 - Objectifs 75/80/85 % au lieu de 75/65/55.
 - Beaucoup plus d'ennemis (jusqu'à 21-23 au niveau 25), et le joueur n'est jamais figé (ni par l'onde de choc, ni par le bonus territoire).
 - Perforateur plus redoutable (transperce, onde foudroyante) au lieu de « coupe le fil et annule la conquête ».
-- Amphibie transformé en trou noir qui aspire le vaisseau et tire son fil comme une corde.
+- Amphibie transformé en trou noir qui aspire le vaisseau et avale le fil qu'il croise.
 - Pas de vie offerte en fin de niveau.
 - Nouvel ennemi : le rongeur.
 - Super Casque, Super Bombe, Super Vitesse et Super Vie (n'existent pas dans l'original).
