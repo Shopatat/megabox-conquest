@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Megabox Conquest</title>
 <meta name="description" content="Remake du jeu des Sagem myX (2001) : conquiers le terrain sans te faire toucher.">
-<meta name="theme-color" content="#14111c">
+<meta name="theme-color" content="#070916">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Megabox">
@@ -15,110 +15,154 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Sans+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* Layout: écran de téléphone 2001 — bandeau d'état en haut, terrain portrait au centre, réglages en pied */
+/* Interface : arcade moderne. Verre dépoli, coins arrondis, dégradés néon ; police pixel pour les titres et les chiffres */
 :root{
-  --bg:#14111c; --shell:#1f1a2b; --line:#3a3150; --text:#ece6f7; --muted:#9a90b3;
-  --trail:#ff7a4d; --ball:#ffd23f; --ink:#1a0d07;
+  --bg:#070916; --text:#f2f3ff; --muted:#8f95c6;
+  --panel:rgba(24,28,62,.66); --line:rgba(170,178,255,.13); --line-2:rgba(170,178,255,.24);
+  --accent:#ff5c8a; --accent-2:#ff9a4d; --cyan:#43e0ff; --violet:#8c6bff; --ball:#ffd23f;
+  --grad:linear-gradient(135deg,#ff5c8a 0%,#ff9a4d 100%);
+  --grad-cool:linear-gradient(90deg,#43e0ff 0%,#8c6bff 100%);
   --display:"Silkscreen","Courier New",monospace;
-  --body:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --body:"Rubik",system-ui,-apple-system,sans-serif;
+  --ease:cubic-bezier(.2,.9,.3,1.15);
   color-scheme:dark;
 }
 [hidden]{display:none!important}
 html,body{height:100%;overscroll-behavior:none}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;touch-action:manipulation}
+body{margin:0;color:var(--text);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;touch-action:manipulation;
+  background:radial-gradient(120% 55% at 50% -12%,#2b2070 0%,rgba(43,32,112,0) 62%),radial-gradient(90% 45% at 50% 112%,#0d3a5a 0%,rgba(13,58,90,0) 62%),var(--bg)}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 /* Marges sûres : encoche / Dynamic Island en haut, barre d'accueil en bas (mode appli plein écran) */
-.app{height:100%;display:flex;flex-direction:column;align-items:center;gap:10px;box-sizing:border-box;
-  padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-.hud,.foot{width:var(--pw,100%);max-width:100%}
-.hud{display:grid;gap:8px}
-.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
-.brand{font-family:var(--display);font-size:11px;line-height:1.1;letter-spacing:.14em;color:var(--muted)}
-.brand b{display:block;color:var(--trail);font-weight:700;font-size:19px;letter-spacing:.04em}
-.stats{display:flex;gap:14px;align-items:flex-end}
-.stat{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.k{font-family:var(--display);font-size:9px;color:var(--muted);letter-spacing:.14em}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;gap:12px;box-sizing:border-box;
+  padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+
+/* ---- HUD ---- */
+/* le HUD suit la largeur du terrain, sans descendre sous 343 px (sinon il déborde) */
+.hud,.foot{width:100%;max-width:max(var(--pw,100%),min(100%,343px))}
+.hud{display:grid;gap:9px;box-sizing:border-box;padding:10px 12px 11px;background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 12px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.brand{font-family:var(--body);font-weight:600;font-size:9.5px;line-height:1.15;letter-spacing:.32em;color:var(--muted)}
+.brand b{display:block;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px rgba(255,92,138,.35))}
+.stats{display:flex;gap:12px;align-items:center}
+.stat{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.k{font-family:var(--body);font-weight:600;font-size:9px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
 .v{font-family:var(--display);font-size:15px;line-height:1;font-variant-numeric:tabular-nums}
 .v small{font-size:9px;color:var(--muted)}
-.lives{display:flex;gap:3px;height:15px;align-items:flex-end}
-.lives i{width:6px;height:14px;background:var(--trail);border-radius:1px}
-.lives i.off{background:var(--line)}
-.pbtn{align-self:center;width:34px;height:34px;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--shell);border:1px solid var(--line);border-radius:4px;cursor:pointer;padding:0}
-.pbtn i{width:4px;height:13px;background:var(--text);border-radius:1px}
-.pbtn:active{background:var(--line)}
+.lives{display:flex;gap:3px;height:14px;align-items:flex-end}
+.lives i{width:7px;height:14px;background:var(--grad);border-radius:4px;box-shadow:0 0 6px rgba(255,92,138,.45)}
+.lives i.off{background:rgba(255,255,255,.1);box-shadow:none}
+.pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
+  background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
+.pbtn i{width:4px;height:13px;background:var(--text);border-radius:2px}
+.pbtn:active{transform:scale(.9);background:rgba(255,255,255,.12)}
 .meterRow{display:flex;align-items:center;gap:10px}
-.meter{position:relative;flex:1;height:10px;background:var(--shell);border:1px solid var(--line);border-radius:2px}
-.meter .fill{height:100%;width:0;background:linear-gradient(90deg,#3b4bc4,#9aa6ff);transition:width .35s ease}
-.meter .goal{position:absolute;left:75%;top:-4px;bottom:-4px;width:2px;background:var(--ball)}
+.meter{position:relative;flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:99px}
+.meter .fill{height:100%;width:0;border-radius:99px;background:var(--grad-cool);box-shadow:0 0 12px rgba(67,224,255,.45);transition:width .45s var(--ease)}
+.meter .goal{position:absolute;left:75%;top:-4px;bottom:-4px;width:3px;margin-left:-1px;border-radius:2px;background:var(--ball);box-shadow:0 0 8px rgba(255,210,63,.7)}
 .pct{font-family:var(--display);font-size:12px;min-width:7ch;text-align:right;font-variant-numeric:tabular-nums}
 .pct small{color:var(--muted);font-size:9px}
-.powers{display:flex;gap:8px;min-height:22px;flex-wrap:wrap}
-.chip{display:flex;align-items:center;gap:7px;padding:3px 8px 3px 6px;border:1px solid var(--line);border-radius:3px;background:var(--shell);font-family:var(--display);font-size:10px;letter-spacing:.08em}
-.chip b{width:9px;height:9px;border-radius:50%}
-.chip .t{position:relative;width:48px;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
-.chip .t i{position:absolute;left:0;top:0;bottom:0;background:currentColor}
-.chip.inv{color:#ffe27a}.chip.inv b{background:conic-gradient(#ff5d5d,#ffd23f,#5dff9a,#46d9ff,#b98bff,#ff5d5d)}
-.chip.spd{color:#46d9ff}.chip.spd b{background:#46d9ff}
+.powers{display:flex;gap:6px;flex-wrap:wrap}
+.powers:empty{display:none}
+.chip{display:flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border:1px solid var(--line-2);border-radius:99px;background:rgba(255,255,255,.06);font-family:var(--body);font-weight:600;font-size:10px;letter-spacing:.1em}
+.chip b{width:10px;height:10px;border-radius:50%}
+.chip .t{position:relative;width:44px;height:4px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.chip .t i{position:absolute;left:0;top:0;bottom:0;background:currentColor;border-radius:99px}
 .chip span{color:var(--text)}
-.chip.sup{color:#ffd23f;border-color:#ffd23f;animation:supchip 1s linear infinite}
-.chip.sup b{background:radial-gradient(circle,#fff6c8,#ffd23f 60%,#ff7a4d)}
-@keyframes supchip{0%,100%{box-shadow:0 0 6px #ffd23f}50%{box-shadow:0 0 14px #ff7a4d}}
-.stage.super canvas{animation:supglow .8s linear infinite}
-@keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
-.chip.hyp{color:#9ff3ff;border-color:#46d9ff;animation:hypchip .3s steps(2) infinite}
-.chip.hyp b{background:#fff;box-shadow:0 0 6px #46d9ff}
-@keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
-.lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
-@keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
-@media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i{animation:none}}
+
+/* ---- Terrain ---- */
 .stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
-canvas{display:block;border-radius:4px;box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55);touch-action:none}
+canvas{display:block;border-radius:16px;touch-action:none;
+  box-shadow:0 0 0 1px rgba(170,178,255,.18),0 24px 60px rgba(0,0,0,.55),0 0 70px rgba(120,100,255,.2)}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px}
-.card{background:rgba(20,17,28,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:6px;padding:20px 18px;width:100%;max-width:320px;max-height:100%;overflow:auto;display:grid;gap:13px;box-sizing:border-box}
+
+/* ---- Cartes (menu, niveaux, pause, fin) ---- */
+.card{width:100%;max-width:330px;max-height:100%;overflow:auto;display:grid;gap:14px;box-sizing:border-box;padding:22px 20px;border-radius:24px;
+  background:linear-gradient(180deg,rgba(34,38,82,.9),rgba(15,18,42,.93));border:1px solid var(--line-2);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.09);
+  scrollbar-width:none}
+.card.in{animation:cardin .4s var(--ease) both}
+.card::-webkit-scrollbar{display:none}
+@keyframes cardin{from{opacity:0;transform:translateY(14px) scale(.96)}}
 .card h1,.card h2{font-family:var(--display);margin:0;line-height:1.05;text-wrap:balance}
-.card h1{font-size:25px;color:var(--trail)}
-.card h1 span,.card h2 span{display:block;font-size:11px;color:var(--muted);letter-spacing:.2em;margin-bottom:6px;font-weight:400}
-.card h2{font-size:20px}
-.card h2.rec{color:var(--ball)}
+.card h1{font-size:27px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px rgba(255,92,138,.3))}
+.card h1 span,.card h2 span{display:block;font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.28em;margin-bottom:8px;color:var(--muted);-webkit-text-fill-color:var(--muted)}
+.card h2{font-size:21px}
+.card h2.rec{background:linear-gradient(135deg,#ffe27a,#ff9a4d);-webkit-background-clip:text;background-clip:text;color:transparent}
 .card p{margin:0;font-size:15px;line-height:1.45}
 .card .keys{font-size:13px;color:var(--muted)}
-.card .new{font-size:14px;border-left:3px solid var(--trail);padding-left:10px;color:var(--text)}
-.card .new b{font-family:var(--display);font-size:11px;letter-spacing:.08em;color:var(--trail);font-weight:400}
-.rows{display:grid;gap:6px;font-family:var(--display);font-size:12px}
+.card .new{font-size:13px;line-height:1.4;padding:9px 12px;border-radius:14px;background:rgba(255,92,138,.08);border:1px solid rgba(255,92,138,.25)}
+.card .new b{font-family:var(--display);font-size:10.5px;letter-spacing:.06em;color:var(--accent);font-weight:400}
+.rows{display:grid;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--line);font-family:var(--display);font-size:12px}
 .rows div{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
 .rows div span:first-child{color:var(--muted)}
-.rows .total{border-top:1px solid var(--line);padding-top:8px;color:var(--ball)}
-.btn{font-family:var(--display);font-size:14px;letter-spacing:.06em;background:var(--trail);color:var(--ink);border:0;padding:13px 16px;border-radius:3px;cursor:pointer}
-.btn:hover{filter:brightness(1.08)}
-.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-size:11px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--shell);border:1px solid var(--line);border-radius:4px;padding:3px}
-.seg button{font-family:var(--display);font-size:10px;letter-spacing:.05em;background:transparent;color:var(--muted);border:0;border-radius:2px;padding:9px 2px;cursor:pointer}
-.seg button[aria-checked="true"]{background:var(--trail);color:var(--ink)}
+.rows .total{border-top:1px solid var(--line);padding-top:9px;color:var(--ball)}
+
+/* ---- Boutons ---- */
+.btn{font-family:var(--display);font-size:14px;letter-spacing:.08em;color:#fff;border:0;padding:15px 16px;border-radius:16px;cursor:pointer;
+  background:var(--grad);text-shadow:0 1px 0 rgba(120,20,50,.35);
+  box-shadow:0 10px 26px rgba(255,92,138,.35),inset 0 1px 0 rgba(255,255,255,.35),inset 0 -4px 0 rgba(120,20,60,.25);
+  transition:transform .15s var(--ease),box-shadow .2s,filter .2s}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:translateY(2px) scale(.98);box-shadow:0 4px 14px rgba(255,92,138,.3),inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(120,20,60,.25)}
+.btn.ghost{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--line-2);font-size:11px;text-shadow:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -3px 0 rgba(0,0,0,.2)}
+.btn.ghost:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.seg button{font-family:var(--display);font-size:10px;letter-spacing:.04em;background:transparent;color:var(--muted);border:0;border-radius:12px;padding:11px 2px;cursor:pointer;transition:background .25s,color .25s,box-shadow .25s}
+.seg button[aria-checked="true"]{background:var(--grad);color:#fff;box-shadow:0 6px 16px rgba(255,92,138,.35),inset 0 1px 0 rgba(255,255,255,.3)}
 .stepper{display:flex;align-items:center;gap:10px}
 .stepper .k{flex:1}
-.stepper button{width:34px;height:34px;font-family:var(--display);font-size:16px;background:var(--shell);color:var(--text);border:1px solid var(--line);border-radius:3px;cursor:pointer}
-.stepper button:disabled{opacity:.35;cursor:default}
-.stepper .v{min-width:3ch;text-align:center}
-.count{font-family:var(--display);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
-.count b{font-size:22px;color:var(--text);font-weight:400}
-details{font-size:13px;color:var(--muted);line-height:1.45}
-details summary{font-family:var(--display);font-size:10px;letter-spacing:.1em;cursor:pointer;color:var(--text)}
-details ul{margin:8px 0 0;padding-left:16px;display:grid;gap:5px}
+.stepper button{width:40px;height:40px;font-family:var(--display);font-size:16px;background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line-2);border-radius:13px;cursor:pointer;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.22);transition:transform .15s var(--ease)}
+.stepper button:active{transform:scale(.9)}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper .v{min-width:3ch;text-align:center;font-size:18px}
+.count{margin:-4px 0 0;text-align:center;font-size:12px!important;color:var(--muted)}
+/* le bouton principal reste visible quand la carte défile */
+.card #go{position:sticky;bottom:0;z-index:1}
+details{font-size:13px;color:var(--muted);line-height:1.45;padding:10px 13px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+details summary{font-family:var(--body);font-weight:600;font-size:11px;letter-spacing:.16em;cursor:pointer;color:var(--text);list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'+';display:inline-block;width:1.2em;color:var(--accent);font-weight:700}
+details[open] summary::before{content:'−'}
+details ul{margin:10px 0 2px;padding-left:16px;display:grid;gap:6px}
+details li::marker{color:var(--accent)}
 details li b{color:var(--text);font-weight:600}
-.btn:focus-visible,.mini:focus-visible,.pbtn:focus-visible,.seg button:focus-visible,.stepper button:focus-visible{outline:2px solid var(--ball);outline-offset:2px}
+.btn:focus-visible,.mini:focus-visible,.pbtn:focus-visible,.seg button:focus-visible,.stepper button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ---- Pied de page, mode test ---- */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex:none}
-.foot .tools{display:flex;gap:8px}
-.mini{font-family:var(--display);font-size:10px;letter-spacing:.08em;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:7px 9px;cursor:pointer;white-space:nowrap}
+.foot .tools{display:flex;gap:8px;margin-left:auto}
+.mini{font-family:var(--body);font-weight:600;font-size:10.5px;letter-spacing:.08em;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line-2);border-radius:99px;padding:8px 12px;cursor:pointer;white-space:nowrap;
+  transition:transform .15s var(--ease),background .2s}
+.mini:active{transform:scale(.93);background:rgba(255,255,255,.1)}
 .testbar{width:var(--pw,100%);max-width:100%;display:grid;gap:6px;flex:none}
 .trow{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .trow .k{width:100%}
-.trow .mini{padding:6px 7px;color:var(--text)}
-.trow .mini.gold{color:#ffd23f;border-color:#ffd23f}
+.trow .mini{padding:7px 10px;color:var(--text)}
+.trow .mini.gold{color:#ffd23f;border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.08)}
 .hint-touch{display:none}
 @media (pointer:coarse){.hint{display:none}.hint-touch{display:inline}}
 @media (max-width:380px){.hint-touch,.hint{display:none}}
+
+/* ---- Pouvoirs actifs ---- */
+.chip.inv{color:#ffe27a}.chip.inv b{background:conic-gradient(#ff5d5d,#ffd23f,#5dff9a,#46d9ff,#b98bff,#ff5d5d)}
+.chip.spd{color:#46d9ff}.chip.spd b{background:#46d9ff;box-shadow:0 0 6px #46d9ff}
+.chip.sup{color:#ffd23f;border-color:#ffd23f;animation:supchip 1s linear infinite}
+.chip.sup b{background:radial-gradient(circle,#fff6c8,#ffd23f 60%,#ff7a4d)}
+@keyframes supchip{0%,100%{box-shadow:0 0 6px #ffd23f}50%{box-shadow:0 0 14px #ff7a4d}}
+.chip.hyp{color:#9ff3ff;border-color:#46d9ff;animation:hypchip .3s steps(2) infinite}
+.chip.hyp b{background:#fff;box-shadow:0 0 6px #46d9ff}
+@keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
+.stage.super canvas{animation:supglow .8s linear infinite}
+@keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
+.lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
+@keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
+@media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
 </style>
 </head>
 <body>
@@ -176,12 +220,12 @@ const DIFFS = [
 ];
 
 const THEMES = {
-  color: { label: 'COULEUR', empty:'#100d18', dot:'#2a2338', vignette:'rgba(100,80,170,0.20)', landA:'#4b5bd4', landB:'#4454c8', shine:'rgba(255,255,255,0.07)', edge:'#aab4ff',
+  color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, edge:'#dfe4ff',
     trail:'#ff7a4d', trailCore:'rgba(16,13,24,0.9)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
     ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', eat:'#ff9f43', eatLo:'#5c2600',
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
-    danger:'#ff3b3b', landP:'#9aa6ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
+    danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
     items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
@@ -206,10 +250,10 @@ const ITEM = {
 const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life' };
 
 const INTRO = {
-  out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte et te fige.'],
+  out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
   inn:  ['GARDIEN', 'Il patrouille sur ton terrain conquis. Ne le croise pas.'],
   perf: ['PERFORATEUR', 'Plus rapide que la boule, il ne rebondit pas sur ton fil : il le transperce. Son onde de choc te rattrape presque instantanément.'],
-  amph: ['TROU NOIR', 'Lent, mais il passe partout et aspire de loin. S\'il approche de ton fil, il le ravale comme une corde et te tire en arrière : coupe au plus court vers ton terrain !'],
+  amph: ['TROU NOIR', 'Lent, mais il passe partout et t\'aspire si tu passes près de lui. S\'il croise ton fil, il l\'avale et te ramène vers lui de plus en plus fort : file vers ton terrain au plus court !'],
   eat:  ['RONGEUR', 'Lent, mais il grignote une case de ton terrain chaque fois qu\'il le touche. Ton pourcentage peut redescendre !']
 };
 
@@ -235,8 +279,8 @@ const pad2 = n => String(n).padStart(2, '0');
 const fmt = n => n.toLocaleString('fr-FR');
 
 const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (COLS-2*B)*(ROWS-2*B),
-  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyT: 0, readyMode: 'start', pausedFrom: null, exploded: false };
-let P = null, foes = [], items = [], trail = [], erased = [], wave = null;
+  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false };
+let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
 const power = { inv: 0, spd: 0, sup: 0, hyp: 0 };
@@ -275,7 +319,7 @@ const sfx = {
   dissolve(){ tone(700,.35,'triangle',.04,-500); },
   smash(){ tone(160,.3,'square',.06,-100); tone(1200,.15,'triangle',.04,-900,.02); },
   warn(){ tone(1200,.05,'square',.02); },
-  tick(){ tone(660,.04,'square',.025); },
+  grab(){ tone(220,.9,'sawtooth',.05,-190); tone(90,1,'sine',.06,-50,.05); },
   rare(){ [1047,1319,1568,2093,1568,2093,2637].forEach((f,i)=>tone(f,.07,'sine',.035,0,i*.05)); },
   bomb(){ tone(55,1.4,'sawtooth',.09,-25); tone(110,1,'square',.06,-80,.02); tone(900,.8,'sawtooth',.03,-850,.05); [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'square',.04,0,.45+i*.07)); },
   zap(){ for(let i=0;i<6;i++) tone(1800-i*200+Math.random()*300,.05,'sawtooth',.04,-900,i*.04); [880,1320,1760,2640].forEach((f,i)=>tone(f,.12,'square',.035,0,.28+i*.05)); },
@@ -309,10 +353,22 @@ function drawBg() {
   gctx.fillStyle = T.dot;
   for (let y = 2; y < ROWS; y += 2) for (let x = 2; x < COLS; x += 2) gctx.fillRect(x-0.07,y-0.07,0.14,0.14);
 }
+// Terrain conquis : dégradé lisse en diagonale (thème couleur) ou damier rétro (thème MyX-3)
+function landColor(x, y) {
+  if (!T.landGrad) return (x + y) & 1 ? T.landA : T.landB;
+  if (!T.landLut) {
+    const [a, b] = T.landGrad.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
+    T.landLut = Array.from({ length: COLS + ROWS }, (_, k) => {
+      const u = k / (COLS + ROWS - 2);
+      return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v) * u)).join(',')})`;
+    });
+  }
+  return T.landLut[x + y];
+}
 function paintCell(c, x, y) {
-  c.fillStyle = (x + y) & 1 ? T.landA : T.landB;
+  c.fillStyle = landColor(x, y);
   c.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
-  c.fillStyle = T.shine; c.fillRect(x + 0.12, y + 0.12, 0.76, 0.3);
+  if (T.shine) { c.fillStyle = T.shine; c.fillRect(x + 0.12, y + 0.12, 0.76, 0.3); }
 }
 function drawBoard() {
   bctx.setTransform(1,0,0,1,0,0); bctx.clearRect(0,0,board.width,board.height);
@@ -420,7 +476,7 @@ function newPlayer() {
 
 /* ---------- Fil ---------- */
 function pushTrail(i) { trailPos[i] = trail.length; trail.push(i); erased.push(0); grid[i] = 2; }
-function resetTrailArrays() { for (const i of trail) trailPos[i] = -1; trail = []; erased = []; wave = null; }
+function resetTrailArrays() { for (const i of trail) trailPos[i] = -1; trail = []; erased = []; wave = null; grab = null; }
 function clearTrail() {
   for (let k = 0; k < trail.length; k++) if (!erased[k] && grid[trail[k]] === 2) grid[trail[k]] = 0;
   resetTrailArrays();
@@ -514,47 +570,64 @@ function moveInto(nx, ny) {
   }
   pickItems();
 }
-// Amphibie = trou noir. Il aspire le vaisseau ; et si un point du fil est plus proche de lui que le vaisseau,
-// il s'y accroche et ravale le fil comme une corde : le vaisseau recule le long de son propre tracé.
-const PULL_R = 9;
+// Amphibie = trou noir. De près, il aspire le vaisseau. S'il croise le fil, il l'avale (pas d'onde de choc) :
+// le vaisseau est ramené vers lui le long de son tracé, de plus en plus fort, jusqu'à ce qu'il regagne son terrain.
+const PULL_R = 9, GRAB_V0 = 3, GRAB_ACC = 9;
 function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
+function grabTrail(e) {
+  if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab) return;
+  grab = { e, t: 0, k: -1 };
+  burst(e.x, e.y, T.amphHi, 18, 6);
+  sfx.grab();
+}
 function updatePull(dt) {
   const k = Math.exp(-dt * 16); P.vox *= k; P.voy *= k;
-  P.rope = null;
-  const pp = playerPos();
-  let best = null, bd = 1e9, bk = -1;
-  for (const e of holes()) {
-    const d = Math.hypot(e.x - pp.x, e.y - pp.y);
-    if (d < bd) { bd = d; best = e; bk = -1; }
-    if (P.drawing && !(power.sup > 0)) for (let j = 0; j < trail.length - 1; j++) {
+  const hs = holes();
+  if (grab && (!P.drawing || !hs.includes(grab.e))) grab = null;
+  if (grab) {
+    const e = grab.e;
+    grab.t += dt;
+    // le fil est avalé là où il est le plus proche du trou
+    let bk = -1, bd = 1e9;
+    for (let j = 0; j < trail.length - 1; j++) {
       if (erased[j]) continue;
-      const i = trail[j], dj = Math.hypot(e.x - (i % COLS + .5), e.y - (((i / COLS) | 0) + .5));
-      if (dj < bd) { bd = dj; best = e; bk = j; }
+      const i = trail[j], d = Math.hypot(e.x - (i % COLS + .5), e.y - (((i / COLS) | 0) + .5));
+      if (d < bd) { bd = d; bk = j; }
     }
-  }
-  if (!best || bd > PULL_R) { P.pull = 0; P.pullAcc = 0; return; }
-  const s = 1 - bd / PULL_R;
-  P.pull = s;
-  if (bk >= 0) {
-    P.rope = { e: best, k: bk, s };
-    if (Math.random() < .3 + s * .6) {
-      const ci = trail[Math.max(0, Math.min(trail.length - 1, bk + ((Math.random() * 7) | 0) - 3))];
+    grab.k = bk;
+    const v = Math.min(45, GRAB_V0 + GRAB_ACC * grab.t), s = Math.min(1, v / 20);
+    P.pull = s;
+    if (bk >= 0 && Math.random() < .4 + s * .6) {
+      const ci = trail[Math.max(0, Math.min(trail.length - 1, bk + ((Math.random() * 9) | 0) - 4))];
       const px = ci % COLS + Math.random(), py = ((ci / COLS) | 0) + Math.random();
-      const dx = best.x - px, dy = best.y - py, d = Math.hypot(dx, dy) || 1, v = 5 + 7 * s;
-      particles.push({ x: px, y: py, vx: dx / d * v, vy: dy / d * v, life: 0, max: Math.min(.8, d / v), color: T.trail, size: .12 + Math.random() * .12, ng: 1 });
+      const dx = e.x - px, dy = e.y - py, d = Math.hypot(dx, dy) || 1, pv = 5 + 9 * s;
+      particles.push({ x: px, y: py, vx: dx / d * pv, vy: dy / d * pv, life: 0, max: Math.min(.8, d / pv), color: T.trail, size: .12 + Math.random() * .14, ng: 1 });
     }
-    P.pullAcc += dt * (1.5 + 31 * s * s);
-    while (P.pullAcc >= 1) {
+    P.pullAcc += dt * v;
+    while (P.pullAcc >= 1 && S.phase === 'play') {
       P.pullAcc -= 1;
-      if (!reel(bk)) { P.pullAcc = 0; break; }
-      if (!muted && Math.random() < .4) tone(70 + s * 90, .05, 'sawtooth', .02, -20);
+      // le vaisseau recule sur son fil ; arrivé au point avalé (ou s'il est déjà plus près du trou), il est aspiré directement
+      const dS = Math.hypot(e.x - (P.x + .5), e.y - (P.y + .5));
+      if (bk < 0 || dS <= bd || !reel(bk)) suckStep(e, 1);
+      if (Math.random() < .35) tone(70 + s * 120, .05, 'sawtooth', .02, -20);
     }
     return;
   }
+  // aspiration directe du vaisseau à proximité
+  const pp = playerPos();
+  let best = null, bd = 1e9;
+  for (const e of hs) { const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; best = e; } }
+  if (!best || bd > PULL_R) { P.pull = 0; P.pullAcc = 0; return; }
+  const s = 1 - bd / PULL_R;
+  P.pull = s;
   P.pullAcc += dt * (3 + 18 * s * s);
   if (P.pullAcc < 1) return;
   P.pullAcc = 0;
-  const dx = best.x - pp.x, dy = best.y - pp.y;
+  suckStep(best, s);
+}
+// Déplace le vaisseau d'une case vers le trou (jamais sur son propre fil)
+function suckStep(e, s) {
+  const pp = playerPos(), dx = e.x - pp.x, dy = e.y - pp.y;
   const sx = Math.sign(dx), sy = Math.sign(dy);
   const opts = Math.abs(dx) > Math.abs(dy) ? [[sx, 0], [0, sy]] : [[0, sy], [sx, 0]];
   for (const [ax, ay] of opts) {
@@ -563,7 +636,7 @@ function updatePull(dt) {
     if (!inB(nx, ny) || grid[at(nx, ny)] === 2) continue;
     P.vox -= ax; P.voy -= ay; P.px += ax; P.py += ay;
     moveInto(nx, ny);
-    if (!muted) tone(120 + s * 200, .06, 'sine', .03, -40);
+    tone(120 + s * 200, .06, 'sine', .03, -40);
     break;
   }
 }
@@ -708,7 +781,7 @@ function moveAmph(e, dt) {
   if (e.y < R_AMPH) { e.y = R_AMPH; e.vy = Math.abs(e.vy); }
   if (e.y > ROWS - R_AMPH) { e.y = ROWS - R_AMPH; e.vy = -Math.abs(e.vy); }
   const cx = Math.floor(e.x), cy = Math.floor(e.y);
-  if (cell(cx, cy) === 2) onTrailHit(e, at(cx, cy));
+  if (cell(cx, cy) === 2) grabTrail(e);
 }
 function moveFoe(e, dt) {
   if (e.stun > 0) {
@@ -1047,12 +1120,6 @@ function update(dt) {
   } else if (ph === 'clearing') {
     for (const e of foes) moveFoe(e, dt * 0.3);
     clearT -= dt; if (clearT <= 0) showClear();
-  } else if (ph === 'ready') {
-    const before = Math.ceil(S.readyT);
-    S.readyT -= dt;
-    const now = Math.ceil(S.readyT);
-    if (now !== before) { const el = $('cd'); if (el) el.textContent = Math.max(0, now); if (now > 0) sfx.tick(); }
-    if (S.readyT <= 0) go();
   } else if (ph === 'title') {
     for (const e of foes) moveFoe(e, dt);
   }
@@ -1255,7 +1322,7 @@ function drawTrail(pp) {
       glowOff();
     }
   }
-  if (P.rope && S.phase === 'play') drawRope();
+  if (grab && grab.k >= 0 && S.phase === 'play') drawSuck(pp);
 }
 
 function drawPlayer(pp) {
@@ -1414,10 +1481,6 @@ function drawAmph(e) {
   well.addColorStop(0, T.hole); well.addColorStop(.45, T.hole); well.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = .6; ctx.fillStyle = well;
   ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.fill();
-  ctx.globalAlpha = .3;
-  ctx.strokeStyle = T.amphRing; ctx.lineWidth = .06;
-  ctx.setLineDash([.25, .35]); ctx.lineDashOffset = -e.ph * .6;
-  ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
   // poussière qui tombe en spirale, de plus en plus vite près de l'horizon
   ctx.fillStyle = T.amphHi;
   for (let k = 0; k < 26; k++) {
@@ -1459,21 +1522,29 @@ function drawAmph(e) {
   disk(0, Math.PI);
   ctx.restore();
 }
-// Corde : le trou noir tire le fil depuis son point d'accroche
-function drawRope() {
-  const r = P.rope, i = trail[r.k];
-  if (i == null) return;
-  const ax = i % COLS + .5, ay = ((i / COLS) | 0) + .5, ex = r.e.x, ey = r.e.y;
-  const dx = ex - ax, dy = ey - ay, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
-  ctx.beginPath(); ctx.moveTo(ax, ay);
-  for (let t = 1; t <= 14; t++) {
-    const u = t / 14, w = Math.sin(u * Math.PI) * Math.sin(time * 38 + u * 12) * .22 * r.s;
-    ctx.lineTo(ax + dx * u + nx * w, ay + dy * u + ny * w);
+// Fil avalé : entre le trou noir et le vaisseau, le fil s'illumine et file vers le trou, de plus en plus vite
+function drawSuck(pp) {
+  const i0 = trail[grab.k];
+  if (i0 == null) return;
+  const hs = holes(), s = P.pull, last = trail.length - 1;
+  ctx.beginPath();
+  ctx.moveTo(grab.e.x, grab.e.y);
+  for (let k = grab.k; k < last; k++) {
+    if (erased[k]) break;
+    const i = trail[k];
+    const [x, y] = bend(i % COLS + .5, ((i / COLS) | 0) + .5, hs);
+    ctx.lineTo(x, y);
   }
-  glowOn(T.amph, 1.4);
-  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .1 + .16 * r.s; ctx.lineCap = 'round'; ctx.stroke();
-  ctx.fillStyle = T.amphHi;
-  ctx.beginPath(); ctx.arc(ax, ay, .28 + Math.sin(time * 20) * .08, 0, Math.PI * 2); ctx.fill();
+  ctx.lineTo(pp.x, pp.y);
+  glowOn(T.amph, 1.6);
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .16 + .14 * s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.setLineDash([.5, .45]); ctx.lineDashOffset = time * (6 + 30 * s); ctx.stroke(); ctx.setLineDash([]);
+  // tourbillon là où le fil disparaît
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .1;
+  for (let k = 0; k < 3; k++) {
+    const a = -time * (6 + 10 * s) + k * Math.PI * 2 / 3;
+    ctx.beginPath(); ctx.arc(grab.e.x, grab.e.y, 1.1 + k * .25, a, a + 1.4); ctx.stroke();
+  }
   glowOff();
 }
 // Le trou noir courbe le fil vers lui (effet de lentille, purement visuel)
@@ -1613,7 +1684,8 @@ function hud() {
 }
 let onGo = null;
 function showOverlay(html, cb) {
-  ov.innerHTML = `<div class="card">${html}</div>`; ov.hidden = false; onGo = cb;
+  // la carte n'entre en scène (animation) que si aucune n'était affichée
+  ov.innerHTML = `<div class="card${ov.hidden ? ' in' : ''}">${html}</div>`; ov.hidden = false; onGo = cb;
   const b = $('go'); if (b) { b.addEventListener('click', () => { ensureAudio(); go(); }); setTimeout(() => b.focus({ preventScroll: true }), 30); }
 }
 function go() { const f = onGo; onGo = null; if (f) f(); }
@@ -1637,14 +1709,14 @@ function newcomers() {
   return html;
 }
 function showReady(mode) {
-  S.readyMode = mode; S.phase = 'ready'; S.readyT = 5;
+  S.readyMode = mode; S.phase = 'ready';
   hud();
   showOverlay(`
     <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
     ${infoRows(mode === 'restart')}
     ${newcomers()}
-    <div class="count"><span>Touche l'écran pour partir</span><b id="cd">5</b></div>
-    <button class="btn" id="go">PARTIR</button>`, () => { hideOverlay(); S.phase = 'play'; last = performance.now(); sfx.start(); });
+    <button class="btn" id="go">PARTIR</button>
+    <p class="count">ou touche l'écran</p>`, () => { hideOverlay(); S.phase = 'play'; last = performance.now(); sfx.start(); });
 }
 function showClear() {
   S.phase = 'clear';
@@ -1702,18 +1774,19 @@ function titleScreen() {
       <button id="lp" aria-label="Niveau suivant" ${menuLevel >= maxL ? 'disabled' : ''}>+</button>
     </div>
     <button class="btn" id="go">NOUVEAU JEU</button>
-    ${sv ? `<button class="btn ghost" id="cont">CONTINUER · NIVEAU ${pad2(sv.L)} · ${DIFFS[sv.d].name.toUpperCase()}</button>` : ''}
-    <button class="btn ghost" id="tmode">MODE TEST · ESSAYER LES BONUS</button>
+    ${sv ? `<button class="btn ghost" id="cont">CONTINUER · NIV ${pad2(sv.L)} · ${DIFFS[sv.d].short}</button>` : ''}
+    <button class="btn ghost" id="tmode">MODE TEST</button>
     ${best ? `<div class="rows"><div><span>Record ${DIFFS[menuDiff].name}</span><span>${fmt(best)}</span></div></div>` : ''}
     <details><summary>COMMENT JOUER</summary>
       <ul>
         <li>Pars de ton terrain et trace un fil dans la zone à conquérir. En revenant sur ton terrain, toute la zone sans boule ni perforateur est conquise.</li>
-        <li><b>Boule</b> : si elle touche ton fil, une onde de choc le remonte et te fige.</li>
+        <li><b>Boule</b> : si elle touche ton fil, une onde de choc le remonte. Regagne ton terrain avant qu'elle te rattrape !</li>
         <li><b>Perforateur</b> : plus rapide, il transperce ton fil au lieu de rebondir, et son onde est foudroyante.</li>
         <li><b>Gardien</b> : il patrouille sur ton terrain.</li>
-        <li><b>Amphibie</b> : un trou noir qui passe partout et t'aspire si tu entres dans son cercle.</li>
-        <li><b>Rongeur</b> (niveaux avancés) : lent, il grignote ton terrain à chaque contact.</li>
-        <li><b>Bonus</b> (un niveau sur deux, dès 10 %) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire. Et, très rarement, le <b>Super Casque</b> : ton fil devient un mur et tu dégommes tout ce que tu touches.</li>
+        <li><b>Trou noir</b> : il passe partout et t'aspire si tu passes près de lui. S'il croise ton fil, il l'avale et te ramène vers lui de plus en plus fort.</li>
+        <li><b>Rongeur</b> : lent, il grignote ton terrain à chaque contact.</li>
+        <li><b>Bonus</b> (un niveau sur deux, dès 10 %) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire.</li>
+        <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3).</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => newGame(menuDiff, menuLevel));
@@ -1738,7 +1811,9 @@ function startDemo() {
 function togglePause() {
   if (S.phase === 'play') {
     S.pausedFrom = 'play'; S.phase = 'pause';
-    showOverlay(`<h2><span>NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}</span>PAUSE</h2>${infoRows(true)}<p class="keys">Tape n'importe où pour reprendre.</p><button class="btn" id="go">REPRENDRE</button>`, resume);
+    showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">MENU</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
+    // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
+    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
 }
 function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }

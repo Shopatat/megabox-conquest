@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, get items() { return items; }, DIFFS };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, get items() { return items; }, DIFFS };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -88,19 +88,23 @@ g.collect({ type: 'terr', x: 25.5, y: 40.5, done: false, age: 0 });
 const yb = g.P.y; step(5);
 console.log('territoire : le vaisseau continue :', g.P.y !== yb);
 
-// 4) Trou noir : la corde freine puis tire le vaisseau en arrière le long de son fil
-function ropeRun(hx, hy, frames) {
+// 4) Trou noir : s'il croise le fil, il l'avale et ramène le vaisseau vers lui de plus en plus fort
+function grabRun(startLeft, turn, frames) {
   g.newGame(1, 1); g.setDir('down'); step(2); g.foes.length = 0;
-  g.setDir('down'); step(70); g.setDir('right'); step(4);
-  g.foes.push({ kind: 'amph', x: hx, y: hy, vx: 0, vy: 0, hist: [], ph: 0, dead: false });
-  const x0 = g.P.x, len0 = g.trail.length; let roped = 0;
-  for (let f = 0; f < frames && g.S.phase === 'play'; f++) { step(); if (g.P.rope) roped++; }
-  return { dx: g.P.x - x0, len0, len: g.trail.length, roped, phase: g.S.phase };
+  if (startLeft) { g.setDir('left'); step(75); }
+  g.setDir('down'); step(70);
+  const x = g.P.x, len0 = g.trail.length;
+  g.foes.push({ kind: 'amph', x: x + .5, y: 8.5, vx: 0, vy: 0, hist: [], ph: 0, dead: false });
+  step(1);
+  const grabbed = !!g.grab;
+  g.setDir(turn);
+  let minLen = len0;
+  for (let f = 0; f < frames && g.S.phase === 'play'; f++) { step(); minLen = Math.min(minLen, g.trail.length || minLen); }
+  return { grabbed, len0, minLen, phase: g.S.phase, drawing: g.P.drawing };
 }
-const free = (() => { g.newGame(1, 1); g.setDir('down'); step(2); g.foes.length = 0; g.setDir('down'); step(70); g.setDir('right'); step(4); const x0 = g.P.x; step(30); return g.P.x - x0; })();
-const mid = ropeRun(21, 8, 30), near = ropeRun(24, 8, 240);
-console.log(`corde : sans trou ${free} cases en 0,5 s | trou à 4 cases du fil : ${mid.dx} cases (corde ${mid.roped} frames)`);
-console.log(`corde : trou à 1,5 case du fil : fil ${near.len0} -> ${near.len} (tiré en arrière : ${near.len < near.len0 / 2})`);
+const far = grabRun(false, 'right', 300), close = grabRun(true, 'left', 120);
+console.log(`trou noir loin du bord : avale le fil ${far.grabbed}, fil ${far.len0} -> ${far.minLen}, fin : ${far.phase}`);
+console.log(`trou noir près du bord : avale le fil ${close.grabbed}, fin : ${close.phase} (sur son terrain : ${!close.drawing})`);
 
 // 5) Super bonus
 function fresh() { g.newGame(1, 3); g.setDir('down'); step(2); g.foes.length = 0; }
