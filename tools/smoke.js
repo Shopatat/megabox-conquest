@@ -120,6 +120,21 @@ fresh(); g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); st
 const l1 = g.S.lives; g.S.lives = 8; g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); step(60);
 console.log(`super vie : 3 -> ${l1} vies, 8 -> ${g.S.lives} (max 9)`);
 
+// 5b) Chrono : ennemis ralentis, arrêt possible dans la zone à conquérir, reprise à la fin
+function ballMove(setup) {
+  g.newGame(1, 1); g.setDir('down'); step(2); g.foes.length = 0;
+  g.foes.push({ kind: 'out', x: 25, y: 35, vx: 7.2, vy: 4, hist: [], ph: 0, dead: false });
+  setup(); const b = g.foes[0], x0 = b.x, y0 = b.y; step(20);
+  return Math.hypot(b.x - x0, b.y - y0);
+}
+const dn = ballMove(() => {}), dc = ballMove(() => { g.power.chr = 10; }), ds = ballMove(() => { g.power.schr = 10; });
+console.log(`chrono : boule ${dn.toFixed(1)} cases sans, ${dc.toFixed(1)} avec Chrono, ${ds.toFixed(1)} avec Super Chrono (sur 20 frames)`);
+g.newGame(1, 1); g.setDir('down'); step(2); g.foes.length = 0; g.setDir('down'); step(30);
+g.collect({ type: 'chr', x: 0, y: 0, done: false, age: 0 }); g.setDir('stop'); step(5);
+const yStop = g.P.y; step(60);
+console.log(`chrono : arrêt dans la zone à conquérir ${g.P.drawing && g.P.y === yStop} (y=${g.P.y})`);
+step(600); console.log(`chrono terminé : le vaisseau est reparti ${g.power.chr === 0 && (g.P.y !== yStop || !g.P.drawing)}`);
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L] of [[0, 1], [1, 1], [1, 13], [2, 13], [2, 21], [2, 25], [0, 25]]) {

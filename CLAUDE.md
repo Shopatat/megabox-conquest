@@ -96,16 +96,18 @@ Ils apparaissent sur les **niveaux impairs**, une fois **10 %** du terrain conqu
 | `spd` | Vitesse | **sur le terrain conquis** (doc original) | 10 s, ×1,75. |
 | `life` | Vie | zone à conquérir | +1 vie (max 9). |
 | `terr` | Territoire | zone à conquérir | Conquiert d'un coup une zone ronde d'environ 10 % du terrain autour du bonus. Le joueur **n'est plus figé** pendant l'expansion (il l'était dans le doc original, retiré à la demande de Fabien), et les ennemis pris dedans sont repoussés. |
+| `chr` | **Chrono** (idée de Fabien) | zone à conquérir | 10 s. Les ennemis ralentissent (×0,45, `foeSlow()`), et avec eux l'onde de choc et l'aspiration du trou noir. Le vaisseau ralentit aussi (×0,6) pour mieux viser. On peut **s'arrêter en pleine trajectoire** dans la zone à conquérir (tap ou Espace). À la fin (`chronoEnd`), si le vaisseau est arrêté dans la zone à conquérir, il repart dans sa dernière direction. Grande horloge translucide derrière le jeu (l'aiguille fait un tour sur la durée), bords teintés vert menthe, tic-tac. Perdu au crash. |
 
 ### Super bonus (cartes rares, idée de Fabien : « il faut que ce soit impressionnant »)
 
-Chaque bonus a une version super, rare : à partir du niveau 3, poids `sup` 0,45, `sterr` 0,35, `sspd` 0,35, `slife` 0,3 (si moins de 9 vies) contre ~10 pour les bonus normaux, soit environ 1 bonus sur 8. La table `SUPER` relie chaque super à son bonus de base (dont il reprend l'icône). Tous partagent le même look (`drawSuperItem` : rayons arc-en-ciel, halo, étincelles, icône en couleur vive + couronne ; casque doré pour `sup`) et s'annoncent à l'apparition (`announce` : carillon `sfx.rare`, « RARE ! », onde dorée). Au ramassage, `superIntro` : ralenti, flash teinté (`superTint`), tremblement, grand titre arc-en-ciel (les grands titres sont réduits pour tenir dans le terrain).
+Chaque bonus a une version super, rare : à partir du niveau 3, poids `sup` 0,45, `sterr` 0,35, `sspd` 0,35, `schr` 0,35, `slife` 0,3 (si moins de 9 vies) contre ~10 pour les bonus normaux, soit environ 1 bonus sur 8. La table `SUPER` relie chaque super à son bonus de base (dont il reprend l'icône). Tous partagent le même look (`drawSuperItem` : rayons arc-en-ciel, halo, étincelles, icône en couleur vive + couronne ; casque doré pour `sup`) et s'annoncent à l'apparition (`announce` : carillon `sfx.rare`, « RARE ! », onde dorée). Au ramassage, `superIntro` : ralenti, flash teinté (`superTint`), tremblement, grand titre arc-en-ciel (les grands titres sont réduits pour tenir dans le terrain).
 
 | Clé | Super bonus | Où | Effet |
 |---|---|---|---|
 | `sterr` | **Super Bombe** | zone à conquérir | Conquiert d'un coup ~**30 %** du terrain (`territoryBurst(it, 0.3, true)`, compte comme un « MEGA ! »). Boule de feu blanche, 3 ondes de choc (blanc, or, orange), gerbes de particules, débris, gros tremblement, révélation en vague plus lente, son d'explosion grave. |
 | `sspd` | **Super Vitesse** | sur le terrain conquis | 10 s à **×4** (`power.hyp`, ~68 cases/s : traverser le terrain est quasi instantané, volontairement dur à contrôler). Éclairs qui tombent du haut sur le vaisseau (`bolts`), images fantômes, arcs électriques autour du vaisseau, traits de vitesse sur tout le terrain, fil cyan, crépitements. Remplace la Vitesse normale. |
 | `slife` | **Super Vie** | zone à conquérir | **+3 vies** (max 9). Flash rose, « +1 VIE » ×3 en cascade (« MAX » si plafonné), 3 ondes, les vies du HUD s'illuminent (classe CSS `boost`), arpège montant. |
+| `schr` | **Super Chrono** | zone à conquérir | 10 s, ennemis **presque figés** (×0,15), le vaisseau garde sa vitesse, arrêt possible partout. Entrée « super » (ralenti, flash menthe, 3 ondes), horloge plus marquée. |
 
 Historique de l'invincibilité, pour mémoire : 1) les ennemis étaient pulvérisés (trop fort), 2) ils étaient assommés 4 s (code `stunFoe`/`drawStun`, encore présent mais inutilisé), 3) version actuelle : casque original + Super Casque rare.
 

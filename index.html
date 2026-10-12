@@ -148,9 +148,9 @@ details li b{color:var(--text);font-weight:600}
   transition:transform .15s var(--ease),background .2s}
 .mini:active{transform:scale(.93);background:rgba(255,255,255,.1)}
 .testbar{width:var(--pw,100%);max-width:100%;display:grid;gap:6px;flex:none}
-.trow{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.trow{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .trow .k{width:100%}
-.trow .mini{padding:7px 10px;color:var(--text)}
+.trow .mini{padding:5px 8px;font-size:9.5px;letter-spacing:.05em;color:var(--text)}
 .trow .mini.gold{color:#ffd23f;border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.08)}
 .hint-touch{display:none}
 @media (pointer:coarse){.hint{display:none}.hint-touch{display:inline}}
@@ -164,6 +164,8 @@ details li b{color:var(--text);font-weight:600}
 @keyframes supchip{0%,100%{box-shadow:0 0 6px #ffd23f}50%{box-shadow:0 0 14px #ff7a4d}}
 .chip.hyp{color:#9ff3ff;border-color:#46d9ff;animation:hypchip .3s steps(2) infinite}
 .chip.hyp b{background:#fff;box-shadow:0 0 6px #46d9ff}
+.chip.chr{color:#7cf5c4}.chip.chr b{background:#7cf5c4;box-shadow:0 0 6px #7cf5c4}
+.chip.schr{color:#7cf5c4;border-color:#7cf5c4;animation:supchip 1.6s linear infinite}.chip.schr b{background:radial-gradient(circle,#fff,#7cf5c4 60%,#43e0ff)}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
 @keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
@@ -213,7 +215,7 @@ details li b{color:var(--text);font-weight:600}
 
   <div class="testbar" id="testbar" hidden>
     <div class="trow"><span class="k">BONUS</span>
-      <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button>
+      <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
     </div>
     <div class="trow"><span class="k">ENNEMIS</span>
       <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="eat">+RONGEUR</button><button class="mini" id="tclear">VIDER</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="tquit">QUITTER</button>
@@ -247,14 +249,14 @@ const THEMES = {
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
-    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
+    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f', chr:'#7cf5c4', schr:'#7cf5c4' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
     ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', eat:'#0b1838', eatLo:'#8fbaf2',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
-    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838', sterr:'#0b1838', sspd:'#0b1838', slife:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
+    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838', sterr:'#0b1838', sspd:'#0b1838', slife:'#0b1838', chr:'#0b1838', schr:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
 };
 
 const ITEM = {
@@ -265,10 +267,12 @@ const ITEM = {
   sup: { label: '', medium: 'sea' },
   sterr: { label: '', medium: 'sea' },
   sspd: { label: '', medium: 'land' },
-  slife: { label: '', medium: 'sea' }
+  slife: { label: '', medium: 'sea' },
+  chr: { label: 'CHRONO', medium: 'sea' },
+  schr: { label: '', medium: 'sea' }
 };
 // Versions « super » (rares) : type super -> bonus de base dont elles reprennent l'icône
-const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life' };
+const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'chr' };
 
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
@@ -304,7 +308,7 @@ const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, in
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
-const power = { inv: 0, spd: 0, sup: 0, hyp: 0 };
+const power = { inv: 0, spd: 0, sup: 0, hyp: 0, chr: 0, schr: 0 };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1;
 
@@ -340,6 +344,10 @@ const sfx = {
   dissolve(){ tone(700,.35,'triangle',.04,-500); },
   smash(){ tone(160,.3,'square',.06,-100); tone(1200,.15,'triangle',.04,-900,.02); },
   warn(){ tone(1200,.05,'square',.02); },
+  chrono(){ tone(1200,.6,'sine',.04,-900); [880,660,440].forEach((f,i)=>tone(f,.12,'triangle',.035,0,.15+i*.1)); },
+  superChrono(){ tone(1600,1.2,'sine',.05,-1450); tone(110,1.2,'triangle',.05,-40); [1319,988,784,659,523,392].forEach((f,i)=>tone(f,.16,'triangle',.04,0,.3+i*.09)); },
+  chronoEnd(){ [440,660,880].forEach((f,i)=>tone(f,.08,'triangle',.03,0,i*.06)); },
+  tick(sup){ tone(sup ? 1500 : 1900,.025,'square',.012); },
   grab(){ tone(220,.9,'sawtooth',.05,-190); tone(90,1,'sine',.06,-50,.05); },
   rare(){ [1047,1319,1568,2093,1568,2093,2637].forEach((f,i)=>tone(f,.07,'sine',.035,0,i*.05)); },
   bomb(){ tone(55,1.4,'sawtooth',.09,-25); tone(110,1,'square',.06,-80,.02); tone(900,.8,'sawtooth',.03,-850,.05); [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'square',.04,0,.45+i*.07)); },
@@ -391,6 +399,36 @@ function drawBg() {
     gctx.beginPath(); gctx.arc(x, y, s, 0, Math.PI * 2); gctx.fill();
   }
   gctx.globalAlpha = 1;
+}
+// Chrono : grande horloge translucide derrière le jeu (l'aiguille fait un tour sur la durée du bonus), bords teintés
+function drawChrono(layer) {
+  if (!chronoOn()) return;
+  const sup = power.schr > 0, left = sup ? power.schr : power.chr;
+  const fade = Math.max(0, Math.min(1, left / .6, (POWER_T - left) / .4));
+  const cx = COLS / 2, cy = ROWS / 2, R = COLS * .36, TAU = Math.PI * 2;
+  if (layer === 'tint') {
+    const g = ctx.createRadialGradient(cx, cy, ROWS * .3, cx, cy, ROWS * .78);
+    g.addColorStop(0, 'rgba(124,245,196,0)'); g.addColorStop(1, `rgba(${T.rainbow ? '124,245,196' : '11,24,56'},${(sup ? .26 : .14) * fade})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+    return;
+  }
+  ctx.save();
+  ctx.globalAlpha = (sup ? .24 : .14) * fade;
+  ctx.strokeStyle = T.rainbow ? '#7cf5c4' : T.shock; ctx.fillStyle = ctx.strokeStyle; ctx.lineCap = 'round';
+  ctx.lineWidth = .25; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+  for (let k = 0; k < 12; k++) {
+    const a = k * TAU / 12, r1 = k % 3 ? R * .9 : R * .8;
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * R * .96, cy + Math.sin(a) * R * .96); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.stroke();
+  }
+  const a = -Math.PI / 2 + (1 - left / POWER_T) * TAU;
+  // temps restant : arc épais autour du cadran
+  ctx.lineWidth = .6; ctx.beginPath(); ctx.arc(cx, cy, R * 1.08, a, Math.PI * 1.5); ctx.stroke();
+  // aiguilles
+  ctx.lineWidth = .35; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R * .78, cy + Math.sin(a) * R * .78); ctx.stroke();
+  const m = -Math.PI / 2 + time * .25;
+  ctx.lineWidth = .55; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(m) * R * .5, cy + Math.sin(m) * R * .5); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, .7, 0, TAU); ctx.fill();
+  ctx.restore();
 }
 // Quelques étoiles scintillent dans la zone à conquérir
 const TWINKLE = Array.from({ length: 22 }, (_, k) => ({ x: ((k * 37) % 46) + 2.5, y: ((k * 53) % 62) + 2.5, ph: k * 1.7, sp: 1.2 + (k % 5) * .4 }));
@@ -516,7 +554,7 @@ function setupLevel(L) {
   for (let i = 0; i < C.amph; i++) foes.push(makeFoe('amph', C.sp));
   for (let i = 0; i < C.eat; i++) foes.push(makeFoe('eat', C.sp));
   items = []; S.bonusLeft = C.bonus ? 2 : 0; S.bonusWait = 1.5; stage.classList.remove('super'); combo = 0;
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0;
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -589,13 +627,17 @@ function setDir(d) {
   if (S.phase === 'ready' && d !== 'stop') { go(); }
   if (S.phase !== 'play') return;
   ensureAudio();
-  if (d === 'stop') { if (!P.drawing) { P.dir = {x:0,y:0}; P.next = null; } return; }
+  if (d === 'stop') { if (!P.drawing || chronoOn()) { P.dir = {x:0,y:0}; P.next = null; } return; }
   const v = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[d];
   if (!v) return;
   P.next = v;
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
-const stepTime = () => power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP;
+// Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
+const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1);
+const chronoOn = () => power.chr > 0 || power.schr > 0;
+// facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
+const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
 function stepPlayer() {
   if (P.next) {
     const rev = P.drawing && P.next.x === -P.dir.x && P.next.y === -P.dir.y;
@@ -934,7 +976,7 @@ function crash() {
   if (power.inv > 0 || power.sup > 0) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
-  power.spd = 0; power.hyp = 0; powersHud();
+  power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud();
   sfx.crash();
 }
 function updateCrash(dt) {
@@ -962,11 +1004,11 @@ function updateCrash(dt) {
 
 /* ---------- Bonus ---------- */
 function pickType() {
-  const pool = [['terr', 3], ['inv', 3], ['spd', 2.5]];
+  const pool = [['terr', 3], ['inv', 3], ['spd', 2.5], ['chr', 2.5]];
   if (S.lives < 9) pool.push(['life', 1.5]);
   // super bonus : rares (environ 1 bonus sur 8 en tout), à partir du niveau 3
   if (S.level >= 3) {
-    pool.push(['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35]);
+    pool.push(['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35], ['schr', 0.35]);
     if (S.lives < 9) pool.push(['slife', 0.3]);
   }
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;
@@ -1022,6 +1064,8 @@ function collect(it) {
   else if (it.type === 'sterr') superBomb(it);
   else if (it.type === 'sspd') superSpeed(it);
   else if (it.type === 'slife') superLife(it);
+  else if (it.type === 'chr') { power.chr = POWER_T; sfx.chrono(); rings.push({ x: it.x, y: it.y, r: 0, max: 14, age: 0, color: T.items.chr }); }
+  else if (it.type === 'schr') superChrono(it);
   else { power[it.type] = POWER_T; sfx.power(); }
   powersHud();
 }
@@ -1062,6 +1106,27 @@ function superLife(it) {
   for (const c of ['#ff5d8f', '#ff9fc0', '#ffd23f']) burst(it.x, it.y, T.rainbow ? c : T.ball, 35, 16);
   const lv = $('lives'); lv.classList.remove('boost'); void lv.offsetWidth; lv.classList.add('boost');
   sfx.lifeUp();
+}
+// Super Chrono : le monde se fige presque (ennemis ×0,15), le vaisseau garde sa vitesse
+function superChrono(it) {
+  superIntro(it, 'SUPER CHRONO !', '124,245,196');
+  power.schr = POWER_T; power.chr = 0;
+  for (let k = 0; k < 3; k++) rings.push({ x: it.x, y: it.y, r: 0, max: 16 + k * 16, age: 0, color: T.rainbow ? ['#7cf5c4', '#ffffff', '#43e0ff'][k] : T.shock, big: k === 2 });
+  for (const c of ['#7cf5c4', '#ffffff', '#43e0ff']) burst(it.x, it.y, T.rainbow ? c : T.ball, 35, 16);
+  sfx.superChrono();
+}
+// Tic-tac discret chaque demi-seconde tant que le temps est ralenti
+let chronoT = 0;
+function chronoTick(dt) {
+  chronoT -= dt;
+  if (chronoT > 0) return;
+  chronoT = 0.5;
+  sfx.tick(power.schr > 0);
+}
+// Fin du ralenti : si le vaisseau s'était arrêté dans la zone à conquérir, il repart (on ne reste immobile que sur son terrain)
+function chronoEnd() {
+  sfx.chronoEnd();
+  if (P && P.drawing && !P.dir.x && !P.dir.y) { P.dir = { x: P.face.x, y: P.face.y }; P.acc = 0; }
 }
 function territoryBurst(it, frac = 0.1, big = false) {
   const cx = Math.floor(it.x), cy = Math.floor(it.y), ox = cx + .5, oy = cy + .5;
@@ -1130,25 +1195,28 @@ function updateItems(dt) {
     if (ITEM[it.type].medium === 'sea' && grid[at(Math.floor(it.x), Math.floor(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
-  for (const k of ['inv', 'spd', 'sup', 'hyp']) if (power[k] > 0) {
+  for (const k of ['inv', 'spd', 'sup', 'hyp', 'chr', 'schr']) if (power[k] > 0) {
     const before = power[k];
     power[k] = Math.max(0, power[k] - dt);
     if (before > 2 && power[k] <= 2) sfx.warn();
-    if (power[k] === 0) { powersHud(); if (k === 'sup') { stage.classList.remove('super'); combo = 0; } }
+    if (power[k] === 0) { powersHud(); if (k === 'sup') { stage.classList.remove('super'); combo = 0; } if ((k === 'chr' || k === 'schr') && !chronoOn()) chronoEnd(); }
   }
 }
 let powersSig = '';
 function powersHud() {
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0);
+  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0);
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig;
     el.innerHTML = (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
       + (power.inv > 0 ? `<div class="chip inv"><b></b><span>CASQUE</span><div class="t"><i id="tinv"></i></div></div>` : '')
       + (power.spd > 0 ? `<div class="chip spd"><b></b><span>VITESSE</span><div class="t"><i id="tspd"></i></div></div>` : '')
-      + (power.hyp > 0 ? `<div class="chip hyp"><b></b><span>SUPER VITESSE</span><div class="t"><i id="thyp"></i></div></div>` : '');
+      + (power.hyp > 0 ? `<div class="chip hyp"><b></b><span>SUPER VITESSE</span><div class="t"><i id="thyp"></i></div></div>` : '')
+      + (power.schr > 0 ? `<div class="chip schr"><b></b><span>SUPER CHRONO</span><div class="t"><i id="tschr"></i></div></div>` : '')
+      + (power.chr > 0 ? `<div class="chip chr"><b></b><span>CHRONO</span><div class="t"><i id="tchr"></i></div></div>` : '');
   }
   const h = $('thyp'); if (h) h.style.width = (power.hyp / POWER_T * 100) + '%';
+  for (const k of ['chr', 'schr']) { const el = $('t' + k); if (el) el.style.width = (power[k] / POWER_T * 100) + '%'; }
   const a = $('tinv'), b = $('tspd');
   if (a) a.style.width = (power.inv / POWER_T * 100) + '%';
   if (b) b.style.width = (power.spd / POWER_T * 100) + '%';
@@ -1170,12 +1238,14 @@ function update(dt) {
   const ph = S.phase;
   if (ph === 'play') {
     updatePlayer(dt);
-    if (S.phase === 'play') updatePull(dt);
-    if (S.phase === 'play') updateWave(dt);
-    if (S.phase === 'play') updateFoes(dt);
+    const fdt = dt * foeSlow();
+    if (S.phase === 'play') updatePull(fdt);
+    if (S.phase === 'play') updateWave(fdt);
+    if (S.phase === 'play') updateFoes(fdt);
+    if (chronoOn()) chronoTick(dt);
     if (S.phase === 'play') updateItems(dt);
     if (invuln > 0) invuln -= dt;
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || chronoOn()) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < .6) {
@@ -1244,6 +1314,7 @@ function render() {
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
   ctx.drawImage(board, 0, 0, COLS, ROWS);
   drawTwinkle();
+  drawChrono('clock');
 
   for (const f of fresh) {
     ctx.fillStyle = `rgba(${T.fresh},${(1 - f.age/0.45) * 0.6})`;
@@ -1341,6 +1412,7 @@ function drawFx() {
     }
     ctx.stroke();
   }
+  drawChrono('tint');
   if (superFlash > 0) { ctx.fillStyle = T.rainbow ? `rgba(${superTint},${superFlash * 0.45})` : `rgba(11,24,56,${superFlash * 0.3})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
 }
@@ -1850,6 +1922,13 @@ function itemIcon(type, color) {
     ctx.fillRect(-.56, .26, 1.12, .12);
     ctx.fillStyle = T.itemInk; ctx.fillRect(-.3, -.02, .6, .14);
     ctx.fillStyle = T.rainbow ? '#ffd23f' : T.itemInk; ctx.fillRect(-.05, -.32, .1, .22);
+  } else if (type === 'chr') {
+    // chronomètre : cadran, deux aiguilles, bouton sur le dessus
+    ctx.strokeStyle = color; ctx.lineWidth = .12; ctx.lineCap = 'round';
+    ctx.arc(0, .06, .4, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillRect(-.09, -.5, .18, .12);
+    const a = time * 2.5;
+    ctx.beginPath(); ctx.moveTo(0, .06); ctx.lineTo(Math.cos(a) * .27, .06 + Math.sin(a) * .27); ctx.moveTo(0, .06); ctx.lineTo(0, -.14); ctx.stroke();
   } else if (type === 'life') {
     ctx.moveTo(0,.48); ctx.bezierCurveTo(-.62,.05,-.4,-.55,0,-.22); ctx.bezierCurveTo(.4,-.55,.62,.05,0,.48); ctx.fill();
   } else {
@@ -1943,7 +2022,7 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; powersHud();
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
   store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives });
@@ -2004,8 +2083,8 @@ function titleScreen() {
         <li><b>Gardien</b> : il patrouille sur ton terrain.</li>
         <li><b>Trou noir</b> : il passe partout et t'aspire si tu passes près de lui. S'il croise ton fil, il l'avale et te ramène vers lui de plus en plus fort.</li>
         <li><b>Rongeur</b> : lent, il grignote ton terrain à chaque contact.</li>
-        <li><b>Bonus</b> (un niveau sur deux, dès 10 %) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire.</li>
-        <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3).</li>
+        <li><b>Bonus</b> (un niveau sur deux, dès 10 %) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
+        <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => newGame(menuDiff, menuLevel));
@@ -2024,7 +2103,7 @@ function startDemo() {
   for (let y = B; y < 14; y++) for (let x = 34; x < COLS - B; x++) grid[at(x,y)] = 1;
   foes = [makeFoe('out', .8), makeFoe('perf', .8), makeFoe('amph', .8)];
   foes[2].y = 30;
-  items = []; trail = []; erased = []; wave = null; P = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0;
+  items = []; trail = []; erased = []; wave = null; P = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   S.filled = 0; reveal = null; drawBoard();
 }
 function togglePause() {
@@ -2032,7 +2111,7 @@ function togglePause() {
     S.pausedFrom = 'play'; S.phase = 'pause';
     showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">QUITTER LA PARTIE</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
     // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
-    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; powersHud(); titleScreen(); });
+    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
 }
 function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }
