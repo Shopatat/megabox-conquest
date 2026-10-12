@@ -564,8 +564,25 @@ function setupLevel(L) {
   drawBoard(); hud(); powersHud();
   showReady('start');
 }
-function newPlayer() {
-  return { x: COLS >> 1, y: 0, px: COLS >> 1, py: 0, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0 };
+function newPlayer(x = COLS >> 1, y = 0) {
+  return { x, y, px: x, py: y, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0, shield: true, shieldFade: 0, shieldHit: 0 };
+}
+// Zone protégée tant qu'on n'a pas bougé (départ et reprise) : les ennemis rebondissent sur le cercle
+const SHIELD_R = 3;
+function dropShield() {
+  if (!P.shield) return;
+  P.shield = false; P.shieldFade = 1; P.shieldX = P.x + .5; P.shieldY = P.y + .5; invuln = 1;
+}
+// Après un crash : la case conquise la plus proche de l'endroit du crash, de préférence sans gardien collé
+function respawnCell(px, py) {
+  let best = null, bd = 1e9;
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    if (grid[at(x, y)] !== 1) continue;
+    const near = foes.some(e => e.kind === 'inn' && Math.hypot(e.x - x - .5, e.y - y - .5) < 2.5);
+    const d = Math.hypot(x + .5 - px, y + .5 - py) + (near ? 40 : 0);
+    if (d < bd) { bd = d; best = [x, y]; }
+  }
+  return best || [COLS >> 1, 0];
 }
 
 /* ---------- Fil ---------- */
@@ -630,6 +647,7 @@ function setDir(d) {
   if (d === 'stop') { if (!P.drawing || chronoOn()) { P.dir = {x:0,y:0}; P.next = null; } return; }
   const v = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[d];
   if (!v) return;
+  dropShield();
   P.next = v;
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
@@ -680,6 +698,7 @@ function grabTrail(e) {
 }
 function updatePull(dt) {
   const k = Math.exp(-dt * 16); P.vox *= k; P.voy *= k;
+  if (P.shield) { P.pull = 0; P.pullAcc = 0; return; }
   const hs = holes();
   if (grab && (!P.drawing || !hs.includes(grab.e))) grab = null;
   if (grab) {
@@ -901,7 +920,9 @@ function moveFoe(e, dt) {
 function updateFoes(dt) {
   const pp = playerPos();
   for (const e of foes) {
+    const ox = e.x, oy = e.y;
     moveFoe(e, dt);
+    if (P && P.shield) shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
     const r = e.kind === 'amph' ? R_AMPH + .25 : 0.9;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) {
@@ -912,6 +933,17 @@ function updateFoes(dt) {
     }
   }
   foes = foes.filter(e => !e.dead);
+}
+function shieldBounce(e, ox, oy) {
+  const cx = P.x + .5, cy = P.y + .5, R = SHIELD_R + (e.kind === 'amph' ? R_AMPH : .45);
+  const d = Math.hypot(e.x - cx, e.y - cy);
+  if (d >= R) return;
+  const wasIn = Math.hypot(ox - cx, oy - cy) < R;
+  const nx = (d > .01 ? e.x - cx : ox - cx) / (d || 1), ny = (d > .01 ? e.y - cy : oy - cy) / (d || 1);
+  if (!wasIn) { e.x = ox; e.y = oy; }
+  const dot = e.vx * nx + e.vy * ny;
+  if (dot < 0) { e.vx -= 2 * dot * nx; e.vy -= 2 * dot * ny; }
+  if (!wasIn) P.shieldHit = 1;
 }
 // Coup de casque : l'ennemi est assommé quelques secondes, puis repart
 const STUN_T = 4;
@@ -996,8 +1028,9 @@ function updateCrash(dt) {
   if (t >= 2.1) {
     if (S.lives <= 0) { gameOver(); return; }
     clearTrail();
-    P = newPlayer();
-    invuln = 1.6;
+    const [rx, ry] = respawnCell(crashPos.x, crashPos.y);
+    P = newPlayer(rx, ry);
+    invuln = 0;
     showReady('restart');
   }
 }
@@ -1344,6 +1377,7 @@ function render() {
   }
   // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
+  if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
 }
@@ -1417,6 +1451,24 @@ function drawFx() {
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
 }
 
+// Bouclier de départ : cercle blanc discret qui pulse, s'éclaire quand un ennemi rebondit, s'évase en disparaissant
+function drawShield() {
+  if (P.shieldHit > 0) P.shieldHit = Math.max(0, P.shieldHit - .05);
+  if (P.shieldFade > 0) P.shieldFade = Math.max(0, P.shieldFade - .045);
+  if (!P.shield && !P.shieldFade) return;
+  const cx = P.shield ? P.x + .5 : P.shieldX, cy = P.shield ? P.y + .5 : P.shieldY, TAU = Math.PI * 2;
+  const pulse = Math.sin(time * 3);
+  const R = P.shield ? SHIELD_R + pulse * .08 : SHIELD_R + (1 - P.shieldFade) * 1.6;
+  const a = P.shield ? .3 + pulse * .1 + P.shieldHit * .45 : P.shieldFade * .4;
+  const col = T.rainbow ? '255,255,255' : '11,24,56';
+  const g = ctx.createRadialGradient(cx, cy, R * .5, cx, cy, R);
+  g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${a * .3})`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+  ctx.globalAlpha = Math.min(1, a); glowOn('#ffffff', .9);
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = .09 + P.shieldHit * .12;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+  glowOff(); ctx.globalAlpha = 1;
+}
 // Chemin d'un rectangle aux coins arrondis
 function rrect(x, y, w, h, r) {
   ctx.beginPath();

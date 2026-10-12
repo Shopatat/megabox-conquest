@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, get items() { return items; }, DIFFS };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -134,6 +134,20 @@ g.collect({ type: 'chr', x: 0, y: 0, done: false, age: 0 }); g.setDir('stop'); s
 const yStop = g.P.y; step(60);
 console.log(`chrono : arrêt dans la zone à conquérir ${g.P.drawing && g.P.y === yStop} (y=${g.P.y})`);
 step(600); console.log(`chrono terminé : le vaisseau est reparti ${g.power.chr === 0 && (g.P.y !== yStop || !g.P.drawing)}`);
+
+// 5c) Zone de départ protégée tant qu'on n'a pas bougé, reprise près de l'endroit du crash
+g.newGame(1, 1); g.go(); g.foes.length = 0;
+g.foes.push({ kind: 'out', x: 25.5, y: 9, vx: 0.4, vy: -7.2, hist: [], ph: 0, dead: false });
+let minD = 99;
+for (let f = 0; f < 120; f++) { step(); minD = Math.min(minD, Math.hypot(g.foes[0].x - 25.5, g.foes[0].y - .5)); }
+console.log(`bouclier : la boule ne s'approche pas à moins de ${minD.toFixed(1)} cases, phase ${g.S.phase}, bouclier ${g.P.shield}`);
+g.setDir('down'); step(2);
+console.log(`bouclier levé au premier mouvement : ${!g.P.shield}`);
+g.newGame(1, 1); g.go(); g.foes.length = 0;
+g.setDir('left'); step(80); g.setDir('down'); step(60); g.setDir('right'); step(5);
+g.crash(); const cp = g.crashPos; step(160);
+const onLand = g.grid[g.at(g.P.x, g.P.y)] === 1;
+console.log(`reprise : crash en (${cp.x.toFixed(0)},${cp.y.toFixed(0)}) -> reprise en (${g.P.x},${g.P.y}), sur le terrain ${onLand}, bouclier ${g.P.shield}`);
 
 // 6) Parties aléatoires
 let tot = 0;

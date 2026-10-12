@@ -38,7 +38,10 @@ Terrain en grille de **50 × 66 cases** (portrait), bordure conquise de 2 cases 
 - Croiser son propre fil = crash.
 
 ### Crash
-Gel de la scène, écran inversé 3 fois (`invert` CSS), explosion et « CRASH ! », −1 vie. Puis le joueur repart en haut au milieu, **le terrain conquis est conservé**, et l'écran d'info s'affiche. Courte invulnérabilité au respawn (contre les ennemis du terrain uniquement).
+Gel de la scène, écran inversé 3 fois (`invert` CSS), explosion et « CRASH ! », −1 vie. Puis le joueur **repart là où il est mort**, sur la case conquise la plus proche (`respawnCell`, en évitant si possible un gardien collé), **le terrain conquis est conservé**, et l'écran d'info s'affiche.
+
+### Zone protégée (départ et reprise)
+Demande de Fabien : tant que le joueur n'a pas bougé (début de niveau et après un crash), un **cercle blanc discret** pulse autour du vaisseau (`SHIELD_R = 3`, `drawShield`). **Tous les ennemis rebondissent dessus**, trous noirs compris (`shieldBounce` : retour à la position précédente et réflexion de la vitesse), et le trou noir n'aspire pas. Le premier mouvement le lève (`dropShield`, le cercle s'évase en disparaissant), puis 1 s d'invulnérabilité contre les ennemis du terrain.
 
 ### Onde de choc
 Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil dans les deux sens. Le joueur **continue d'avancer** (il n'est plus figé, demande de Fabien pour la fluidité) : si l'onde rattrape la tête du fil, crash ; s'il regagne son terrain avant, il survit mais la conquête est annulée (`cancelConquest`). Un 2ᵉ impact pendant l'onde étend ses fronts (`wave.lo/hi`). Onde normale : 30 cases/s. Onde du perforateur : 65 cases/s. Avec un vaisseau à 17 cases/s, on s'en sort contre une onde normale si le chemin de retour fait moins d'environ 1,3 × la longueur de fil derrière soi (0,35 × pour le perforateur).
