@@ -159,9 +159,15 @@ Un test de fumée a été utilisé en développement : extraire le `<script>`, l
 - 2 bonus par niveau bonus au lieu d'un, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
 - Score maison, contrôles tactiles, thème MyX-3 en option, effets modernes (particules, vague de remplissage, sons).
 
+## Publication
+
+- Dépôt public : https://github.com/Shopatat/megabox-conquest (branche `main`)
+- Jeu en ligne (GitHub Pages, déployé automatiquement à chaque push sur `main`) : https://shopatat.github.io/megabox-conquest/
+- CLI GitHub installée en `C:\Program Files\GitHub CLI\gh.exe` (connectée en `Shopatat`). Commits signés avec l'adresse noreply GitHub (config locale du dépôt).
+
 ## Pistes pour la suite
 
-- Publier sur GitHub (comme l'appli Mot de Passe de Fabien), éventuellement GitHub Pages et une PWA installable sur l'iPhone.
+- PWA installable sur l'iPhone (le jeu est déjà publié, voir « Publication »).
 - Équilibrage à affiner en jouant (vitesse du perforateur, force du trou noir, objectif Expert avec les rongeurs).
 - Design général à peaufiner (Fabien l'a évoqué sans détailler).
 - Éventuellement l'écran d'intro et les « slides » de crash dessinés, comme prévus dans le doc original.
