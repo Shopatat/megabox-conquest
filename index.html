@@ -65,8 +65,14 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .meter .goal{position:absolute;left:75%;top:-4px;bottom:-4px;width:3px;margin-left:-1px;border-radius:2px;background:var(--ball);box-shadow:0 0 8px rgba(255,210,63,.7)}
 .pct{font-family:var(--display);font-size:12px;min-width:7ch;text-align:right;font-variant-numeric:tabular-nums}
 .pct small{color:var(--muted);font-size:9px}
-.powers{display:flex;gap:6px;flex-wrap:wrap}
-.powers:empty{display:none}
+/* rangée de pouvoirs à hauteur fixe, toujours réservée : la faire apparaître ou disparaître changeait
+   la hauteur du HUD, donc la taille et la position du terrain (saccade à la fin d'un bonus) */
+.powers{display:flex;gap:6px;flex-wrap:nowrap;height:22px;overflow:hidden}
+.powers .chip{flex:0 1 auto;min-width:0;box-sizing:border-box;height:22px;gap:5px;padding:4px 8px 4px 5px;letter-spacing:.04em}
+.powers .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.powers .chip b{flex:none}
+.powers .chip .t{flex:0 50 44px;min-width:12px}
+.powers .chip span{flex:0 1 auto}
 .chip{display:flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border:1px solid var(--line-2);border-radius:99px;background:rgba(255,255,255,.06);font-family:var(--body);font-weight:600;font-size:10px;letter-spacing:.1em}
 .chip b{width:10px;height:10px;border-radius:50%}
 .chip .t{position:relative;width:44px;height:4px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
@@ -363,6 +369,8 @@ function resize() {
   const cs = Math.max(4, Math.min(w / COLS, h / ROWS));
   const cw = Math.floor(cs * COLS), ch = Math.floor(cs * ROWS);
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  // même taille qu'avant : ne rien toucher (réaffecter cv.width efface tout et force un redessin complet)
+  if (cv.width === Math.round(cw * dpr) && cv.height === Math.round(ch * dpr) && cv.style.width === cw + 'px') return;
   cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
   cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
   scale = cv.width / COLS;
