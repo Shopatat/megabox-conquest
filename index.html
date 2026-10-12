@@ -77,7 +77,14 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
 canvas{display:block;border-radius:16px;touch-action:none;
   box-shadow:0 0 0 1px rgba(170,178,255,.18),0 24px 60px rgba(0,0,0,.55),0 0 70px rgba(120,100,255,.2)}
-.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;
+  background:radial-gradient(80% 60% at 50% 50%,rgba(7,9,22,.15),rgba(7,9,22,.55));animation:ovin .3s ease both;transition:opacity .2s ease}
+.overlay.out{opacity:0;pointer-events:none}
+.overlay.out .card{transform:scale(.97);transition:transform .2s ease}
+@keyframes ovin{from{opacity:0}}
+/* reflets qui glissent lentement sur les dégradés */
+@keyframes sheen{to{background-position:-200% 0}}
+@keyframes shine{0%,62%{transform:translateX(-130%) skewX(-18deg)}100%{transform:translateX(330%) skewX(-18deg)}}
 
 /* ---- Cartes (menu, niveaux, pause, fin) ---- */
 .card{width:100%;max-width:330px;max-height:100%;overflow:auto;display:grid;gap:14px;box-sizing:border-box;padding:22px 20px;border-radius:24px;
@@ -162,6 +169,20 @@ details li b{color:var(--text);font-weight:600}
 @keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
 .lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
 @keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
+/* ---- Finitions animées ---- */
+.brand b,.card h1{background:linear-gradient(90deg,#ff5c8a,#ff9a4d,#ffd23f,#ff9a4d,#ff5c8a);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:sheen 7s linear infinite;filter:none}
+.btn{position:relative;overflow:hidden;isolation:isolate}
+.btn:not(.ghost)::after{content:'';position:absolute;top:0;bottom:0;left:0;width:38%;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.4),rgba(255,255,255,0));animation:shine 3.8s ease-in-out infinite}
+.meter .fill{position:relative;overflow:hidden}
+.meter .fill::after{content:'';position:absolute;top:0;bottom:0;left:0;width:35%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0));animation:shine 2.6s ease-in-out infinite}
+.chip{animation:chipin .35s var(--ease) both}
+@keyframes chipin{from{opacity:0;transform:scale(.7)}}
+.lives i{transition:background .3s,box-shadow .3s}
+.seg button{transition:background .3s,color .3s,box-shadow .3s,transform .15s var(--ease)}
+.seg button:active{transform:scale(.95)}
+@media (prefers-reduced-motion:reduce){.brand b,.card h1,.btn::after,.meter .fill::after,.chip,.overlay{animation:none}}
 @media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
 </style>
 </head>
@@ -1145,6 +1166,7 @@ function burst(x, y, color, n, sp) {
 /* ---------- Boucle ---------- */
 function update(dt) {
   time += dt;
+  tweenScore(dt);
   const ph = S.phase;
   if (ph === 'play') {
     updatePlayer(dt);
@@ -1155,6 +1177,11 @@ function update(dt) {
     if (invuln > 0) invuln -= dt;
     if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0) powersHud();
     if (power.sup > 0) superMusic(dt);
+    // traînée du réacteur dans la zone à conquérir
+    if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < .6) {
+      const pp = playerPos();
+      particles.push({ x: pp.x - P.dir.x * .55 + (Math.random() - .5) * .2, y: pp.y - P.dir.y * .55 + (Math.random() - .5) * .2, vx: -P.dir.x * 2.5 + (Math.random() - .5), vy: -P.dir.y * 2.5 + (Math.random() - .5), life: 0, max: .25 + Math.random() * .2, color: Math.random() < .5 ? '#ff8a3d' : '#ffd23f', size: .12 + Math.random() * .1, ng: 1 });
+    }
   } else if (ph === 'crash') {
     updateCrash(dt);
   } else if (ph === 'clearing') {
@@ -1210,7 +1237,8 @@ function render() {
   const W = cv.width, H = cv.height, sy = H / ROWS;
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
-  const ox = shake ? (Math.random()-.5) * shake * 0.8 : 0, oy = shake ? (Math.random()-.5) * shake * 0.8 : 0;
+  // tremblement fluide (somme de sinus) plutôt qu'un sautillement aléatoire
+  const ox = shake ? (Math.sin(time * 57) * .3 + Math.sin(time * 31) * .15) * shake : 0, oy = shake ? (Math.cos(time * 49) * .3 + Math.sin(time * 27) * .15) * shake : 0;
   shX = ox; shY = oy;
   ctx.setTransform(scale,0,0,sy,ox*scale,oy*sy);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
@@ -1258,12 +1286,14 @@ function drawFoe(e) {
   }
 }
 function drawFx() {
+  // particules rondes, en lumière additive (elles s'illuminent en se superposant)
+  if (T.glow) ctx.globalCompositeOperation = 'lighter';
   for (const p of particles) {
-    const a = 1 - p.life / p.max;
-    ctx.globalAlpha = a; ctx.fillStyle = p.color;
-    const s = p.size * (0.5 + a * 0.5);
-    ctx.fillRect(p.x - s/2, p.y - s/2, s, s);
+    const a = 1 - p.life / p.max, s = p.size * (0.5 + a * 0.5);
+    ctx.globalAlpha = a * a * (3 - 2 * a); ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, s * .58, 0, Math.PI * 2); ctx.fill();
   }
+  ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = 1;
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1434,37 +1464,64 @@ function drawPlayer(pp) {
   if (P.dir.x || P.dir.y) P.face = P.dir;
   const face = P.face;
   const target = P.drawing ? 1 : 0;
-  P.morph += (target - P.morph) * 0.35;
+  P.morph += (target - P.morph) * 0.3;
   const m = P.morph;
-  ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(Math.atan2(face.y, face.x));
+  // rotation lissée : le vaisseau pivote au lieu de sauter d'une direction à l'autre, et s'incline dans les virages
+  const goal = Math.atan2(face.y, face.x);
+  if (P.ang === undefined) P.ang = goal;
+  let turn = goal - P.ang;
+  while (turn > Math.PI) turn -= Math.PI * 2;
+  while (turn < -Math.PI) turn += Math.PI * 2;
+  P.ang += turn * 0.32;
+  const bank = Math.min(.22, Math.abs(turn) * .18);
+  const moving = !!(P.dir.x || P.dir.y), neon = T.rainbow, hot = sup && neon;
+  ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(P.ang); ctx.scale(1, 1 - bank);
   ctx.lineJoin = 'round';
   if (m < 0.98) {
-    // sur le terrain : carré aux coins arrondis
+    // sur le terrain : gemme carrée aux coins arrondis
     ctx.globalAlpha = 1 - m;
-    glowOn(T.trail, .6);
-    ctx.fillStyle = sup && T.rainbow ? '#ffe27a' : T.playerLand; rrect(-.42, -.42, .84, .84, .2); ctx.fill();
+    glowOn(T.trail, .8);
+    if (neon && !hot) { const g = ctx.createLinearGradient(-.42, -.42, .42, .42); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#c9d2ff'); ctx.fillStyle = g; }
+    else ctx.fillStyle = hot ? '#ffe27a' : T.playerLand;
+    rrect(-.42, -.42, .84, .84, .22); ctx.fill();
     glowOff();
-    ctx.fillStyle = T.playerLandInk; rrect(-.21, -.21, .42, .42, .1); ctx.fill();
-    ctx.fillStyle = T.rainbow ? T.trail : T.playerLand; ctx.beginPath(); ctx.arc(0, 0, .11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = T.playerLandInk; rrect(-.22, -.22, .44, .44, .12); ctx.fill();
+    ctx.fillStyle = neon ? T.trail : T.playerLand;
+    ctx.beginPath(); ctx.arc(0, 0, .1 + Math.sin(time * 5) * .02, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
   if (m > 0.02) {
-    // dans la zone à conquérir : petit vaisseau aux angles adoucis
+    // dans la zone à conquérir : vaisseau effilé (nez pointu, deux ailerons à l'arrière, comme l'original)
     ctx.globalAlpha = m;
-    glowOn(T.trail, 1.2);
-    const hull = sup && T.rainbow ? '#ffe27a' : T.playerSea;
-    ctx.fillStyle = hull; ctx.strokeStyle = hull; ctx.lineWidth = .14;
+    // flamme du réacteur : dégradé chaud qui ondule
+    if (moving) {
+      const fl = .34 + Math.sin(time * 38) * .07 + Math.sin(time * 23) * .05 + (power.spd > 0 || power.hyp > 0 ? .35 : 0);
+      const fg = ctx.createLinearGradient(-.36, 0, -.36 - fl, 0);
+      const fc = (power.spd > 0 || power.hyp > 0) && neon ? '70,217,255' : neon ? '255,138,61' : '11,24,56';
+      fg.addColorStop(0, neon ? 'rgba(255,255,255,0.95)' : `rgba(${fc},1)`); fg.addColorStop(.35, `rgba(${fc},0.9)`); fg.addColorStop(1, `rgba(${fc},0)`);
+      ctx.fillStyle = fg;
+      ctx.beginPath(); ctx.moveTo(-.34, -.15); ctx.quadraticCurveTo(-.36 - fl * .6, -.1, -.36 - fl, 0); ctx.quadraticCurveTo(-.36 - fl * .6, .1, -.34, .15); ctx.closePath(); ctx.fill();
+    }
+    glowOn(T.trail, 1.3);
+    let hull = hot ? '#ffe27a' : T.playerSea;
+    if (neon && !hot) { const g = ctx.createLinearGradient(-.4, 0, .7, 0); g.addColorStop(0, '#c9d2ff'); g.addColorStop(1, '#ffffff'); hull = g; }
+    ctx.fillStyle = hull;
+    // ailerons arrondis
+    ctx.beginPath(); ctx.moveTo(-.12, -.3); ctx.quadraticCurveTo(-.36, -.62, -.62, -.6); ctx.quadraticCurveTo(-.5, -.42, -.44, -.22); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-.12, .3); ctx.quadraticCurveTo(-.36, .62, -.62, .6); ctx.quadraticCurveTo(-.5, .42, -.44, .22); ctx.closePath(); ctx.fill();
+    // coque effilée
     ctx.beginPath();
-    ctx.moveTo(.68, 0); ctx.lineTo(.16, -.33); ctx.lineTo(-.38, -.33); ctx.lineTo(-.38, .33); ctx.lineTo(.16, .33); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    rrect(-.62, -.62, .46, .2, .1); ctx.fill(); rrect(-.62, .42, .46, .2, .1); ctx.fill();
-    ctx.fillRect(-.36, -.5, .14, .2); ctx.fillRect(-.36, .3, .14, .2);
+    ctx.moveTo(.72, 0);
+    ctx.quadraticCurveTo(.3, -.36, -.1, -.32); ctx.quadraticCurveTo(-.4, -.3, -.42, -.16);
+    ctx.lineTo(-.42, .16); ctx.quadraticCurveTo(-.4, .3, -.1, .32); ctx.quadraticCurveTo(.3, .36, .72, 0);
+    ctx.closePath(); ctx.fill();
     glowOff();
-    ctx.fillStyle = T.playerSeaInk; ctx.strokeStyle = T.playerSeaInk; ctx.lineWidth = .08;
-    ctx.beginPath(); ctx.moveTo(.4, 0); ctx.lineTo(.06, -.16); ctx.lineTo(-.22, -.16); ctx.lineTo(-.22, .16); ctx.lineTo(.06, .16); ctx.closePath(); ctx.fill(); ctx.stroke();
-    const fl = 0.18 + Math.random() * 0.22 + (power.spd > 0 ? 0.3 : 0);
-    ctx.fillStyle = power.spd > 0 && T.rainbow ? '#46d9ff' : T.flame;
-    ctx.beginPath(); ctx.moveTo(-.42, -.14); ctx.lineTo(-.42 - fl, 0); ctx.lineTo(-.42, .14); ctx.closePath(); ctx.fill();
+    // cockpit lumineux
+    if (neon) { glowOn(hot ? '#ffd23f' : '#43e0ff', 1); ctx.fillStyle = hot ? '#ff7a4d' : '#43e0ff'; }
+    else ctx.fillStyle = T.playerSeaInk;
+    ctx.beginPath(); ctx.ellipse(.16, 0, .2, .1, 0, 0, Math.PI * 2); ctx.fill();
+    glowOff();
+    if (neon) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(.21, -.035, .07, .03, 0, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
   ctx.restore();
@@ -1529,7 +1586,7 @@ function drawInn(e) {
 }
 // Trou noir : lentille gravitationnelle. Tout ce qui l'entoure (terrain conquis compris) est aspiré vers
 // le centre puis englouti dans le noir ; seul un fin anneau de lumière marque l'horizon.
-const LENS_R = 6, lensCv = document.createElement('canvas'), lctx = lensCv.getContext('2d');
+const LENS_R = 7.5, lensCv = document.createElement('canvas'), lctx = lensCv.getContext('2d');
 let shX = 0, shY = 0;
 function drawAmph(e) {
   const R = R_AMPH, TAU = Math.PI * 2, sy = cv.height / ROWS;
@@ -1540,18 +1597,29 @@ function drawAmph(e) {
   lctx.clearRect(0, 0, w, h);
   const sx0 = Math.max(0, cx - rw), sy0 = Math.max(0, cy - rh), sx1 = Math.min(cv.width, cx + rw), sy1 = Math.min(cv.height, cy + rh);
   if (sx1 - sx0 >= 1 && sy1 - sy0 >= 1) lctx.drawImage(cv, sx0, sy0, sx1 - sx0, sy1 - sy0, sx0 - (cx - rw), sy0 - (cy - rh), sx1 - sx0, sy1 - sy0);
-  // 2) anneaux concentriques de plus en plus « rétrécis » : l'espace tombe vers le centre
-  for (let i = 0; i < 8; i++) {
-    const rd = LENS_R - (LENS_R - R) * i / 8, rs = rd + (LENS_R - rd) * .65, k = rd / rs;
+  // 2) anneaux concentriques de plus en plus « rétrécis » et tordus : l'espace tombe vers le centre en spirale
+  const N = 12;
+  for (let i = 0; i < N; i++) {
+    const rd = LENS_R - (LENS_R - R) * i / N, f = 1 - rd / LENS_R;
+    const rs = Math.min(LENS_R, rd + (LENS_R - rd) * .95), k = rd / rs;
+    const twist = f * f * 2.2 + Math.sin(e.ph * .35) * f * .25;
     ctx.save();
     ctx.beginPath(); ctx.arc(e.x, e.y, rd, 0, TAU); ctx.clip();
-    ctx.drawImage(lensCv, e.x - LENS_R * k, e.y - LENS_R * k, LENS_R * 2 * k, LENS_R * 2 * k);
+    ctx.translate(e.x, e.y); ctx.rotate(twist);
+    ctx.drawImage(lensCv, -LENS_R * k, -LENS_R * k, LENS_R * 2 * k, LENS_R * 2 * k);
     ctx.restore();
   }
+  // anneau d'Einstein : la lumière de l'arrière-plan forme un cercle autour de l'horizon
+  ctx.save(); ctx.translate(e.x, e.y);
+  glowOn(T.amphHi, 1.4);
+  ctx.globalAlpha = .35 + Math.sin(e.ph * 1.3) * .1;
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .05;
+  ctx.beginPath(); ctx.arc(0, 0, R * 2.1, 0, TAU); ctx.stroke();
+  ctx.globalAlpha = 1; glowOff(); ctx.restore();
   ctx.save(); ctx.translate(e.x, e.y);
   // 3) obscurité : tout s'éteint en approchant de l'horizon
   const dark = ctx.createRadialGradient(0, 0, R * .9, 0, 0, LENS_R);
-  dark.addColorStop(0, T.hole); dark.addColorStop(.3, T.hole); dark.addColorStop(1, 'rgba(0,0,0,0)');
+  dark.addColorStop(0, T.hole); dark.addColorStop(.24, T.hole); dark.addColorStop(.5, 'rgba(0,0,0,0.5)'); dark.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(0, 0, LENS_R, 0, TAU); ctx.fill();
   const well = ctx.createRadialGradient(0, 0, LENS_R * .8, 0, 0, PULL_R);
   well.addColorStop(0, 'rgba(0,0,0,0.35)'); well.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1729,11 +1797,19 @@ function frame(now) {
 }
 
 /* ---------- HUD et écrans ---------- */
+// Le score affiché rattrape le vrai score en douceur (compteur qui défile)
+let scoreShown = 0;
+function tweenScore(dt) {
+  if (scoreShown === S.score) return;
+  scoreShown += (S.score - scoreShown) * Math.min(1, dt * 7);
+  if (Math.abs(S.score - scoreShown) < 1) scoreShown = S.score;
+  $('score').textContent = fmt(Math.round(scoreShown));
+}
 function hud() {
   $('dlab').textContent = S.test ? 'MODE' : S.phase === 'title' ? 'NIV' : 'NIV ' + DIFFS[S.diff].short;
   if (S.test) { $('lvl').textContent = 'TEST'; }
   if (!S.test) $('lvl').innerHTML = `${pad2(S.level)}<small>/${MAX_LEVEL}</small>`;
-  $('score').textContent = fmt(S.score);
+  if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(3, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
   const goal = Math.round(DIFFS[S.diff].goal * 100);
@@ -1745,11 +1821,18 @@ function hud() {
 let onGo = null;
 function showOverlay(html, cb) {
   // la carte n'entre en scène (animation) que si aucune n'était affichée
+  clearTimeout(ovTimer); ov.classList.remove('out');
   ov.innerHTML = `<div class="card${ov.hidden ? ' in' : ''}">${html}</div>`; ov.hidden = false; onGo = cb;
   const b = $('go'); if (b) { b.addEventListener('click', () => { ensureAudio(); go(); }); setTimeout(() => b.focus({ preventScroll: true }), 30); }
 }
 function go() { const f = onGo; onGo = null; if (f) f(); }
-function hideOverlay() { ov.hidden = true; ov.innerHTML = ''; onGo = null; }
+// fondu de sortie avant de masquer l'écran
+let ovTimer = 0;
+function hideOverlay() {
+  onGo = null; ov.classList.add('out');
+  clearTimeout(ovTimer);
+  ovTimer = setTimeout(() => { ov.hidden = true; ov.innerHTML = ''; ov.classList.remove('out'); }, 200);
+}
 function infoRows(done) {
   const D = DIFFS[S.diff];
   return `<div class="rows">
