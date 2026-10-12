@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Megabox Conquest</title>
 <meta name="description" content="Remake du jeu des Sagem myX (2001) : conquiers le terrain sans te faire toucher.">
 <meta name="theme-color" content="#070916">
@@ -31,7 +31,7 @@
 }
 [hidden]{display:none!important}
 html,body{height:100%;overscroll-behavior:none}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
 body{margin:0;color:var(--text);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;touch-action:manipulation;
   background:radial-gradient(120% 55% at 50% -12%,#2b2070 0%,rgba(43,32,112,0) 62%),radial-gradient(90% 45% at 50% 112%,#0d3a5a 0%,rgba(13,58,90,0) 62%),var(--bg)}
 button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
@@ -143,7 +143,7 @@ details li b{color:var(--text);font-weight:600}
 
 /* ---- Pied de page, mode test ---- */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex:none}
-.foot .tools{display:flex;gap:8px;margin-left:auto}
+.foot .tools{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto}
 .mini{font-family:var(--body);font-weight:600;font-size:10.5px;letter-spacing:.08em;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line-2);border-radius:99px;padding:8px 12px;cursor:pointer;white-space:nowrap;
   transition:transform .15s var(--ease),background .2s}
 .mini:active{transform:scale(.93);background:rgba(255,255,255,.1)}
@@ -154,7 +154,7 @@ details li b{color:var(--text);font-weight:600}
 .trow .mini.gold{color:#ffd23f;border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.08)}
 .hint-touch{display:none}
 @media (pointer:coarse){.hint{display:none}.hint-touch{display:inline}}
-@media (max-width:380px){.hint-touch,.hint{display:none}}
+@media (max-width:460px){.hint-touch,.hint{display:none}}
 
 /* ---- Pouvoirs actifs ---- */
 .chip.inv{color:#ffe27a}.chip.inv b{background:conic-gradient(#ff5d5d,#ffd23f,#5dff9a,#46d9ff,#b98bff,#ff5d5d)}
@@ -223,7 +223,7 @@ details li b{color:var(--text);font-weight:600}
   <footer class="foot">
     <span class="hint">Flèches ou ZQSD · Espace : stop · P : pause</span>
     <span class="hint-touch">Glisse pour diriger · Tape pour t'arrêter</span>
-    <span class="tools"><button class="mini" id="scr">ÉCRAN : COULEUR</button><button class="mini" id="snd">SON : OUI</button></span>
+    <span class="tools"><button class="mini" id="land">TERRAIN : NÉON</button><button class="mini" id="scr">ÉCRAN : COULEUR</button><button class="mini" id="snd">SON : OUI</button></span>
   </footer>
 </div>
 
@@ -362,7 +362,6 @@ function resize() {
   document.documentElement.style.setProperty('--pw', cw + 'px');
   drawBg(); drawBoard();
 }
-new ResizeObserver(resize).observe(stage);
 
 function drawBg() {
   gctx.setTransform(1,0,0,1,0,0); gctx.clearRect(0,0,bg.width,bg.height);
@@ -421,7 +420,71 @@ function landColor(x, y) {
   }
   return T.landLut[x + y];
 }
+// Styles du terrain conquis (thème couleur), à tester en jeu avec le bouton TERRAIN
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function mixHex(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, j) => Math.round(v + (B[j] - v) * t)).join(',')})`; }
+function vnoise(x, y) {
+  // bruit de valeur lissé (pour le style PLANÈTE et HOLO)
+  const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, s = t => t * t * (3 - 2 * t);
+  const h = (a, b) => { let n = Math.imul(a, 374761393) + Math.imul(b, 668265263); n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; };
+  const su = s(u), sv = s(v);
+  return (h(xi, yi) * (1 - su) + h(xi + 1, yi) * su) * (1 - sv) + (h(xi, yi + 1) * (1 - su) + h(xi + 1, yi + 1) * su) * sv;
+}
+const cellRect = (c, x, y) => c.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
+const DIAG = (x, y) => (x + y) / (COLS + ROWS - 2);
+const LANDS = [
+  { label: 'NÉON', edge: '#dfe4ff', paint(c, x, y) { c.fillStyle = mixHex('#4a6dff', '#9a5cff', DIAG(x, y)); cellRect(c, x, y); } },
+  { label: 'GRILLE', edge: '#7ff0ff', sheen: 'rgba(127,240,255,0.22)', paint(c, x, y) {
+    c.fillStyle = mixHex('#111a46', '#25104c', DIAG(x, y)); cellRect(c, x, y);
+    c.fillStyle = 'rgba(67,224,255,0.3)'; c.fillRect(x, y, 1, .06); c.fillRect(x, y, .06, 1);
+    if (!(x % 4) && !(y % 4)) { c.fillStyle = 'rgba(160,245,255,0.8)'; c.fillRect(x - .07, y - .07, .2, .2); }
+  } },
+  { label: 'CRISTAL', edge: '#e6fffb', paint(c, x, y) {
+    c.fillStyle = mixHex('#1fc8bd', '#5b5bff', DIAG(x, y)); cellRect(c, x, y);
+    c.fillStyle = 'rgba(255,255,255,0.16)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 1, y); c.lineTo(x, y + 1); c.fill();
+    c.fillStyle = 'rgba(0,0,40,0.14)'; c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 1, y + 1); c.lineTo(x, y + 1); c.fill();
+  } },
+  { label: 'HOLO', edge: '#ffffff', sheen: 'rgba(255,255,255,0.3)', paint(c, x, y) {
+    const hue = (190 + x * 2.4 + y * 1.8 + vnoise(x * .1, y * .1) * 140) % 360;
+    c.fillStyle = `hsl(${hue},68%,66%)`; cellRect(c, x, y);
+  } },
+  { label: 'PLANÈTE', edge: '#f2ffe6', paint(c, x, y) {
+    const n = vnoise(x * .16, y * .16) * .7 + vnoise(x * .45 + 9, y * .45 + 3) * .3;
+    c.fillStyle = n < .36 ? '#13506a' : n < .46 ? '#1a7a7a' : n < .58 ? '#2f9a62' : n < .7 ? '#7fb85a' : '#d8c389';
+    cellRect(c, x, y);
+  } },
+  { label: 'COUCHANT', edge: '#fff1dc', paint(c, x, y) {
+    const t = y / (ROWS - 1);
+    c.fillStyle = t < .55 ? mixHex('#4b2bd1', '#e0457f', t / .55) : mixHex('#e0457f', '#ffa34d', (t - .55) / .45);
+    cellRect(c, x, y);
+  } },
+  { label: 'RÉTRO', edge: '#aab4ff', paint(c, x, y) {
+    c.fillStyle = (x + y) & 1 ? '#4b5bd4' : '#4454c8'; cellRect(c, x, y);
+    c.fillStyle = 'rgba(255,255,255,0.07)'; c.fillRect(x + 0.12, y + 0.12, 0.76, 0.3);
+  } }
+];
+let landIdx = Math.min(LANDS.length - 1, Math.max(0, store.get('land', 0)));
+const landStyle = () => T.space ? LANDS[landIdx] : null;
+// Reflet qui balaie le terrain conquis (styles GRILLE et HOLO) : le plateau sert de masque
+const skin = document.createElement('canvas'), sctx = skin.getContext('2d');
+function drawSheen(color) {
+  if (skin.width !== board.width || skin.height !== board.height) { skin.width = board.width; skin.height = board.height; }
+  const w = skin.width, h = skin.height;
+  sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalCompositeOperation = 'source-over';
+  sctx.clearRect(0, 0, w, h); sctx.drawImage(board, 0, 0);
+  sctx.globalCompositeOperation = 'source-in';
+  const p = ((time * .18) % 1.8 - .4) * (w + h), b = w * .18;
+  const g = sctx.createLinearGradient(p - b, 0, p + b, b * .6);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(.5, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.setTransform(1, 0, -.6, 1, 0, 0); sctx.fillStyle = g; sctx.fillRect(-h, 0, w + 2 * h, h);
+  sctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(skin, 0, 0, COLS, ROWS); ctx.globalCompositeOperation = 'source-over';
+}
+// (démarré ici, une fois les styles de terrain définis : resize() redessine le plateau)
+new ResizeObserver(resize).observe(stage);
 function paintCell(c, x, y) {
+  const L = landStyle();
+  if (L) { L.paint(c, x, y); return; }
   c.fillStyle = landColor(x, y);
   c.fillRect(x - 0.02, y - 0.02, 1.04, 1.04);
   if (T.shine) { c.fillStyle = T.shine; c.fillRect(x + 0.12, y + 0.12, 0.76, 0.3); }
@@ -430,7 +493,7 @@ function drawBoard() {
   bctx.setTransform(1,0,0,1,0,0); bctx.clearRect(0,0,board.width,board.height);
   bctx.setTransform(scale,0,0,board.height/ROWS,0,0);
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[at(x,y)] === 1) paintCell(bctx, x, y);
-  bctx.fillStyle = T.edge;
+  bctx.fillStyle = landStyle() ? landStyle().edge : T.edge;
   const t = 0.16;
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (grid[at(x,y)] !== 1) continue;
@@ -1243,6 +1306,7 @@ function render() {
   ctx.setTransform(scale,0,0,sy,ox*scale,oy*sy);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
   ctx.drawImage(board, 0, 0, COLS, ROWS);
+  if (landStyle() && landStyle().sheen && !REDUCED) drawSheen(landStyle().sheen);
   drawTwinkle();
 
   for (const f of fresh) {
@@ -2118,9 +2182,25 @@ scr.addEventListener('click', () => {
   const key = T === THEMES.color ? 'myx3' : 'color';
   T = THEMES[key]; store.set('theme', key); scrLabel();
   for (const r of rings) r.color = T.items.terr;
-  drawBg(); drawBoard();
+  drawBg(); drawBoard(); landLabel();
+});
+// Style du terrain conquis (thème couleur uniquement)
+const landBtn = $('land');
+const landLabel = () => { landBtn.textContent = 'TERRAIN : ' + LANDS[landIdx].label; landBtn.hidden = !T.space; };
+landLabel();
+landBtn.addEventListener('click', () => {
+  landIdx = (landIdx + 1) % LANDS.length; store.set('land', landIdx);
+  landLabel(); drawBoard();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && S.phase === 'play') togglePause(); });
+// L'écran reste fixe : pas de zoom au double tap ni au pincement (iOS ignore parfois le viewport)
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350 && !e.target.closest('button, summary')) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
 
 titleScreen();
 requestAnimationFrame(frame);
