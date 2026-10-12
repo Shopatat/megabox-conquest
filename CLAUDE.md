@@ -61,7 +61,7 @@ Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil 
 
 Les objectifs 75/80/85 ont été **choisis par Fabien**. L'original avait 75/65/55.
 
-**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : un niveau impair avec bonus, puis un niveau pair sans bonus avec les mêmes ennemis (règle de l'original). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 16 boules).
+**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : deux niveaux avec les mêmes ennemis (dans l'original, seul le niveau impair avait des bonus ; ils sont maintenant aléatoires sur tous les niveaux). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 16 boules).
 
 Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais se sentir **submergé** dans les niveaux avancés (« jusqu'à plein d'ennemis », seconde hausse). Testé à 60 images/s avec 37 ennemis sur PC ; à surveiller sur iPhone (les trous noirs à lentille sont le plus coûteux). Total d'ennemis (boules/perfos/gardiens/trous noirs/rongeurs) :
 
@@ -93,7 +93,7 @@ Tous les ennemis sont « polarisés » : leur dessin suit leur sens de déplacem
 
 ## Bonus
 
-Ils apparaissent sur les **niveaux impairs**, une fois **10 %** du terrain conquis, **2 par niveau** (l'original en avait 1), un à la fois. Durée de vie limitée. Avant de disparaître, le cœur clignote 2 fois par seconde et les 6 points autour se figent (doc original). On les ramasse en passant dessus. Les bonus posés dans la zone à conquérir sont aussi ramassés si on capture leur zone.
+Ils apparaissent **au hasard, sur tous les niveaux** (demande de Fabien : on ne doit pas pouvoir s'y préparer, juste réagir vite) : de 0 à 3 par niveau (`bonusCount` : 15 % / 35 % / 32 % / 18 %, 1,5 en moyenne), un à la fois, après un délai aléatoire (`bonusDelay` : 2 s + loi exponentielle de moyenne 12 s pour le premier, 4 s + 14 s ensuite ; souvent quelques secondes, parfois très long). Plus de seuil de 10 % ni de règle « niveau impair » (règle de l'original abandonnée). L'écran d'info ne les annonce plus ; il prévient seulement quand les bonus commencent à se déplacer. Durée de vie limitée. Avant de disparaître, le cœur clignote 2 fois par seconde et les 6 points autour se figent (doc original). On les ramasse en passant dessus. Les bonus posés dans la zone à conquérir sont aussi ramassés si on capture leur zone.
 
 | Clé | Bonus | Où | Effet |
 |---|---|---|---|
@@ -188,7 +188,7 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 - Pas de vie offerte en fin de niveau.
 - Nouvel ennemi : le rongeur.
 - Super Casque, Super Bombe, Super Vitesse et Super Vie (n'existent pas dans l'original).
-- 2 bonus par niveau bonus au lieu d'un, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
+- Bonus aléatoires sur tous les niveaux (0 à 3, moments imprévisibles) au lieu d'un bonus par niveau impair, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
 - Score maison, contrôles tactiles, thème MyX-3 en option, effets modernes (particules, vague de remplissage, sons).
 
 ## Publication

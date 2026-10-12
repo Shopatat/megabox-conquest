@@ -515,7 +515,7 @@ function comp(L, d) {
     perf: Math.min(D.maxPerf, ROSTER.perf[r]),
     amph: ROSTER.amph[r],
     eat: ROSTER.eat[r],
-    bonus: L % 2 === 1,
+    bonus: true,
     mobile: p >= D.mobile,
     sp: D.sp * (1 + 0.02 * (L - 1)),
     p
@@ -561,7 +561,7 @@ function setupLevel(L) {
   for (let i = 0; i < C.inn; i++) foes.push(makeFoe('inn', C.sp));
   for (let i = 0; i < C.amph; i++) foes.push(makeFoe('amph', C.sp));
   for (let i = 0; i < C.eat; i++) foes.push(makeFoe('eat', C.sp));
-  items = []; S.bonusLeft = C.bonus ? 2 : 0; S.bonusWait = 1.5; stage.classList.remove('super'); combo = 0;
+  items = []; S.bonusLeft = C.bonus ? bonusCount() : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
@@ -1060,6 +1060,16 @@ function updateCrash(dt) {
 }
 
 /* ---------- Bonus ---------- */
+// Apparition imprévisible (demande de Fabien : ne pas pouvoir s'y préparer, juste réagir) :
+// sur tous les niveaux, de 0 à 3 bonus (1,5 en moyenne), à des moments tirés au hasard
+function bonusCount() {
+  const r = Math.random();
+  return r < .15 ? 0 : r < .5 ? 1 : r < .82 ? 2 : 3;
+}
+// délai avant le prochain bonus : souvent quelques secondes, parfois très long (loi exponentielle)
+function bonusDelay(first) {
+  return (first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14);
+}
 function pickType() {
   const pool = [['terr', 3], ['inv', 3], ['spd', 2.5], ['chr', 2.5]];
   if (S.lives < 9) pool.push(['life', 1.5]);
@@ -1243,9 +1253,9 @@ function pushOut(e, ox, oy, R) {
   e.x = best % COLS + .5; e.y = ((best / COLS) | 0) + .5;
 }
 function updateItems(dt) {
-  if (S.bonusLeft > 0 && items.length === 0 && S.filled / S.interior >= 0.10) {
+  if (S.bonusLeft > 0 && items.length === 0) {
     S.bonusWait -= dt;
-    if (S.bonusWait <= 0) { if (spawnItem()) S.bonusLeft--; S.bonusWait = 8 + Math.random() * 4; }
+    if (S.bonusWait <= 0) { if (spawnItem()) S.bonusLeft--; S.bonusWait = bonusDelay(false); }
   }
   for (const it of items) {
     it.age += dt; moveItem(it, dt);
@@ -2084,7 +2094,7 @@ function newcomers() {
   const now = S.comp, prev = S.level > 1 ? comp(S.level - 1, S.diff) : { out: 0, inn: 0, perf: 0, amph: 0, eat: 0 };
   let html = '';
   for (const k of ['out', 'inn', 'perf', 'amph', 'eat']) if (now[k] > 0 && prev[k] === 0) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
-  if (now.bonus) html += `<p class="keys">Niveau bonus : des bonus apparaissent dès 10 % conquis.${now.mobile ? ' Ils se déplacent.' : ''}</p>`;
+  if (now.mobile && !comp(Math.max(1, S.level - 1), S.diff).mobile) html += `<p class="keys">À partir de maintenant, les bonus se déplacent.</p>`;
   return html;
 }
 function showReady(mode) {
@@ -2164,7 +2174,7 @@ function titleScreen() {
         <li><b>Gardien</b> : il patrouille sur ton terrain.</li>
         <li><b>Trou noir</b> : il passe partout et t'aspire si tu passes près de lui. S'il croise ton fil, il l'avale et te ramène vers lui de plus en plus fort.</li>
         <li><b>Rongeur</b> : lent, il grignote ton terrain à chaque contact.</li>
-        <li><b>Bonus</b> (un niveau sur deux, dès 10 %) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
+        <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>

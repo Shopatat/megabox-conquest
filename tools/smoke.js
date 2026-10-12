@@ -164,6 +164,20 @@ let deaths = 0, lp = '';
 for (let f = 0; f < 300; f++) { step(); if (g.S.phase === 'crash' && lp !== 'crash') deaths++; lp = g.S.phase; }
 console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (attendu 0), bouclier ${g.P.shield}`);
 
+// 5e) Bonus imprévisibles : sur tous les niveaux (pairs compris), nombre et moments variables
+{
+  let spawned = 0, levels = 0, first = [];
+  for (let k = 0; k < 40; k++) {
+    g.newGame(1, 2 + (k % 2)); g.go(); g.foes.length = 0; levels++;
+    const left0 = g.S.bonusLeft;
+    let t = 0, firstT = -1;
+    for (let f = 0; f < 60 * 90; f++) { step(); t += 1 / 60; if (g.S.bonusLeft < left0 && firstT < 0) firstT = t; for (const it of g.items) it.age = 0; g.items.length = 0; }
+    spawned += left0 - g.S.bonusLeft; if (firstT >= 0) first.push(firstT);
+  }
+  first.sort((a, b) => a - b);
+  console.log(`bonus aléatoires : ${(spawned / levels).toFixed(2)} par niveau (niveaux pairs compris), 1er bonus entre ${first[0].toFixed(1)} s et ${first[first.length - 1].toFixed(1)} s`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L] of [[0, 1], [1, 1], [1, 13], [2, 13], [2, 21], [2, 25], [0, 25]]) {
