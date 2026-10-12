@@ -573,12 +573,12 @@ function dropShield() {
   if (!P.shield) return;
   P.shield = false; P.shieldFade = 1; P.shieldX = P.x + .5; P.shieldY = P.y + .5; invuln = 1;
 }
-// Après un crash : la case conquise la plus proche de l'endroit du crash, de préférence sans gardien collé
+// Après un crash : la case conquise la plus proche de l'endroit du crash, de préférence loin de tout ennemi
 function respawnCell(px, py) {
   let best = null, bd = 1e9;
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (grid[at(x, y)] !== 1) continue;
-    const near = foes.some(e => e.kind === 'inn' && Math.hypot(e.x - x - .5, e.y - y - .5) < 2.5);
+    const near = foes.some(e => !e.dead && Math.hypot(e.x - x - .5, e.y - y - .5) < (e.kind === 'amph' ? 5 : 3.5));
     const d = Math.hypot(x + .5 - px, y + .5 - py) + (near ? 40 : 0);
     if (d < bd) { bd = d; best = [x, y]; }
   }
@@ -905,12 +905,28 @@ function moveAmph(e, dt) {
     }
   }
 }
+// Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, gardien dont la case
+// a été grignotée) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
+function unstick(e) {
+  if (e.kind === 'amph') return;
+  const c = cell(Math.floor(e.x), Math.floor(e.y)), sea = isSea(e);
+  if (sea ? c !== 1 : c === 1) return;
+  const want = sea ? 0 : 1;
+  let best = -1, bd = 1e9;
+  for (let i = 0; i < N; i++) if (grid[i] === want) {
+    const d = Math.hypot(i % COLS + .5 - e.x, ((i / COLS) | 0) + .5 - e.y);
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) { e.dead = true; return; }
+  e.x = best % COLS + .5; e.y = ((best / COLS) | 0) + .5; e.hist.length = 0;
+}
 function moveFoe(e, dt) {
   if (e.stun > 0) {
     e.stun -= dt; e.ph += dt * .5;
     if (e.stun <= 0 && !muted) tone(520, .08, 'triangle', .025, 200);
     return;
   }
+  unstick(e);
   if (isSea(e)) moveSea(e, dt);
   else if (e.kind === 'inn') moveLand(e, dt);
   else moveAmph(e, dt);
@@ -927,7 +943,7 @@ function updateFoes(dt) {
     const r = e.kind === 'amph' ? R_AMPH + .25 : 0.9;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) {
       if (power.sup > 0) smash(e);
-      else if (power.inv > 0) continue;
+      else if (power.inv > 0 || P.shield) continue;
       else if (invuln > 0 && !P.drawing) continue;
       else crash();
     }
@@ -1459,15 +1475,20 @@ function drawShield() {
   const cx = P.shield ? P.x + .5 : P.shieldX, cy = P.shield ? P.y + .5 : P.shieldY, TAU = Math.PI * 2;
   const pulse = Math.sin(time * 3);
   const R = P.shield ? SHIELD_R + pulse * .08 : SHIELD_R + (1 - P.shieldFade) * 1.6;
-  const a = P.shield ? .3 + pulse * .1 + P.shieldHit * .45 : P.shieldFade * .4;
+  const a = P.shield ? .62 + pulse * .15 + P.shieldHit * .3 : P.shieldFade * .6;
   const col = T.rainbow ? '255,255,255' : '11,24,56';
-  const g = ctx.createRadialGradient(cx, cy, R * .5, cx, cy, R);
-  g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${a * .3})`);
+  const g = ctx.createRadialGradient(cx, cy, R * .4, cx, cy, R);
+  g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${a * .38})`);
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
-  ctx.globalAlpha = Math.min(1, a); glowOn('#ffffff', .9);
-  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = .09 + P.shieldHit * .12;
+  ctx.globalAlpha = Math.min(1, a); glowOn('#ffffff', 1.4);
+  ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = .15 + P.shieldHit * .12;
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
-  glowOff(); ctx.globalAlpha = 1;
+  glowOff();
+  // anneau intérieur en pointillés qui tourne lentement
+  ctx.globalAlpha = Math.min(1, a) * .55; ctx.lineWidth = .08; ctx.lineCap = 'round';
+  ctx.setLineDash([.05, .45]); ctx.lineDashOffset = -time * .8;
+  ctx.beginPath(); ctx.arc(cx, cy, R - .45, 0, TAU); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
 }
 // Chemin d'un rectangle aux coins arrondis
 function rrect(x, y, w, h, r) {

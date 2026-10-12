@@ -149,6 +149,21 @@ g.crash(); const cp = g.crashPos; step(160);
 const onLand = g.grid[g.at(g.P.x, g.P.y)] === 1;
 console.log(`reprise : crash en (${cp.x.toFixed(0)},${cp.y.toFixed(0)}) -> reprise en (${g.P.x},${g.P.y}), sur le terrain ${onLand}, bouclier ${g.P.shield}`);
 
+// 5d) Ennemi coincé dans le terrain conquis : libéré, et pas de mort en boucle à la reprise
+g.newGame(1, 1); g.go(); g.foes.length = 0;
+g.foes.push({ kind: 'perf', x: 10.5, y: 1.5, vx: 8.8, vy: 0, hist: [], ph: 0, dead: false });
+step(2);
+const pf = g.foes[0], freed = g.grid[g.at(Math.floor(pf.x), Math.floor(pf.y))] === 0;
+console.log(`ennemi coincé dans le terrain : libéré vers la zone à conquérir ${freed} (${pf.x.toFixed(1)}, ${pf.y.toFixed(1)})`);
+g.newGame(1, 1); g.go(); g.foes.length = 0;
+g.setDir('left'); step(60); g.setDir('down'); step(40); g.setDir('right'); step(3);
+g.crash(); step(5);
+g.foes.push({ kind: 'out', x: 1.5, y: 12.5, vx: 0, vy: 7.2, hist: [], ph: 0, dead: false });
+step(160); g.go();
+let deaths = 0, lp = '';
+for (let f = 0; f < 300; f++) { step(); if (g.S.phase === 'crash' && lp !== 'crash') deaths++; lp = g.S.phase; }
+console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (attendu 0), bouclier ${g.P.shield}`);
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L] of [[0, 1], [1, 1], [1, 13], [2, 13], [2, 21], [2, 25], [0, 25]]) {
