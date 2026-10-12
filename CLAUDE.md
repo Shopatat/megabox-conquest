@@ -4,6 +4,12 @@ Remake jouable dans le navigateur de **Megabox Conquest**, le jeu préinstallé 
 
 Tout le jeu tient dans **un seul fichier `index.html`** (HTML + CSS + JS vanilla, aucune dépendance, aucune étape de build). Seule ressource externe : les polices Google Fonts (Silkscreen, IBM Plex Sans Condensed), avec des polices de secours.
 
+Autour, les fichiers de la **PWA** (installable sur l'iPhone via Safari → Partager → « Sur l'écran d'accueil », plein écran, jouable hors ligne) :
+- `manifest.webmanifest` : nom, icônes, portrait, couleurs `#14111c`.
+- `sw.js` : service worker. Fichiers du jeu servis depuis le cache puis mis à jour en arrière-plan (une nouvelle version apparaît **au lancement suivant**). Polices Google mises en cache au premier chargement. Si on ajoute un fichier au jeu, l'ajouter à `FILES` ; changer `CACHE` (`mbc-v1` → `v2`) uniquement pour forcer une purge complète.
+- `icons/` : PNG générés par `node tools/icons.js icons` (mini scène de jeu dessinée en code, sans dépendance). Relancer après toute retouche de `tools/icons.js`.
+- Dans `index.html` : viewport `viewport-fit=cover` + marges `env(safe-area-inset-*)` sur `.app` (encoche, barre d'accueil), barre d'état iOS `black-translucent`, et un petit `<script>` séparé en fin de fichier qui enregistre le service worker (uniquement en http(s)).
+
 Langue : **toute l'interface est en français**. Fabien tutoie et parle familièrement.
 
 ---
@@ -167,7 +173,6 @@ Un test de fumée a été utilisé en développement : extraire le `<script>`, l
 
 ## Pistes pour la suite
 
-- PWA installable sur l'iPhone (le jeu est déjà publié, voir « Publication »).
 - Équilibrage à affiner en jouant (vitesse du perforateur, force du trou noir, objectif Expert avec les rongeurs).
 - Design général à peaufiner (Fabien l'a évoqué sans détailler).
 - Éventuellement l'écran d'intro et les « slides » de crash dessinés, comme prévus dans le doc original.
