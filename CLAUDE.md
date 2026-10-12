@@ -50,20 +50,20 @@ Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil 
 | Difficulté | Objectif | Vitesse ennemis | Décalage `shift` | Perforateurs max | Bonus mobiles à partir de la paire |
 |---|---|---|---|---|---|
 | Débutant | **75 %** | ×0,85 | −2 | 2 | jamais |
-| Confirmé | **80 %** | ×1 | 0 | 4 | 6 |
-| Expert | **85 %** | ×1,2 | +2 | 4 | 3 |
+| Confirmé | **80 %** | ×1 | 0 | 6 | 6 |
+| Expert | **85 %** | ×1,2 | +2 | 6 | 3 |
 
 Les objectifs 75/80/85 ont été **choisis par Fabien**. L'original avait 75/65/55.
 
-**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : un niveau impair avec bonus, puis un niveau pair sans bonus avec les mêmes ennemis (règle de l'original). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 9 boules).
+**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : un niveau impair avec bonus, puis un niveau pair sans bonus avec les mêmes ennemis (règle de l'original). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 16 boules).
 
-Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais se sentir **submergé** dans les niveaux avancés. Total d'ennemis (boules/perfos/gardiens/trous noirs/rongeurs) :
+Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais se sentir **submergé** dans les niveaux avancés (« jusqu'à plein d'ennemis », seconde hausse). Testé à 60 images/s avec 37 ennemis sur PC ; à surveiller sur iPhone (les trous noirs à lentille sont le plus coûteux). Total d'ennemis (boules/perfos/gardiens/trous noirs/rongeurs) :
 
 | Niveau | 1 | 5 | 9 | 13 | 17 | 21 | 25 |
 |---|---|---|---|---|---|---|---|
-| Débutant | 2 | 2 | 5 | 8 | 11 | 14 | 16 |
-| Confirmé | 2 | 5 | 8 | 11 | 15 | 17 | 21 (7/4/5/3/2) |
-| Expert | 5 | 8 | 11 | 15 | 17 | 21 | 23 (9/4/5/3/2) |
+| Débutant | 2 | 2 | 6 | 12 | 16 | 21 | 25 |
+| Confirmé | 2 | 6 | 12 | 17 | 23 | 28 | 35 (14/6/8/3/4) |
+| Expert | 6 | 12 | 17 | 23 | 28 | 35 | 37 (16/6/8/3/4) |
 
 La vitesse augmente de 2 % par niveau (2,5 % avant la hausse du nombre d'ennemis).
 

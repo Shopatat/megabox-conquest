@@ -236,8 +236,8 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DIFFS = [
   { name: 'Débutant', short: 'DÉB', goal: .75, sp: .85, shift: -2, maxPerf: 2, mobile: 99, note: 'Objectif 75 %. Ennemis plus lents, renforts plus tardifs, bonus fixes.' },
-  { name: 'Confirmé', short: 'CONF', goal: .80, sp: 1, shift: 0, maxPerf: 4, mobile: 6, note: 'Objectif 80 %. Les ennemis s\'accumulent, bonus mobiles en fin de parcours.' },
-  { name: 'Expert', short: 'EXP', goal: .85, sp: 1.2, shift: 2, maxPerf: 4, mobile: 3, note: 'Objectif 85 %. Tout va vite, ennemis nombreux dès le début, bonus mobiles.' }
+  { name: 'Confirmé', short: 'CONF', goal: .80, sp: 1, shift: 0, maxPerf: 6, mobile: 6, note: 'Objectif 80 %. Les ennemis s\'accumulent, bonus mobiles en fin de parcours.' },
+  { name: 'Expert', short: 'EXP', goal: .85, sp: 1.2, shift: 2, maxPerf: 6, mobile: 3, note: 'Objectif 85 %. Tout va vite, ennemis nombreux dès le début, bonus mobiles.' }
 ];
 
 const THEMES = {
@@ -454,11 +454,11 @@ function resetGrid() {
 // Nombre d'ennemis par paire de niveaux (1 à 13), en Confirmé.
 // La difficulté décale la ligne lue (DIFFS[d].shift) ; au-delà de la paire 13, +1 boule par cran.
 const ROSTER = {
-  out:  [2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7],
-  perf: [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4],
-  inn:  [0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5],
-  amph: [0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3],
-  eat:  [0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]
+  out:  [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+  perf: [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
+  inn:  [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 8],
+  amph: [0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3],
+  eat:  [0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4]
 };
 function comp(L, d) {
   const p = Math.ceil(L / 2), D = DIFFS[d];
