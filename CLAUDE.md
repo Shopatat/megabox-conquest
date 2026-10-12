@@ -41,28 +41,31 @@ Terrain en grille de **50 × 66 cases** (portrait), bordure conquise de 2 cases 
 Gel de la scène, écran inversé 3 fois (`invert` CSS), explosion et « CRASH ! », −1 vie. Puis le joueur repart en haut au milieu, **le terrain conquis est conservé**, et l'écran d'info s'affiche. Courte invulnérabilité au respawn (contre les ennemis du terrain uniquement).
 
 ### Onde de choc
-Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil dans les deux sens. Le joueur est **figé** et crashe quand l'onde l'atteint. Onde normale : 30 cases/s. Onde du perforateur : 65 cases/s.
+Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil dans les deux sens. Le joueur **continue d'avancer** (il n'est plus figé, demande de Fabien pour la fluidité) : si l'onde rattrape la tête du fil, crash ; s'il regagne son terrain avant, il survit mais la conquête est annulée (`cancelConquest`). Un 2ᵉ impact pendant l'onde étend ses fronts (`wave.lo/hi`). Onde normale : 30 cases/s. Onde du perforateur : 65 cases/s. Avec un vaisseau à 17 cases/s, on s'en sort contre une onde normale si le chemin de retour fait moins d'environ 1,3 × la longueur de fil derrière soi (0,35 × pour le perforateur).
 
 ---
 
 ## Difficultés et niveaux
 
-| Difficulté | Objectif | Vitesse ennemis | Perforateurs max | Bonus mobiles à partir de la paire |
-|---|---|---|---|---|
-| Débutant | **75 %** | ×0,85 | 2 | jamais |
-| Confirmé | **80 %** | ×1 | 2 | 6 |
-| Expert | **85 %** | ×1,2 | 3 | 3 |
+| Difficulté | Objectif | Vitesse ennemis | Décalage `shift` | Perforateurs max | Bonus mobiles à partir de la paire |
+|---|---|---|---|---|---|
+| Débutant | **75 %** | ×0,85 | −2 | 2 | jamais |
+| Confirmé | **80 %** | ×1 | 0 | 4 | 6 |
+| Expert | **85 %** | ×1,2 | +2 | 4 | 3 |
 
 Les objectifs 75/80/85 ont été **choisis par Fabien**. L'original avait 75/65/55.
 
-**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : un niveau impair avec bonus, puis un niveau pair sans bonus avec les mêmes ennemis (règle de l'original). Composition dans `comp(L, d)` :
+**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : un niveau impair avec bonus, puis un niveau pair sans bonus avec les mêmes ennemis (règle de l'original). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 9 boules).
 
-- `out` (boule) : 1, +1 dès p5, +1 dès p10
-- `inn` (gardien) : `min(4, floor(p/2))`
-- `perf` (perforateur) : `min(maxPerf, floor((p+1)/3))`
-- `amph` (amphibie / trou noir) : 1 dès p4, 2 dès p9
-- `eat` (rongeur) : 1 dès p8 (niveau 15), 2 dès p11 (niveau 21)
-- La vitesse augmente de 2,5 % par niveau.
+Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais se sentir **submergé** dans les niveaux avancés. Total d'ennemis (boules/perfos/gardiens/trous noirs/rongeurs) :
+
+| Niveau | 1 | 5 | 9 | 13 | 17 | 21 | 25 |
+|---|---|---|---|---|---|---|---|
+| Débutant | 2 | 2 | 5 | 8 | 11 | 14 | 16 |
+| Confirmé | 2 | 5 | 8 | 11 | 15 | 17 | 21 (7/4/5/3/2) |
+| Expert | 5 | 8 | 11 | 15 | 17 | 21 | 23 (9/4/5/3/2) |
+
+La vitesse augmente de 2 % par niveau (2,5 % avant la hausse du nombre d'ennemis).
 
 Fin de niveau : +1 vie (max 9), bonus de niveau et bonus de dépassement de l'objectif. Les pouvoirs actifs sont perdus. Après le niveau 25 : écran de victoire.
 
@@ -92,7 +95,7 @@ Ils apparaissent sur les **niveaux impairs**, une fois **10 %** du terrain conqu
 | `sup` | **Super Casque** (rare, dès le niveau 3, environ 5 % des bonus) | zone à conquérir | 10 s. Le **fil devient un mur** (tous les ennemis rebondissent dessus, perforateur et trou noir compris). Le joueur **détruit** les ennemis qu'il touche, avec des **combos** (×2, ×3…). Gros effet visuel : ralenti, flash doré, onde géante, texte arc-en-ciel, musique en boucle, cadre arc-en-ciel, fil doré scintillant. Idée de Fabien. |
 | `spd` | Vitesse | **sur le terrain conquis** (doc original) | 10 s, ×1,75. |
 | `life` | Vie | zone à conquérir | +1 vie (max 9). |
-| `terr` | Territoire | zone à conquérir | Conquiert d'un coup une zone ronde d'environ 10 % du terrain autour du bonus. Le joueur est immobile pendant l'expansion, et les ennemis pris dedans sont repoussés (doc original). |
+| `terr` | Territoire | zone à conquérir | Conquiert d'un coup une zone ronde d'environ 10 % du terrain autour du bonus. Le joueur **n'est plus figé** pendant l'expansion (il l'était dans le doc original, retiré à la demande de Fabien), et les ennemis pris dedans sont repoussés. |
 
 Historique de l'invincibilité, pour mémoire : 1) les ennemis étaient pulvérisés (trop fort), 2) ils étaient assommés 4 s (code `stunFoe`/`drawStun`, encore présent mais inutilisé), 3) version actuelle : casque original + Super Casque rare.
 
@@ -151,13 +154,14 @@ Le script est une IIFE découpée en sections commentées `/* ---------- … ---
 Le `dt` est plafonné à 0,05 s. Le ralenti du Super Casque multiplie `dt` dans `frame()`.
 
 ### Tester sans navigateur
-Un test de fumée a été utilisé en développement : extraire le `<script>`, l'exécuter dans Node avec un faux `document`, un faux canvas (Proxy) et un faux `requestAnimationFrame`, puis simuler des milliers de frames avec des touches aléatoires, au niveau 1 et aux niveaux 13 et 21 en Expert. Ça attrape les erreurs d'exécution. Lancer aussi `node --check` sur le script extrait après chaque modification.
+Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'exécute dans Node avec un faux `document`, un faux canvas (Proxy), une fausse horloge et un faux `requestAnimationFrame` (le `ResizeObserver` factice doit appeler `resize()`, sinon rien ne tourne). Il affiche la composition des niveaux, vérifie l'onde de choc (on s'échappe / on se fait rattraper) et le bonus territoire, puis simule 6000 frames avec des touches aléatoires à plusieurs niveaux et difficultés. Doit finir par `OK`. Lancer aussi `node --check` sur le script extrait après chaque modification. Pour tester dans le navigateur en local, passer par un serveur http (le service worker sert sinon l'ancienne version en cache : le désenregistrer d'abord).
 
 ---
 
 ## Écarts volontaires par rapport à l'original
 
 - Objectifs 75/80/85 % au lieu de 75/65/55.
+- Beaucoup plus d'ennemis (jusqu'à 21-23 au niveau 25), et le joueur n'est jamais figé (ni par l'onde de choc, ni par le bonus territoire).
 - Perforateur plus redoutable (transperce, onde foudroyante) au lieu de « coupe le fil et annule la conquête ».
 - Amphibie transformé en trou noir qui aspire.
 - Nouvel ennemi : le rongeur.
