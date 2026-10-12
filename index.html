@@ -161,7 +161,7 @@ details li b{color:var(--text);font-weight:600}
 (() => {
 'use strict';
 const COLS = 50, ROWS = 66, B = 2, N = COLS * ROWS, STEP = 1 / 17, POWER_T = 10, MAX_LEVEL = 25;
-const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 0.5;
+const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 0.85;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DIFFS = [
@@ -199,7 +199,7 @@ const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte et te fige.'],
   inn:  ['GARDIEN', 'Il patrouille sur ton terrain conquis. Ne le croise pas.'],
   perf: ['PERFORATEUR', 'Plus rapide que la boule, il ne rebondit pas sur ton fil : il le transperce. Son onde de choc te rattrape presque instantanément.'],
-  amph: ['AMPHIBIE', 'Un trou noir qui passe partout. Approche-toi trop et il t\'aspire vers lui : éloigne-toi vite de son cercle.'],
+  amph: ['TROU NOIR', 'Lent, mais il passe partout et aspire de loin. S\'il approche de ton fil, il le ravale comme une corde et te tire en arrière : coupe au plus court vers ton terrain !'],
   eat:  ['RONGEUR', 'Lent, mais il grignote une case de ton terrain chaque fois qu\'il le touche. Ton pourcentage peut redescendre !']
 };
 
@@ -351,7 +351,7 @@ function comp(L, d) {
 function makeFoe(kind, sp) {
   const deg = kind === 'inn' ? [30, 60] : [30, 45, 60];
   const a = (deg[(Math.random() * deg.length) | 0] + 90 * ((Math.random() * 4) | 0)) * Math.PI / 180;
-  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 5, eat: 3.4 }[kind] * sp;
+  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, eat: 3.4 }[kind] * sp;
   let x, y;
   if (kind === 'inn' || kind === 'amph') { x = 4 + Math.random() * (COLS - 8); y = ROWS - 1; }
   else { x = B + 3 + Math.random() * (COLS - 2*B - 6); y = B + 12 + Math.random() * (ROWS - 2*B - 16); }
@@ -499,17 +499,44 @@ function moveInto(nx, ny) {
   }
   pickItems();
 }
-// Amphibie = trou noir : aspire le vaisseau case par case dans un petit rayon
-const PULL_R = 4.5;
+// Amphibie = trou noir. Il aspire le vaisseau ; et si un point du fil est plus proche de lui que le vaisseau,
+// il s'y accroche et ravale le fil comme une corde : le vaisseau recule le long de son propre tracé.
+const PULL_R = 9;
+function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
 function updatePull(dt) {
   const k = Math.exp(-dt * 16); P.vox *= k; P.voy *= k;
+  P.rope = null;
   const pp = playerPos();
-  let best = null, bd = 1e9;
-  for (const e of foes) if (e.kind === 'amph' && !e.dead && !(e.stun > 0) && !(power.inv > 0)) { const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; best = e; } }
+  let best = null, bd = 1e9, bk = -1;
+  for (const e of holes()) {
+    const d = Math.hypot(e.x - pp.x, e.y - pp.y);
+    if (d < bd) { bd = d; best = e; bk = -1; }
+    if (P.drawing && !(power.sup > 0)) for (let j = 0; j < trail.length - 1; j++) {
+      if (erased[j]) continue;
+      const i = trail[j], dj = Math.hypot(e.x - (i % COLS + .5), e.y - (((i / COLS) | 0) + .5));
+      if (dj < bd) { bd = dj; best = e; bk = j; }
+    }
+  }
   if (!best || bd > PULL_R) { P.pull = 0; P.pullAcc = 0; return; }
   const s = 1 - bd / PULL_R;
   P.pull = s;
-  P.pullAcc += dt * (2 + 10 * s * s);
+  if (bk >= 0) {
+    P.rope = { e: best, k: bk, s };
+    if (Math.random() < .3 + s * .6) {
+      const ci = trail[Math.max(0, Math.min(trail.length - 1, bk + ((Math.random() * 7) | 0) - 3))];
+      const px = ci % COLS + Math.random(), py = ((ci / COLS) | 0) + Math.random();
+      const dx = best.x - px, dy = best.y - py, d = Math.hypot(dx, dy) || 1, v = 5 + 7 * s;
+      particles.push({ x: px, y: py, vx: dx / d * v, vy: dy / d * v, life: 0, max: Math.min(.8, d / v), color: T.trail, size: .12 + Math.random() * .12, ng: 1 });
+    }
+    P.pullAcc += dt * (1.5 + 31 * s * s);
+    while (P.pullAcc >= 1) {
+      P.pullAcc -= 1;
+      if (!reel(bk)) { P.pullAcc = 0; break; }
+      if (!muted && Math.random() < .4) tone(70 + s * 90, .05, 'sawtooth', .02, -20);
+    }
+    return;
+  }
+  P.pullAcc += dt * (3 + 18 * s * s);
   if (P.pullAcc < 1) return;
   P.pullAcc = 0;
   const dx = best.x - pp.x, dy = best.y - pp.y;
@@ -524,6 +551,19 @@ function updatePull(dt) {
     if (!muted) tone(120 + s * 200, .06, 'sine', .03, -40);
     break;
   }
+}
+// Ravale une case de fil : le vaisseau recule d'une case sur son tracé (jamais au-delà de l'accroche ni d'un trou d'onde)
+function reel(anchorK) {
+  const last = trail.length - 1;
+  if (last <= anchorK || last < 1 || erased[last - 1]) return false;
+  const i = trail.pop(); erased.pop(); trailPos[i] = -1;
+  if (grid[i] === 2) grid[i] = 0;
+  const j = trail[last - 1], nx = j % COLS, ny = (j / COLS) | 0, dx = nx - P.x, dy = ny - P.y;
+  P.vox -= dx; P.voy -= dy; P.px += dx; P.py += dy; P.x = nx; P.y = ny;
+  // si sa direction le renvoie sur son propre fil, il reprend le sens du tracé (vers la case libérée)
+  const ax = P.x + P.dir.x, ay = P.y + P.dir.y;
+  if (inB(ax, ay) && grid[at(ax, ay)] === 2) P.dir = { x: i % COLS - nx, y: ((i / COLS) | 0) - ny };
+  return true;
 }
 function updatePlayer(dt) {
   if (!P.dir.x && !P.dir.y && !P.next) { P.acc = 0; P.px = P.x; P.py = P.y; return; }
@@ -672,7 +712,7 @@ function updateFoes(dt) {
   for (const e of foes) {
     moveFoe(e, dt);
     if (S.phase !== 'play' || e.stun > 0) continue;
-    const r = e.kind === 'amph' ? 1.0 : 0.9;
+    const r = e.kind === 'amph' ? 1.2 : 0.9;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) {
       if (power.sup > 0) smash(e);
       else if (power.inv > 0) continue;
@@ -959,7 +999,7 @@ function update(dt) {
   if (ph !== 'pause') {
     for (const f of fresh) f.age += dt;
     fresh = fresh.filter(f => f.age < 0.45);
-    for (const p of particles) { p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= 0.96; p.vy = p.vy*0.96 + 6*dt; }
+    for (const p of particles) { p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= 0.96; p.vy = p.vy*0.96 + (p.ng ? 0 : 6*dt); }
     particles = particles.filter(p => p.life < p.max);
     for (const p of popups) p.age += dt;
     popups = popups.filter(p => p.age < (p.big ? 1.4 : 1));
@@ -1053,10 +1093,12 @@ function drawTrail(pp) {
   for (let k = 0; k < trail.length; k++) if (!erased[k]) ctx.fillRect(trail[k] % COLS, (trail[k] / COLS) | 0, 1, 1);
   ctx.beginPath();
   let open = false;
-  const last = trail.length - 1;
+  const last = trail.length - 1, hs = holes();
   for (let k = 0; k <= last; k++) {
     if (erased[k]) { open = false; continue; }
-    const i = trail[k], x = i % COLS + .5, y = ((i / COLS) | 0) + .5;
+    const i = trail[k];
+    let x = i % COLS + .5, y = ((i / COLS) | 0) + .5;
+    if (hs.length) [x, y] = bend(x, y, hs);
     if (k === last) {
       if (!open) ctx.moveTo(x, y);
       ctx.lineTo(pp.x, pp.y);
@@ -1088,6 +1130,7 @@ function drawTrail(pp) {
       glowOff();
     }
   }
+  if (P.rope && S.phase === 'play') drawRope();
 }
 
 function drawPlayer(pp) {
@@ -1216,38 +1259,84 @@ function drawInn(e) {
 }
 function drawAmph(e) {
   const onLand = cell(Math.floor(e.x), Math.floor(e.y)) === 1;
+  const R = R_AMPH, TAU = Math.PI * 2;
   ctx.save(); ctx.translate(e.x, e.y);
-  // zone d'aspiration : anneau en pointillés + poussière qui spirale vers le centre
-  ctx.globalAlpha = 0.35;
+  // puits gravitationnel : l'espace s'assombrit vers le centre, limite de la zone d'aspiration en pointillés
+  const well = ctx.createRadialGradient(0, 0, R, 0, 0, PULL_R);
+  well.addColorStop(0, T.hole); well.addColorStop(.45, T.hole); well.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = .6; ctx.fillStyle = well;
+  ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.fill();
+  ctx.globalAlpha = .3;
   ctx.strokeStyle = T.amphRing; ctx.lineWidth = .06;
   ctx.setLineDash([.25, .35]); ctx.lineDashOffset = -e.ph * .6;
-  ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = onLand ? T.amphInv : T.amphHi;
-  for (let k = 0; k < 14; k++) {
-    const f = (e.ph * .25 + k / 14) % 1, r = PULL_R * (1 - f) + .5;
-    const a = k * 2.4 + f * 5 + e.ph * .5;
-    ctx.globalAlpha = Math.min(1, f * 1.6) * .8;
-    ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, .06 + f * .06, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, 0, PULL_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  // poussière qui tombe en spirale, de plus en plus vite près de l'horizon
+  ctx.fillStyle = T.amphHi;
+  for (let k = 0; k < 26; k++) {
+    const f = (e.ph * .18 + k / 26) % 1, r = (PULL_R - R) * (1 - f) * (1 - f) + R;
+    const a = k * 2.4 + f * f * 9 + e.ph * .3;
+    ctx.globalAlpha = Math.min(1, f * 2) * .75;
+    ctx.beginPath(); ctx.arc(Math.cos(a) * r, Math.sin(a) * r, .05 + f * .07, 0, TAU); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // disque d'accrétion
-  ctx.save(); ctx.rotate(e.ph * .5); ctx.scale(1, .42);
-  glowOn(T.amph, 1.6);
-  ctx.strokeStyle = T.amph; ctx.lineWidth = .28;
-  ctx.beginPath(); ctx.arc(0, 0, R_AMPH + .45, 0, Math.PI*2); ctx.stroke();
-  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .08;
-  ctx.beginPath(); ctx.arc(0, 0, R_AMPH + .45, e.ph, e.ph + 2); ctx.stroke();
-  glowOff(); ctx.restore();
-  // horizon : cœur noir cerclé de lumière (inversé au-dessus de ton terrain)
-  const puls = 1 + Math.sin(e.ph * 2) * 0.06;
-  glowOn(T.amph, 1.2);
-  ctx.fillStyle = onLand ? T.amphInv : T.hole;
-  ctx.beginPath(); ctx.arc(0, 0, R_AMPH * puls, 0, Math.PI*2); ctx.fill();
+  // disque d'accrétion incliné : la moitié arrière passe derrière l'horizon, la moitié avant devant
+  const DR = R + 1.75;
+  const disk = (a0, a1) => {
+    ctx.save(); ctx.rotate(-.18); ctx.scale(1, .26);
+    glowOn(T.amph, 2);
+    ctx.strokeStyle = T.amph; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(0, 0, DR - .2, a0, a1); ctx.stroke();
+    ctx.strokeStyle = T.amphHi; ctx.lineWidth = .3;
+    ctx.beginPath(); ctx.arc(0, 0, DR - .55, a0, a1); ctx.stroke();
+    ctx.fillStyle = T.amphHi;
+    for (let k = 0; k < 7; k++) {
+      const a = (e.ph * .8 + k * TAU / 7) % TAU;
+      if (a < a0 || a > a1) continue;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * (DR - .2), Math.sin(a) * (DR - .2), .3, 0, TAU); ctx.fill();
+    }
+    glowOff(); ctx.restore();
+  };
+  disk(Math.PI, TAU);
+  // halo de lentille : la lumière du disque, courbée par la gravité, fait le tour de l'horizon
+  const puls = 1 + Math.sin(e.ph * 2) * 0.05;
+  glowOn(T.amphHi, 2.2);
+  ctx.strokeStyle = T.amph; ctx.lineWidth = .42;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.4 * puls, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .16;
+  ctx.beginPath(); ctx.arc(0, 0, R * 1.16 * puls, 0, TAU); ctx.stroke();
   glowOff();
-  ctx.strokeStyle = onLand ? T.hole : T.amphHi; ctx.lineWidth = .1;
-  ctx.beginPath(); ctx.arc(0, 0, R_AMPH * puls, 0, Math.PI*2); ctx.stroke();
+  // horizon des événements (inversé au-dessus de ton terrain)
+  ctx.fillStyle = onLand ? T.amphInv : T.hole;
+  ctx.beginPath(); ctx.arc(0, 0, R * puls, 0, TAU); ctx.fill();
+  disk(0, Math.PI);
   ctx.restore();
+}
+// Corde : le trou noir tire le fil depuis son point d'accroche
+function drawRope() {
+  const r = P.rope, i = trail[r.k];
+  if (i == null) return;
+  const ax = i % COLS + .5, ay = ((i / COLS) | 0) + .5, ex = r.e.x, ey = r.e.y;
+  const dx = ex - ax, dy = ey - ay, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+  ctx.beginPath(); ctx.moveTo(ax, ay);
+  for (let t = 1; t <= 14; t++) {
+    const u = t / 14, w = Math.sin(u * Math.PI) * Math.sin(time * 38 + u * 12) * .22 * r.s;
+    ctx.lineTo(ax + dx * u + nx * w, ay + dy * u + ny * w);
+  }
+  glowOn(T.amph, 1.4);
+  ctx.strokeStyle = T.amphHi; ctx.lineWidth = .1 + .16 * r.s; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.fillStyle = T.amphHi;
+  ctx.beginPath(); ctx.arc(ax, ay, .28 + Math.sin(time * 20) * .08, 0, Math.PI * 2); ctx.fill();
+  glowOff();
+}
+// Le trou noir courbe le fil vers lui (effet de lentille, purement visuel)
+function bend(x, y, hs) {
+  for (const e of hs) {
+    const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy);
+    if (d >= PULL_R || d < .01) continue;
+    const f = Math.min(d * .6, Math.pow(1 - d / PULL_R, 2) * 1.3);
+    x += dx / d * f; y += dy / d * f;
+  }
+  return [x, y];
 }
 function drawSuperItem(it) {
   const left = it.ttl - it.age, ending = left < 2.5;
@@ -1404,8 +1493,6 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  const lifeGift = S.lives < 9;
-  if (lifeGift) S.lives++;
   power.inv = 0; power.spd = 0; power.sup = 0; powersHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
@@ -1416,7 +1503,6 @@ function showClear() {
       <div><span>Terrain</span><span>${Math.floor(pct * 100)} %</span></div>
       <div><span>Bonus niveau</span><span>+${fmt(diffB)}</span></div>
       <div><span>Bonus dépassement</span><span>+${fmt(extra)}</span></div>
-      <div><span>Vie offerte</span><span>${lifeGift ? '+1' : 'max'}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
     </div>
     <button class="btn" id="go">NIVEAU SUIVANT</button>`, () => setupLevel(S.level + 1));

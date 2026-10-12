@@ -67,7 +67,7 @@ Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais 
 
 La vitesse augmente de 2 % par niveau (2,5 % avant la hausse du nombre d'ennemis).
 
-Fin de niveau : +1 vie (max 9), bonus de niveau et bonus de dépassement de l'objectif. Les pouvoirs actifs sont perdus. Après le niveau 25 : écran de victoire.
+Fin de niveau : bonus de niveau et bonus de dépassement de l'objectif. **Plus de vie offerte** en fin de niveau (retirée à la demande de Fabien) : les vies ne se gagnent qu'avec le bonus vie. Les pouvoirs actifs sont perdus. Après le niveau 25 : écran de victoire.
 
 ---
 
@@ -78,7 +78,7 @@ Fin de niveau : +1 vie (max 9), bonus de niveau et bonus de dépassement de l'ob
 | `out` | Boule (jaune) | à conquérir | Rebondit sur le terrain et sur le fil. Toucher le fil déclenche l'onde de choc. Diagonales à 30/45/60°. |
 | `perf` | Perforateur (vert, foreuse) | à conquérir | Plus rapide (8,8 contre 7,2), **transperce** le fil au lieu de rebondir, onde foudroyante. Rendu plus redoutable que la boule à la demande de Fabien. |
 | `inn` | Gardien (étoile rose) | terrain conquis | Patrouille sur le terrain, angles de 30/60°, part du bas. |
-| `amph` | Amphibie = **trou noir** (violet) | partout | Ne rebondit que sur les bords de l'écran. Touche le fil → onde. **Aspire le vaisseau** case par case dans un rayon `PULL_R = 4.5` : plus il est proche, plus il tire fort. Il ne tire jamais le joueur sur son propre fil (il le dévie sur le côté). S'affiche en couleurs inversées au-dessus du terrain. |
+| `amph` | Amphibie = **trou noir** (violet, présenté comme « TROU NOIR ») | partout | Lent (2,8). Ne rebondit que sur les bords de l'écran. Touche le fil → onde. Rayon d'action `PULL_R = 9`. **Corde** (idée de Fabien) : si un point du fil est plus proche du trou que le vaisseau, il s'y accroche et **ravale le fil** depuis le vaisseau (`reel()`), qui recule le long de son tracé à `1.5 + 31·s²` cases/s (`s = 1 − d/PULL_R`) : ~30 % de frein à 6 cases, quasi à l'arrêt à 3, tiré en arrière sous ~2,5. Il faut couper au plus court vers son terrain. Jamais au-delà de l'accroche ni d'un trou d'onde. Sinon il **aspire le vaisseau** directement (`3 + 18·s²` cases/s), sans jamais le tirer sur son propre fil. Pas de corde sous Super Casque, aucun effet sous Casque. Collision à 1,2. Rendu façon *Interstellar* : puits sombre, poussière en spirale, disque d'accrétion incliné (moitié arrière derrière l'horizon, moitié avant devant), halo de lentille ; le fil est courbé vers lui (`bend`, visuel) et une corde lumineuse vibrante relie le trou au point d'accroche (`drawRope`). Horizon en couleurs inversées au-dessus du terrain. |
 | `eat` | **Rongeur** (orange, création maison) | à conquérir | Lent (3,4). **Grignote une case de terrain** à chaque contact (cooldown 0,35 s). Ne touche jamais la bordure d'origine ni la case du joueur. Fait baisser le pourcentage. |
 
 Tous les ennemis sont « polarisés » : leur dessin suit leur sens de déplacement (doc original). Les ennemis de mer servent de graines au flood fill (`seaSeeds()`).
@@ -163,7 +163,8 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 - Objectifs 75/80/85 % au lieu de 75/65/55.
 - Beaucoup plus d'ennemis (jusqu'à 21-23 au niveau 25), et le joueur n'est jamais figé (ni par l'onde de choc, ni par le bonus territoire).
 - Perforateur plus redoutable (transperce, onde foudroyante) au lieu de « coupe le fil et annule la conquête ».
-- Amphibie transformé en trou noir qui aspire.
+- Amphibie transformé en trou noir qui aspire le vaisseau et tire son fil comme une corde.
+- Pas de vie offerte en fin de niveau.
 - Nouvel ennemi : le rongeur.
 - Super Casque (n'existe pas dans l'original).
 - 2 bonus par niveau bonus au lieu d'un, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
