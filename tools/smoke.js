@@ -332,6 +332,15 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 1); g.go(); g.armor.hp = .6; g.showClear(); g.setupLevel(2);
   console.log(`blindé : blindage conservé entre deux niveaux ${g.armor.hp} (0.6)`);
 }
+// 5n) Monarque : rien que des super bonus dès le niveau 1, mais 0,6 par niveau, éphémères, 2 vies (4 max)
+{
+  g.newGame(1, 1, 8);
+  const types = new Set(); for (let k = 0; k < 3000; k++) types.add(g.pickType());
+  let n = 0; for (let k = 0; k < 600; k++) { g.newGame(1, 2, 8); n += g.S.bonusLeft; }
+  g.newGame(1, 1, 8); g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); const l1 = g.S.lives;
+  g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 });
+  console.log(`monarque : bonus tirés au niveau 1 : ${[...types].sort().join(' ')} ; ${(n / 600).toFixed(2)} bonus par niveau ; vies 2 -> ${l1} -> ${g.S.lives} (max 4)`);
+}
 // 5l) Piégeur : une petite zone refermée sur un ennemi l'élimine pour de bon
 {
   const run = (ship) => {
@@ -367,7 +376,7 @@ for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 8); maxFoes = Math.max(maxFoes, g.foes.length); }
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 9); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');
