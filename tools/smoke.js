@@ -304,6 +304,22 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 6); g.collect({ type: 'life', x: 25.5, y: 33.5, done: false, age: 0 });
   console.log(`rembobineur : ${g.S.lives} vies après un bonus vie (max 2)`);
 }
+// 5l) Piégeur : une petite zone refermée sur un ennemi le détruit ; il revient 15 s plus tard
+{
+  const run = (ship) => {
+    g.newGame(1, 1, ship); g.go(); g.foes.length = 0;
+    const a = g.makeFoe('out', 1); a.x = 10.5; a.y = 8.5; a.vx = 0; a.vy = 0;
+    const b = g.makeFoe('out', 1); b.x = 40.5; b.y = 50.5; g.foes.push(a, b);
+    const f0 = g.S.filled;
+    g.setDir('down'); let n = 0; while (g.P.y < 16 && n++ < 200) step();
+    g.setDir('left'); n = 0; while (g.P.drawing && n++ < 200) step();
+    return { dead: a.dead || !g.foes.includes(a), pct: (g.S.filled - f0) / g.S.interior * 100 };
+  };
+  const t = run(7), c = run(0);
+  console.log(`piégeur : ennemi piégé ${t.dead}, +${t.pct.toFixed(1)} % (Classique dans la même situation : piégé ${c.dead}, +${c.pct.toFixed(1)} %)`);
+  run(7); const n0 = g.foes.length; step(60 * 16);
+  console.log(`piégeur : ${n0} ennemi(s) juste après, ${g.foes.length} 16 s plus tard (il est revenu)`);
+}
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
   g.newGame(1, 1, 2); g.go(); g.ab.cd = 40; g.showClear(); g.setupLevel(2);
@@ -316,14 +332,14 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 
 // 6) Parties aléatoires
 let tot = 0;
-for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 2], [2, 25, 3], [0, 25, 1]]) {
+for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 7], [2, 25, 3], [0, 25, 1], [1, 15, 7]]) {
   const c = play(d, L, 6000, 12345 + d * 7 + L, sh);
   tot += c; console.log(`partie d=${d} L=${L} vaisseau ${g.SHIPS[sh].name} : 6000 frames ok, ${c} crashs, ${g.foes.length} ennemis`);
 }
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 7); maxFoes = Math.max(maxFoes, g.foes.length); }
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 8); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');
