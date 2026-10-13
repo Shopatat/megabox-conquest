@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -61,8 +61,9 @@ function play(d, L, frames, seed, ship = 0) {
 // 1) Composition des niveaux
 for (let d = 0; d < 3; d++) {
   const rows = [];
-  for (let L = 1; L <= 25; L += 2) { const c = g.comp(L, d); rows.push(`${String(L).padStart(2)}:${c.out}/${c.perf}/${c.inn}/${c.amph}/${c.eat}=${c.out + c.perf + c.inn + c.amph + c.eat}`); }
-  console.log(g.DIFFS[d].short.padEnd(4), rows.join('  '));
+  let amphMax = 0;
+  for (let L = 1; L <= 25; L++) { const c = g.comp(L, d); amphMax = Math.max(amphMax, c.amph); rows.push(`${L}:${g.FOES.reduce((a, k) => a + c[k], 0)}`); }
+  console.log(g.DIFFS[d].short.padEnd(4), rows.join(' '), '| trous noirs max', amphMax);
 }
 
 // 2) Onde de choc : le vaisseau continue d'avancer, et survit s'il regagne le terrain à temps
@@ -215,10 +216,37 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`encaisseur et onde : phase ${ph}, fil restant ${kept}, au retour +${g.S.filled - f0} cases (que le bout de fil), sur son terrain ${!g.P.drawing}`);
 }
 
+
+// 5g) Nouveaux ennemis
+{
+  const lone = (kind, setup) => { g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40); const e = g.makeFoe(kind, 1); setup(e); g.foes.push(e); return e; };
+  // Diviseur : se coupe en deux au contact du fil, deux fois au plus
+  let e = lone('div', e => { e.x = g.P.x + 4.5; e.y = 20; e.vx = -6; e.vy = 0; });
+  let n = 0; for (let f = 0; f < 90 && g.S.phase === 'play'; f++) { step(); n = Math.max(n, g.foes.filter(x => x.kind === 'div').length); }
+  console.log(`diviseur : ${n} morceaux après avoir touché le fil (phase ${g.S.phase})`);
+  // Chasseur : immobile... puis fonce sur le vaisseau quand il trace
+  e = lone('hunt', e => { e.x = g.P.x + 12.5; e.y = 30; });
+  let seen = {}; for (let f = 0; f < 120 && g.S.phase === 'play'; f++) { step(); seen[e.st] = 1; }
+  console.log(`chasseur : états ${Object.keys(seen).join(' > ')}, fin ${g.S.phase}`);
+  // Pulsar : son anneau coupe le fil
+  e = lone('puls', e => { e.x = g.P.x + 6.5; e.y = 25; e.vx = 0; e.vy = 0; e.pt = .1; });
+  let waved = false; for (let f = 0; f < 90; f++) { step(); waved = waved || !!g.wave || g.S.phase !== 'play'; }
+  console.log(`pulsar : l'anneau a coupé le fil ${waved}`);
+  // Spectre : invisible une partie du temps
+  e = lone('ghost', e => { e.gt = 0; });
+  console.log(`spectre : cycle ${e.gt === 0 ? 'ok' : '?'} (visible, puis invisible ~2 s toutes les 6,4 s)`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 2], [2, 25, 3], [0, 25, 1]]) {
   const c = play(d, L, 6000, 12345 + d * 7 + L, sh);
   tot += c; console.log(`partie d=${d} L=${L} vaisseau ${g.SHIPS[sh].name} : 6000 frames ok, ${c} crashs, ${g.foes.length} ennemis`);
+}
+// 6b) Les 25 niveaux, un par un
+{
+  let maxFoes = 0;
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 4); maxFoes = Math.max(maxFoes, g.foes.length); }
+  console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');

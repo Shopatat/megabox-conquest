@@ -273,7 +273,7 @@ details li b{color:var(--text);font-weight:600}
       <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
     </div>
     <div class="trow"><span class="k">ENNEMIS</span>
-      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="eat">+RONGEUR</button><button class="mini" id="tclear">VIDER</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="tquit">QUITTER</button>
+      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="puls">+PULSAR</button><button class="mini" data-foe="hunt">+CHASSEUR</button><button class="mini" data-foe="div">+DIVISEUR</button><button class="mini" data-foe="ghost">+SPECTRE</button><button class="mini" id="tclear">VIDER</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="tquit">QUITTER</button>
     </div>
   </div>
 
@@ -292,22 +292,22 @@ const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.2;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DIFFS = [
-  { name: 'Débutant', short: 'DÉB', goal: .75, sp: .85, shift: -2, maxPerf: 2, mobile: 99, note: 'Objectif 75 %. Ennemis plus lents, renforts plus tardifs, bonus fixes.' },
-  { name: 'Confirmé', short: 'CONF', goal: .80, sp: 1, shift: 0, maxPerf: 6, mobile: 6, note: 'Objectif 80 %. Les ennemis s\'accumulent, bonus mobiles en fin de parcours.' },
-  { name: 'Expert', short: 'EXP', goal: .85, sp: 1.2, shift: 2, maxPerf: 6, mobile: 3, note: 'Objectif 85 %. Tout va vite, ennemis nombreux dès le début, bonus mobiles.' }
+  { name: 'Débutant', short: 'DÉB', goal: .75, sp: .85, maxPerf: 3, mobile: 99, note: 'Objectif 75 %. Moins d\'ennemis, et plus lents. Bonus fixes.' },
+  { name: 'Confirmé', short: 'CONF', goal: .80, sp: 1, maxPerf: 6, mobile: 6, note: 'Objectif 80 %. De nouveaux ennemis au fil des niveaux, bonus mobiles en fin de parcours.' },
+  { name: 'Expert', short: 'EXP', goal: .85, sp: 1.2, maxPerf: 6, mobile: 3, note: 'Objectif 85 %. Plus d\'ennemis, tout va vite, bonus mobiles.' }
 ];
 
 const THEMES = {
   color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, space:true, edge:'#dfe4ff',
     trail:'#ff7a4d', trailCore:'rgba(16,13,24,0.9)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
-    ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', eat:'#ff9f43', eatLo:'#5c2600',
+    ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', puls:'#46d9ff', pulsHi:'#e6fbff', hunt:'#ff4466', huntHi:'#ffd0da', div:'#ff9f43', divHi:'#ffe2bd', ghost:'#d9d4ff', ink:'#1a0c24',
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
     items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f', chr:'#7cf5c4', schr:'#7cf5c4' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
-    ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', eat:'#0b1838', eatLo:'#8fbaf2',
+    ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', puls:'#0b1838', pulsHi:'#5a80c8', hunt:'#0b1838', huntHi:'#5a80c8', div:'#0b1838', divHi:'#5a80c8', ghost:'#0b1838', ink:'#8fbaf2',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
@@ -382,7 +382,10 @@ const INTRO = {
   inn:  ['GARDIEN', 'Il patrouille sur ton terrain conquis. Ne le croise pas.'],
   perf: ['PERFORATEUR', 'Plus rapide que la boule, il ne rebondit pas sur ton fil : il le transperce. Son onde de choc te rattrape presque instantanément.'],
   amph: ['TROU NOIR', 'Lent, mais il passe partout et t\'aspire si tu passes près de lui. S\'il croise ton fil, il l\'avale et te ramène vers lui de plus en plus fort : file vers ton terrain au plus court !'],
-  eat:  ['RONGEUR', 'Lent, mais il grignote une case de ton terrain chaque fois qu\'il le touche. Ton pourcentage peut redescendre !']
+  puls: ['PULSAR', 'Presque immobile, il envoie régulièrement une onde circulaire. Si ton fil est dans l\'anneau quand elle passe, l\'onde de choc part (et dans la zone à conquérir, elle te touche aussi). Il s\'illumine juste avant : observe son rythme.'],
+  hunt: ['CHASSEUR', 'Tranquille tant que tu restes sur ton terrain. Dès que tu traces, il te vise (un pointillé te prévient) et fonce sur toi par à-coups.'],
+  div:  ['DIVISEUR', 'Une grosse cellule : chaque fois qu\'elle touche ton fil, elle se coupe en deux, plus petites et plus rapides (2 fois au plus).'],
+  ghost:['SPECTRE', 'Il disparaît de temps en temps. Invisible, il est toujours là : seul un léger scintillement le trahit.']
 };
 
 /* ---------- Stockage ---------- */
@@ -602,39 +605,65 @@ function resetGrid() {
 }
 
 /* ---------- Composition des niveaux ---------- */
-// Nombre d'ennemis par paire de niveaux (1 à 13), en Confirmé.
-// La difficulté décale la ligne lue (DIFFS[d].shift) ; au-delà de la paire 13, +1 boule par cran.
-const ROSTER = {
-  out:  [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-  perf: [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6],
-  inn:  [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 8],
-  amph: [0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3],
-  eat:  [0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3, 4]
-};
+// Les 25 niveaux, un par un (valeurs Confirmé). Demande de Fabien : moins d'ennemis à la fin mais des ennemis plus
+// coriaces, un seul trou noir au plus et pas à chaque niveau, de la variété (niveaux à thème, combos).
+// Nouveaux venus : gardien (3), perforateur (4), spectre (5), trou noir (7), chasseur (8), diviseur (10), pulsar (11).
+const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost'];
+const LEVELS = [
+  { out: 2 },
+  { out: 3 },
+  { out: 2, inn: 1 },
+  { out: 3, perf: 1 },
+  { out: 2, ghost: 1, inn: 1 },
+  { name: 'DUEL', out: 2, perf: 2, inn: 1 },
+  { out: 3, amph: 1 },
+  { out: 3, hunt: 1, inn: 1 },
+  { name: 'ESSAIM', out: 8 },
+  { out: 3, div: 1, inn: 1 },
+  { out: 3, puls: 1, inn: 2 },
+  { name: 'FANTÔMES', ghost: 4, inn: 1 },
+  { name: 'LA MEUTE', hunt: 3, out: 2 },
+  { out: 3, perf: 2, inn: 2, amph: 1 },
+  { name: 'MITOSE', div: 3, inn: 1 },
+  { name: 'PULSATIONS', puls: 2, out: 2, inn: 2 },
+  { out: 3, hunt: 2, ghost: 2, inn: 2 },
+  { name: 'FOREUSES', perf: 5, inn: 2 },
+  { out: 2, div: 2, ghost: 2, inn: 2, amph: 1 },
+  { name: 'OMBRES', ghost: 3, hunt: 2, puls: 1, inn: 2 },
+  { name: 'GARDE RAPPROCHÉE', inn: 6, out: 3, perf: 1 },
+  { out: 3, hunt: 2, puls: 2, inn: 2, amph: 1 },
+  { name: 'TEMPÊTE', perf: 4, div: 2, out: 2, inn: 2 },
+  { out: 2, hunt: 2, ghost: 2, puls: 2, div: 2, inn: 2 },
+  { name: 'BOUQUET FINAL', out: 3, perf: 2, hunt: 2, ghost: 2, puls: 1, div: 1, inn: 3, amph: 1 }
+];
+// Débutant : environ 30 % d'ennemis en moins (au moins un de chaque type prévu, deux boules) ; Expert : 25 % de plus et
+// une boule de plus. Jamais plus d'un trou noir.
 function comp(L, d) {
-  const p = Math.ceil(L / 2), D = DIFFS[d];
-  const q = Math.max(1, p + D.shift), r = Math.min(q, 13) - 1;
-  return {
-    out: ROSTER.out[r] + Math.max(0, q - 13),
-    inn: ROSTER.inn[r],
-    perf: Math.min(D.maxPerf, ROSTER.perf[r]),
-    amph: ROSTER.amph[r],
-    eat: ROSTER.eat[r],
-    bonus: true,
-    mobile: p >= D.mobile,
-    sp: D.sp * (1 + 0.02 * (L - 1)),
-    p
-  };
+  const R = LEVELS[Math.min(L, MAX_LEVEL) - 1], D = DIFFS[d], c = { name: R.name || '' };
+  for (const k of FOES) {
+    const n = R[k] || 0;
+    c[k] = !n ? 0 : k === 'amph' ? 1 : d === 0 ? Math.max(k === 'out' ? Math.min(n, 2) : 1, Math.round(n * .7)) : d === 2 ? Math.round(n * 1.25) : n;
+  }
+  if (d === 2) c.out++;
+  c.perf = Math.min(D.maxPerf, c.perf);
+  const p = Math.ceil(L / 2);
+  return Object.assign(c, { bonus: true, mobile: p >= D.mobile, sp: D.sp * (1 + 0.02 * (L - 1)), p });
 }
+const foeCount = c => FOES.reduce((a, k) => a + (c[k] || 0), 0);
 function makeFoe(kind, sp) {
   const deg = kind === 'inn' ? [30, 60] : [30, 45, 60];
   const a = (deg[(Math.random() * deg.length) | 0] + 90 * ((Math.random() * 4) | 0)) * Math.PI / 180;
-  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, eat: 3.4 }[kind] * sp;
+  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, puls: 1.4, hunt: 3.2, div: 5.2, ghost: 6.6 }[kind] * sp;
   let x, y;
   if (kind === 'inn' || kind === 'amph') { x = 4 + Math.random() * (COLS - 8); y = ROWS - 1; }
   else { x = B + 3 + Math.random() * (COLS - 2*B - 6); y = B + 12 + Math.random() * (ROWS - 2*B - 16); }
   const vy = (kind === 'inn' || kind === 'amph') ? -Math.abs(Math.sin(a)) * base : Math.sin(a) * base;
-  return { kind, x, y, vx: Math.cos(a) * base, vy, hist: [], ph: Math.random() * 6, dead: false };
+  const e = { kind, x, y, vx: Math.cos(a) * base, vy, hist: [], ph: Math.random() * 6, dead: false, sp };
+  if (kind === 'puls') { e.pt = 1.5 + Math.random() * 2; e.waves = []; }
+  if (kind === 'hunt') { e.st = 'roam'; e.t = 0; e.base = base; }
+  if (kind === 'div') { e.gen = 0; e.r = DIV_R[0]; e.cd = 0; }
+  if (kind === 'ghost') e.gt = Math.random() * GHOST_T;
+  return e;
 }
 
 /* ---------- Partie ---------- */
@@ -654,18 +683,14 @@ function continueGame() {
 }
 function setupLevel(L) {
   S.level = L; S.comp = comp(L, S.diff);
-  if (S.test) S.comp = { out: 1, inn: 1, perf: 0, amph: 0, eat: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
+  if (S.test) S.comp = { name: '', out: 1, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
   trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
   P = newPlayer();
   foes = [];
   const C = S.comp;
-  for (let i = 0; i < C.out; i++) foes.push(makeFoe('out', C.sp));
-  for (let i = 0; i < C.perf; i++) foes.push(makeFoe('perf', C.sp));
-  for (let i = 0; i < C.inn; i++) foes.push(makeFoe('inn', C.sp));
-  for (let i = 0; i < C.amph; i++) foes.push(makeFoe('amph', C.sp));
-  for (let i = 0; i < C.eat; i++) foes.push(makeFoe('eat', C.sp));
+  for (const k of FOES) for (let i = 0; i < C[k]; i++) foes.push(makeFoe(k, C.sp));
   items = []; S.bonusLeft = C.bonus ? bonusCount() : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
   // Robuste : chaque bonus prévu n'a que 3 chances sur 4 d'apparaître (25 % de bonus en moins)
   if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
@@ -745,6 +770,7 @@ function onTrailHit(e, i) {
     if (fast && !wave.fast) { wave.fast = true; wave.speed = 65; }
   }
   eraseK(k);
+  if (e.kind === 'div') divSplit(e);
 }
 function updateWave(dt) {
   if (!wave) return;
@@ -900,7 +926,8 @@ function playerPos() {
 }
 
 /* ---------- Conquête ---------- */
-const isSea = e => e.kind === 'out' || e.kind === 'perf' || e.kind === 'eat';
+const SEA = { out: 1, perf: 1, puls: 1, hunt: 1, div: 1, ghost: 1 };
+const isSea = e => !!SEA[e.kind];
 function seaSeeds() { return foes.filter(e => !e.dead && isSea(e)); }
 function capture() {
   const tcells = [];
@@ -963,37 +990,98 @@ function checkGoal() {
 
 /* ---------- Ennemis ---------- */
 function moveSea(e, dt) {
-  const R = R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
+  const R = e.r || R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
   const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || power.inv > 0);
   for (let s = 0; s < steps; s++) {
     let nx = e.x + e.vx * h, cx = Math.floor(nx + Math.sign(e.vx) * R), cy = Math.floor(e.y), c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.x = nx; else e.vx = -e.vx; }
-    else if (c === 1) { landHit(e, cx, cy); e.vx = -e.vx; } else e.x = nx;
+    else if (c === 1) e.vx = -e.vx; else e.x = nx;
     let ny = e.y + e.vy * h; cx = Math.floor(e.x); cy = Math.floor(ny + Math.sign(e.vy) * R); c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.y = ny; else e.vy = -e.vy; }
-    else if (c === 1) { landHit(e, cx, cy); e.vy = -e.vy; } else e.y = ny;
+    else if (c === 1) e.vy = -e.vy; else e.y = ny;
     cx = Math.floor(e.x + Math.sign(e.vx) * R); cy = Math.floor(e.y + Math.sign(e.vy) * R); c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (!pierce) { e.vx = -e.vx; e.vy = -e.vy; } }
-    else if (c === 1) { landHit(e, cx, cy); e.vx = -e.vx; e.vy = -e.vy; }
+    else if (c === 1) { e.vx = -e.vx; e.vy = -e.vy; }
   }
-  if (e.cool > 0) e.cool -= dt;
 }
-// Rongeur : grignote une case de terrain conquis à chaque contact (jamais la bordure d'origine)
-function landHit(e, x, y) {
-  if (e.kind !== 'eat' || S.phase !== 'play' || (e.cool || 0) > 0) return;
-  if (x < B || y < B || x >= COLS - B || y >= ROWS - B) return;
-  if (P && P.x === x && P.y === y) return;
-  const i = at(x, y);
-  if (grid[i] !== 1) return;
-  grid[i] = 0; e.cool = 0.35; e.bite = 0.25;
-  S.filled = Math.max(0, S.filled - 1);
-  for (let k = 0; k < 6; k++) particles.push({ x: x + .5, y: y + .5, vx: (Math.random()-.5)*4, vy: (Math.random()-.5)*4, life: 0, max: .4 + Math.random()*.4, color: T.landP, size: .2 + Math.random()*.25 });
-  boardDirty = true;
-  if (!muted && Math.random() < .5) tone(180 + Math.random()*60, .05, 'square', .02);
-  hud();
+// Donne à l'ennemi la vitesse v en gardant sa direction (direction au hasard s'il est à l'arrêt)
+function setSpeed(e, v) {
+  let m = Math.hypot(e.vx, e.vy);
+  if (m < .01) { const a = Math.random() * Math.PI * 2; e.vx = Math.cos(a); e.vy = Math.sin(a); m = 1; }
+  e.vx *= v / m; e.vy *= v / m;
 }
-let boardDirty = false;
+// Chasseur : tranquille tant que le joueur est sur son terrain ; dès qu'il trace, il vise (pointillé), fonce, souffle, recommence
+const HUNT_AIM = .6, HUNT_DASH = .5, HUNT_REST = .65, HUNT_V = 15;
+function huntAI(e, dt) {
+  const chase = S.phase === 'play' && P && P.drawing && !P.shield;
+  e.t -= dt;
+  if (e.st === 'roam') {
+    setSpeed(e, e.base);
+    if (chase) { e.st = 'aim'; e.t = HUNT_AIM; }
+  } else if (e.st === 'aim') {
+    const k = Math.exp(-dt * 8); e.vx *= k; e.vy *= k;
+    const pp = playerPos(); e.aim = Math.atan2(pp.y - e.y, pp.x - e.x);
+    if (e.t <= 0) {
+      if (!chase) { e.st = 'roam'; return; }
+      e.st = 'dash'; e.t = HUNT_DASH;
+      const v = HUNT_V * e.sp;
+      e.vx = Math.cos(e.aim) * v; e.vy = Math.sin(e.aim) * v;
+      if (!muted) tone(300, .18, 'sawtooth', .03, 500);
+    }
+  } else if (e.st === 'dash') {
+    if (e.t <= 0) { e.st = 'rest'; e.t = HUNT_REST; }
+  } else {
+    setSpeed(e, Math.max(e.base * .5, Math.hypot(e.vx, e.vy) * Math.exp(-dt * 5)));
+    if (e.t <= 0) { e.st = chase ? 'aim' : 'roam'; e.t = HUNT_AIM; }
+  }
+}
+// Pulsar : toutes les PULS_T secondes, il se charge (s'illumine) puis envoie une onde circulaire
+const PULS_T = 3.6, PULS_CHARGE = .9, PULS_R = 11, PULS_V = 12;
+function pulsarTick(e, dt) {
+  e.pt -= dt;
+  if (e.pt <= 0) {
+    e.pt = PULS_T; e.waves.push({ r: .8, hit: false });
+    if (!muted && S.phase === 'play') { tone(180, .35, 'sine', .05, -90); tone(900, .25, 'triangle', .02, -600); }
+  }
+  for (const w of e.waves) w.r += PULS_V * dt;
+  e.waves = e.waves.filter(w => w.r < PULS_R);
+}
+// L'anneau coupe le fil qu'il traverse (onde de choc) et touche le vaisseau s'il est dans la zone à conquérir
+function pulsarHits(e) {
+  if (!P || !P.drawing) return;
+  for (const w of e.waves) {
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) continue;
+      const i = trail[k], d = Math.hypot(i % COLS + .5 - e.x, ((i / COLS) | 0) + .5 - e.y);
+      if (Math.abs(d - w.r) < .55) { onTrailHit(e, i); break; }
+    }
+    const pp = playerPos();
+    if (S.phase === 'play' && Math.abs(Math.hypot(pp.x - e.x, pp.y - e.y) - w.r) < .5) hitPlayer(null);
+  }
+}
+// Diviseur : chaque contact avec le fil le coupe en deux, plus petits et plus rapides (deux fois au plus)
+const DIV_R = [.85, .6, .42], DIV_VK = 1.3;
+let spawned = [];
+function divSplit(e) {
+  if (e.gen >= 2 || e.cd > 0 || e.dead) return;
+  e.dead = true;
+  const gen = e.gen + 1, v = Math.hypot(e.vx, e.vy) * DIV_VK, a = Math.atan2(e.vy, e.vx);
+  for (const s of [-1, 1]) {
+    const b = a + s * .6;
+    spawned.push({ kind: 'div', x: e.x, y: e.y, vx: Math.cos(b) * v, vy: Math.sin(b) * v, hist: [], ph: e.ph + s, dead: false, sp: e.sp, gen, r: DIV_R[gen], cd: .5 });
+  }
+  burst(e.x, e.y, T.div, 22, 8); burst(e.x, e.y, T.rainbow ? T.divHi : T.shock, 10, 5);
+  rings.push({ x: e.x, y: e.y, r: 0, max: 2.5, age: 0, color: T.div });
+  if (!muted) { tone(520, .12, 'sine', .04, 400); tone(780, .1, 'sine', .03, 300, .05); }
+}
+// Spectre : visible, s'efface, invisible (scintillement discret), réapparaît
+const GHOST_T = 6.4;
+function ghostAlpha(e) {
+  const t = e.gt % GHOST_T;
+  return t < 3.2 ? 1 : t < 3.7 ? 1 - (t - 3.2) / .5 : t < 5.9 ? 0 : (t - 5.9) / .5;
+}
+const foeColor = e => ({ out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, puls: T.puls, hunt: T.hunt, div: T.div, ghost: T.ghost })[e.kind];
 const isLand = (x, y) => inB(x, y) && grid[at(x, y)] === 1;
 function moveLand(e, dt) {
   const R = R_LAND, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
@@ -1024,8 +1112,7 @@ function moveAmph(e, dt) {
     }
   }
 }
-// Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, gardien dont la case
-// a été grignotée) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
+// Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, ennemi sous Casque) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
 function unstick(e) {
   if (e.kind === 'amph') return;
   const c = cell(Math.floor(e.x), Math.floor(e.y)), sea = isSea(e);
@@ -1046,6 +1133,10 @@ function moveFoe(e, dt) {
     return;
   }
   unstick(e);
+  if (e.kind === 'hunt') huntAI(e, dt);
+  else if (e.kind === 'puls') pulsarTick(e, dt);
+  else if (e.kind === 'ghost') e.gt += dt;
+  else if (e.kind === 'div' && e.cd > 0) e.cd -= dt;
   if (isSea(e)) moveSea(e, dt);
   else if (e.kind === 'inn') moveLand(e, dt);
   else moveAmph(e, dt);
@@ -1059,16 +1150,21 @@ function updateFoes(dt) {
     moveFoe(e, dt);
     if (P && P.shield) shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
-    const r = e.kind === 'amph' ? R_AMPH + .25 : 0.9;
-    if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) {
-      if (power.sup > 0) smash(e);
-      else if (power.inv > 0 || P.shield) continue;
-      else if (invuln > 0 && !P.drawing) continue;
-      else if (SH().key === 'enc' && absorb(e)) continue;
-      else crash();
-    }
+    if (e.kind === 'puls') pulsarHits(e);
+    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9;
+    if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) hitPlayer(e);
   }
+  if (spawned.length) { foes.push(...spawned); spawned = []; }
   foes = foes.filter(e => !e.dead);
+}
+// Le vaisseau est touché (par un ennemi, ou par l'anneau d'un pulsar si e est nul)
+function hitPlayer(e) {
+  if (S.phase !== 'play') return;
+  if (power.sup > 0) { if (e) smash(e); return; }
+  if (power.inv > 0 || P.shield) return;
+  if (invuln > 0 && !P.drawing) return;
+  if (SH().key === 'enc' && absorb(e)) return;
+  crash();
 }
 function shieldBounce(e, ox, oy) {
   const cx = P.x + .5, cy = P.y + .5, R = SHIELD_R + (e.kind === 'amph' ? R_AMPH : .45);
@@ -1085,7 +1181,7 @@ function shieldBounce(e, ox, oy) {
 const STUN_T = 4;
 function stunFoe(e) {
   e.stun = STUN_T;
-  const color = { out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, eat: T.eat }[e.kind];
+  const color = foeColor(e);
   burst(e.x, e.y, color, 18, 7); burst(e.x, e.y, T.shock, 8, 5);
   shake = REDUCED ? 0 : 0.35;
   const pts = 100 * S.level; S.score += pts;
@@ -1096,7 +1192,7 @@ function stunFoe(e) {
 function smash(e) {
   if (e.dead) return;
   e.dead = true; combo++;
-  const color = { out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, eat: T.eat }[e.kind];
+  const color = foeColor(e);
   burst(e.x, e.y, color, 44, 15); burst(e.x, e.y, T.rainbow ? '#ffe27a' : T.shock, 20, 9);
   rings.push({ x: e.x, y: e.y, r: 0, max: 5, age: 0, color: T.rainbow ? '#ffe27a' : T.shock });
   shake = REDUCED ? 0 : 0.8;
@@ -1270,7 +1366,7 @@ function spawnItem() {
     const v = grid[at(x, y)];
     if (medium === 'sea' ? v !== 0 : v !== 1) continue;
     if (Math.hypot(x + .5 - pp.x, y + .5 - pp.y) < 7) continue;
-    if (medium === 'sea' && foes.some(e => (e.kind === 'out' || e.kind === 'perf') && Math.hypot(e.x - x - .5, e.y - y - .5) < 4)) continue;
+    if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - x - .5, e.y - y - .5) < 4)) continue;
     cands.push([x, y]);
   }
   if (!cands.length) return false;
@@ -1549,9 +1645,8 @@ function update(dt) {
         particles.push({ x: i % COLS + 0.5, y: ((i / COLS) | 0) + 0.5, vx: (Math.random()-.5)*3, vy: -2 - Math.random()*4, life: 0, max: .6 + Math.random()*.5, color: T.landP, size: .25 + Math.random()*.3 });
       }
     }
-    if (reveal.k >= L.length) { reveal = null; drawBoard(); boardDirty = false; }
+    if (reveal.k >= L.length) { reveal = null; drawBoard(); }
   }
-  if (boardDirty && !reveal) { drawBoard(); boardDirty = false; }
   if (power.sup > 0 && trail.length && ph === 'play' && Math.random() < .7) {
     const i = trail[(Math.random() * trail.length) | 0];
     particles.push({ x: i % COLS + Math.random(), y: ((i / COLS) | 0) + Math.random(), vx: (Math.random()-.5), vy: -1.5 - Math.random()*2, life: 0, max: .5, color: T.rainbow ? (Math.random() < .5 ? '#ffffff' : '#ffd23f') : T.ball, size: .18 });
@@ -1632,7 +1727,10 @@ function drawFoe(e) {
     if (e.kind === 'amph') drawAmph(e);
     else if (e.kind === 'inn') drawInn(e);
     else if (e.kind === 'perf') drawPerf(e);
-    else if (e.kind === 'eat') drawEat(e);
+    else if (e.kind === 'puls') drawPuls(e);
+    else if (e.kind === 'hunt') drawHunt(e);
+    else if (e.kind === 'div') drawDiv(e);
+    else if (e.kind === 'ghost') drawGhost(e);
     else drawOut(e);
   }
 }
@@ -2002,34 +2100,113 @@ function drawPerf(e) {
   if (T.rainbow) { glowOn('#ffffff', 1); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(.66, 0, .07 + Math.sin(e.ph * 6) * .015, 0, Math.PI * 2); ctx.fill(); glowOff(); }
   ctx.restore();
 }
-// Rongeur : croqueur à dents blanches, miettes quand il mord
-function drawEat(e) {
-  if (e.bite > 0) e.bite -= 1 / 60;
-  const open = e.bite > 0 ? 1.1 : 0.55 + Math.abs(Math.sin(e.ph * 2.2)) * 0.5, a = Math.atan2(e.vy, e.vx);
-  halo(e.x, e.y, 1.1, T.eat, .25);
-  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
-  const sq = e.bite > 0 ? 1.08 : 1;
-  ctx.scale(sq, 2 - sq);
-  glowOn(T.eat, 1);
-  const g = ctx.createRadialGradient(-.15, -.2, .05, 0, 0, .6);
-  g.addColorStop(0, T.rainbow ? '#ffd29a' : T.eat); g.addColorStop(.6, T.eat); g.addColorStop(1, T.rainbow ? '#d4601a' : T.eat);
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.moveTo(-.08, 0); ctx.arc(0, 0, .6, open * .7, Math.PI * 2 - open * .7); ctx.closePath(); ctx.fill();
-  glowOff();
-  // intérieur de la bouche, sombre, pour qu'on la voie bien ouverte
-  ctx.fillStyle = T.rainbow ? '#2a0800' : T.eatLo;
-  ctx.beginPath(); ctx.moveTo(-.08, 0); ctx.arc(0, 0, .52, -open * .7, open * .7); ctx.closePath(); ctx.fill();
-  // dents
-  ctx.fillStyle = T.rainbow ? '#ffffff' : T.eatLo;
-  for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
-    const ang = s * (open * .7 + .02), r0 = .24 + k * .18, x0 = Math.cos(ang) * r0, y0 = Math.sin(ang) * r0;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + .1, y0); ctx.lineTo(x0 + .05, y0 - s * .1); ctx.closePath(); ctx.fill();
+// Pulsar : étoile cyan à rayons tournants ; elle se charge (anneau qui se resserre, éclat) puis lâche son onde
+function drawPuls(e) {
+  const TAU = Math.PI * 2, charge = e.pt < PULS_CHARGE ? 1 - e.pt / PULS_CHARGE : 0;
+  for (const w of e.waves) {
+    const f = 1 - w.r / PULS_R;
+    ctx.globalAlpha = f * .9; glowOn(T.puls, 1.4);
+    ctx.strokeStyle = T.puls; ctx.lineWidth = .35 * f + .1;
+    ctx.beginPath(); ctx.arc(e.x, e.y, w.r, 0, TAU); ctx.stroke();
+    glowOff();
+    ctx.globalAlpha = f * .7; ctx.strokeStyle = T.rainbow ? '#ffffff' : T.pulsHi; ctx.lineWidth = .06;
+    ctx.beginPath(); ctx.arc(e.x, e.y, w.r, 0, TAU); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  halo(e.x, e.y, 1.4 + charge * 1.4, T.puls, .3 + charge * .4);
+  if (charge > 0) {
+    ctx.globalAlpha = charge; ctx.strokeStyle = T.puls; ctx.lineWidth = .1;
+    ctx.beginPath(); ctx.arc(e.x, e.y, 2.2 - charge * 1.5, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  ctx.save(); ctx.translate(e.x, e.y);
+  // rayons qui tournent, plus longs pendant la charge
+  ctx.rotate(e.ph * .4); ctx.fillStyle = T.puls;
+  for (let k = 0; k < 4; k++) {
+    ctx.rotate(TAU / 4); const L = .85 + charge * .6;
+    ctx.beginPath(); ctx.moveTo(.18, -.08); ctx.lineTo(L, 0); ctx.lineTo(.18, .08); ctx.closePath(); ctx.fill();
   }
   ctx.restore();
-  const ex = e.x + Math.cos(a - 1.7) * .3, ey = e.y + Math.sin(a - 1.7) * .3;
-  eye(ex, ey, .12, a, T.eatLo);
-  // miettes de terrain quand il mord
-  if (e.bite > .2 && T.glow && Math.random() < .5) particles.push({ x: e.x + Math.cos(a) * .5, y: e.y + Math.sin(a) * .5, vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4, life: 0, max: .35, color: T.landP, size: .14 });
+  glowOn(T.puls, 1 + charge * 1.5);
+  const g = ctx.createRadialGradient(e.x - .1, e.y - .12, .03, e.x, e.y, .48);
+  g.addColorStop(0, T.pulsHi); g.addColorStop(.6, T.puls); g.addColorStop(1, T.rainbow ? '#1a7fb8' : T.puls);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(e.x, e.y, .44 + charge * .08, 0, TAU); ctx.fill();
+  glowOff();
+  eye(e.x, e.y, .14, Math.atan2(e.vy, e.vx), T.ink);
+}
+// Chasseur : fléchette rouge ; quand il vise, il tremble et un pointillé file vers le vaisseau
+function drawHunt(e) {
+  const aiming = e.st === 'aim', a = aiming && e.aim !== undefined ? e.aim : Math.atan2(e.vy, e.vx);
+  if (aiming && P) {
+    const pp = playerPos(), d = Math.min(30, Math.hypot(pp.x - e.x, pp.y - e.y)), f = 1 - Math.max(0, e.t) / HUNT_AIM;
+    ctx.globalAlpha = .25 + f * .5; ctx.strokeStyle = T.hunt; ctx.lineWidth = .1; ctx.lineCap = 'round';
+    ctx.setLineDash([.15, .45]); ctx.lineDashOffset = -time * 4;
+    ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  // images rémanentes pendant la ruée
+  if (e.st === 'dash' && T.glow) {
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = T.hunt;
+    for (let k = 1; k < e.hist.length; k++) { const h = e.hist[k]; ctx.globalAlpha = .3 * (1 - k / e.hist.length); ctx.beginPath(); ctx.arc(h.x, h.y, .4, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+  halo(e.x, e.y, aiming ? 1.6 : 1.1, T.hunt, aiming ? .45 : .25);
+  const jit = aiming ? Math.sin(time * 70) * .05 : 0;
+  ctx.save(); ctx.translate(e.x + jit, e.y - jit); ctx.rotate(a);
+  glowOn(T.hunt, aiming ? 1.8 : 1);
+  const g = ctx.createLinearGradient(-.4, -.4, .6, .3);
+  g.addColorStop(0, T.hunt); g.addColorStop(1, T.huntHi);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(.75, 0); ctx.lineTo(-.45, -.48); ctx.lineTo(-.2, 0); ctx.lineTo(-.45, .48); ctx.closePath(); ctx.fill();
+  glowOff();
+  ctx.restore();
+  eye(e.x + Math.cos(a) * .08, e.y + Math.sin(a) * .08, .12, a, T.ink);
+}
+// Diviseur : cellule orange à la membrane qui ondule ; ses noyaux (deux, puis un) annoncent la division
+function drawDiv(e) {
+  const R = e.r, TAU = Math.PI * 2, a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, R * 1.9, T.div, .25);
+  ctx.beginPath();
+  for (let k = 0; k <= 20; k++) {
+    const t = k / 20 * TAU, r = R * (1 + .07 * Math.sin(t * 3 + e.ph * 2.2) + .04 * Math.sin(t * 5 - e.ph * 3));
+    ctx.lineTo(e.x + Math.cos(t) * r, e.y + Math.sin(t) * r);
+  }
+  ctx.closePath();
+  glowOn(T.div, 1);
+  const g = ctx.createRadialGradient(e.x - R * .3, e.y - R * .3, R * .1, e.x, e.y, R * 1.05);
+  g.addColorStop(0, T.divHi); g.addColorStop(.55, T.div); g.addColorStop(1, T.rainbow ? 'rgba(255,120,30,0.75)' : T.div);
+  ctx.fillStyle = g; ctx.fill(); glowOff();
+  ctx.strokeStyle = T.rainbow ? 'rgba(255,240,220,0.8)' : T.divHi; ctx.lineWidth = .06; ctx.stroke();
+  const nr = Math.max(.1, R * .24);
+  if (e.gen === 0) for (const s of [-1, 1]) eye(e.x - Math.sin(a) * R * .38 * s, e.y + Math.cos(a) * R * .38 * s, nr, a, T.ink);
+  else eye(e.x, e.y, nr, a, T.ink);
+}
+// Spectre : fantôme pâle qui s'efface puis disparaît ; invisible, seul un scintillement discret le trahit
+function drawGhost(e) {
+  const al = ghostAlpha(e), a = Math.atan2(e.vy, e.vx);
+  if (al < .03) {
+    if (Math.sin(time * 6 + e.ph * 3) > .8) {
+      ctx.globalAlpha = .35; ctx.fillStyle = T.rainbow ? '#ffffff' : T.ghost;
+      const ox = Math.sin(time * 13 + e.ph) * .3, oy = Math.cos(time * 11 + e.ph) * .3;
+      ctx.fillRect(e.x + ox - .25, e.y + oy - .02, .5, .04); ctx.fillRect(e.x + ox - .02, e.y + oy - .25, .04, .5);
+      ctx.globalAlpha = 1;
+    }
+    return;
+  }
+  ctx.globalAlpha = al;
+  halo(e.x, e.y, 1.2, T.ghost, .22);
+  ctx.save(); ctx.translate(e.x, e.y + Math.sin(e.ph * 1.5) * .05); ctx.scale(1.25, 1.25);
+  glowOn(T.ghost, 1);
+  const g = ctx.createLinearGradient(0, -.6, 0, .5);
+  g.addColorStop(0, T.rainbow ? '#ffffff' : T.ghost); g.addColorStop(1, T.rainbow ? 'rgba(185,170,255,0.75)' : T.ghost);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, -.08, .5, Math.PI, 0); ctx.lineTo(.5, .4);
+  for (let k = 0; k < 4; k++) { const x0 = .5 - k * .25; ctx.quadraticCurveTo(x0 - .06, .55 + Math.sin(e.ph * 3 + k) * .06, x0 - .125, .4); ctx.quadraticCurveTo(x0 - .19, .3, x0 - .25, .4); }
+  ctx.closePath(); ctx.fill(); glowOff();
+  // yeux qui regardent dans le sens du déplacement
+  ctx.fillStyle = T.ink;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * .18 + Math.cos(a) * .06, -.1 + Math.sin(a) * .06, .08, .12, 0, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 // Gardien : shuriken rose qui tourne et pulse, étincelles en orbite
 function drawInn(e) {
@@ -2334,7 +2511,9 @@ function infoRows(done) {
 function newcomers() {
   if (S.test) return '<p class="keys">Vies infinies, pas d\'objectif. Utilise les boutons sous le terrain pour faire apparaître bonus et ennemis.</p>';
   if (S.readyMode !== 'start') return '';
-  const now = S.comp, prev = S.level > 1 ? comp(S.level - 1, S.diff) : { out: 0, inn: 0, perf: 0, amph: 0, eat: 0 };
+  // un ennemi n'est présenté que la première fois qu'il apparaît (les niveaux à thème en font revenir certains)
+  const now = S.comp, seen = {};
+  for (let l = 1; l < S.level; l++) { const c = comp(l, S.diff); for (const k of FOES) if (c[k]) seen[k] = 1; }
   let html = '';
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
@@ -2342,7 +2521,7 @@ function newcomers() {
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Un 2ᵉ coup dans les 10 s coûte une vie.</p>`;
   }
-  for (const k of ['out', 'inn', 'perf', 'amph', 'eat']) if (now[k] > 0 && prev[k] === 0) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
+  for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
   if (now.mobile && !comp(Math.max(1, S.level - 1), S.diff).mobile) html += `<p class="keys">À partir de maintenant, les bonus se déplacent.</p>`;
   return html;
 }
@@ -2350,7 +2529,7 @@ function showReady(mode) {
   S.readyMode = mode; S.phase = 'ready';
   hud(); pwHud();
   showOverlay(`
-    <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
+    <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : S.comp.name ? 'NIVEAU · « ' + S.comp.name + ' »' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
     ${infoRows(mode === 'restart')}
     ${newcomers()}
     <button class="btn" id="go">PARTIR</button>
@@ -2422,7 +2601,10 @@ function titleScreen() {
         <li><b>Perforateur</b> : plus rapide, il transperce ton fil au lieu de rebondir, et son onde est foudroyante.</li>
         <li><b>Gardien</b> : il patrouille sur ton terrain.</li>
         <li><b>Trou noir</b> : il passe partout et t'aspire si tu passes près de lui. S'il croise ton fil, il l'avale et te ramène vers lui de plus en plus fort.</li>
-        <li><b>Rongeur</b> : lent, il grignote ton terrain à chaque contact.</li>
+        <li><b>Spectre</b> : il disparaît de temps en temps, mais il est toujours là.</li>
+        <li><b>Chasseur</b> : dès que tu traces, il te vise et fonce sur toi par à-coups.</li>
+        <li><b>Diviseur</b> : il se coupe en deux, plus petits et plus rapides, chaque fois qu'il touche ton fil.</li>
+        <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
         <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer).</li>

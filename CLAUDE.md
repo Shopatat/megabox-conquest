@@ -27,7 +27,7 @@ Consigne de Fabien : **s'inspirer de l'original autant que possible**. Les écar
 
 ## Principe du jeu
 
-Terrain en grille de **50 × 66 cases** (portrait), bordure conquise de 2 cases au départ. Le joueur part en haut au milieu, sur son terrain. Il entre dans la zone à conquérir en traçant un **fil**. Quand il revient sur son terrain, le fil devient terrain, et toute zone vide **sans ennemi « de mer »** (boule, perforateur, rongeur) est conquise par remplissage (flood fill). Objectif : atteindre le pourcentage cible de la difficulté.
+Terrain en grille de **50 × 66 cases** (portrait), bordure conquise de 2 cases au départ. Le joueur part en haut au milieu, sur son terrain. Il entre dans la zone à conquérir en traçant un **fil**. Quand il revient sur son terrain, le fil devient terrain, et toute zone vide **sans ennemi « de mer »** (boule, perforateur, pulsar, chasseur, diviseur, spectre) est conquise par remplissage (flood fill). Objectif : atteindre le pourcentage cible de la difficulté.
 
 États de case dans `grid` (`Uint8Array`) : `0` à conquérir, `1` conquis, `2` fil.
 
@@ -41,7 +41,7 @@ Terrain en grille de **50 × 66 cases** (portrait), bordure conquise de 2 cases 
 Gel de la scène, écran inversé 3 fois (`invert` CSS), explosion et « CRASH ! », −1 vie. Puis le joueur **repart là où il est mort**, sur la case conquise la plus proche (`respawnCell`, en évitant si possible les cases proches de **tout** ennemi), **le terrain conquis est conservé**, et l'écran d'info s'affiche.
 
 ### Ennemis coincés
-Un ennemi de mer peut se retrouver dans le terrain conquis (perforateur ou ennemi sous Casque posé sur le fil au moment de la capture), un gardien peut perdre sa case (grignotée). `unstick()`, appelé à chaque mouvement d'ennemi, le replace sur la case libre la plus proche de son milieu (ou le supprime s'il n'y en a plus). Avant ce correctif, Fabien est mort en boucle en réapparaissant sur un ennemi coincé.
+Un ennemi de mer peut se retrouver dans le terrain conquis (perforateur ou ennemi sous Casque posé sur le fil au moment de la capture). `unstick()`, appelé à chaque mouvement d'ennemi, le replace sur la case libre la plus proche de son milieu (ou le supprime s'il n'y en a plus). Avant ce correctif, Fabien est mort en boucle en réapparaissant sur un ennemi coincé.
 
 ### Zone protégée (départ et reprise)
 Demande de Fabien : tant que le joueur n'a pas bougé (début de niveau et après un crash), un **cercle blanc discret** pulse autour du vaisseau (`SHIELD_R = 3`, `drawShield`). **Tous les ennemis rebondissent dessus**, trous noirs compris (`shieldBounce` : retour à la position précédente et réflexion de la vitesse), et le trou noir n'aspire pas. Tant qu'il est actif, **aucun ennemi ne peut tuer le joueur**, même s'il est déjà dans le cercle. Le premier mouvement le lève (`dropShield`, le cercle s'évase en disparaissant), puis 1 s d'invulnérabilité contre les ennemis du terrain.
@@ -53,25 +53,46 @@ Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil 
 
 ## Difficultés et niveaux
 
-| Difficulté | Objectif | Vitesse ennemis | Décalage `shift` | Perforateurs max | Bonus mobiles à partir de la paire |
+| Difficulté | Objectif | Vitesse ennemis | Nombre d'ennemis | Perforateurs max | Bonus mobiles à partir de la paire |
 |---|---|---|---|---|---|
-| Débutant | **75 %** | ×0,85 | −2 | 2 | jamais |
-| Confirmé | **80 %** | ×1 | 0 | 6 | 6 |
-| Expert | **85 %** | ×1,2 | +2 | 6 | 3 |
+| Débutant | **75 %** | ×0,85 | environ −30 % (au moins un de chaque type prévu, deux boules) | 3 | jamais |
+| Confirmé | **80 %** | ×1 | valeurs de la table | 6 | 6 |
+| Expert | **85 %** | ×1,2 | +25 % et une boule de plus | 6 | 3 |
 
 Les objectifs 75/80/85 ont été **choisis par Fabien**. L'original avait 75/65/55.
 
-**25 niveaux par difficulté.** Les niveaux vont par paires (`p = ceil(L/2)`) : deux niveaux avec les mêmes ennemis (dans l'original, seul le niveau impair avait des bonus ; ils sont maintenant aléatoires sur tous les niveaux). Composition dans `comp(L, d)`, lue dans le tableau `ROSTER` (une colonne par paire, valeurs Confirmé) à la ligne `p + shift` ; au-delà de la paire 13, +1 boule par cran (Expert finit à 16 boules).
+**25 niveaux par difficulté, écrits un par un** dans la table `LEVELS` (valeurs Confirmé), que `comp(L, d)` adapte à la difficulté. Refonte demandée par Fabien : les derniers niveaux étaient devenus l'enfer (jusqu'à 35-37 ennemis, impossible de tracer un long fil). Désormais **moins d'ennemis mais des ennemis plus coriaces**, **un seul trou noir au maximum** et seulement sur certains niveaux (7, 14, 19, 22, 25), et de la **variété** : des niveaux à thème (nom affiché sur l'écran d'info, `comp().name`) avec un seul type d'ennemi ou un combo. Les débuts restent doux mais chaque niveau change quelque chose (Fabien ne voyait pas la différence entre les trois premiers, à une époque).
 
-Fabien trouvait le jeu **beaucoup trop facile** : il veut des débuts doux mais se sentir **submergé** dans les niveaux avancés (« jusqu'à plein d'ennemis », seconde hausse). Testé à 60 images/s avec 37 ennemis sur PC ; à surveiller sur iPhone (les trous noirs à lentille sont le plus coûteux). Total d'ennemis (boules/perfos/gardiens/trous noirs/rongeurs) :
+Arrivée des ennemis (Confirmé) : boule (1), gardien (3), perforateur (4), spectre (5), trou noir (7), chasseur (8), diviseur (10), pulsar (11). Un ennemi n'est présenté (« NOUVEAU · … ») que la première fois qu'il apparaît.
 
-| Niveau | 1 | 5 | 9 | 13 | 17 | 21 | 25 |
-|---|---|---|---|---|---|---|---|
-| Débutant | 2 | 2 | 6 | 12 | 16 | 21 | 25 |
-| Confirmé | 2 | 6 | 12 | 17 | 23 | 28 | 35 (14/6/8/3/4) |
-| Expert | 6 | 12 | 17 | 23 | 28 | 35 | 37 (16/6/8/3/4) |
+| Niv. | Thème | Ennemis (Confirmé) |
+|---|---|---|
+| 1-2 | | 2 puis 3 boules |
+| 3 | | 2 boules, 1 gardien |
+| 4 | | 3 boules, 1 perforateur |
+| 5 | | 2 boules, 1 spectre, 1 gardien |
+| 6 | DUEL | 2 boules, 2 perforateurs, 1 gardien |
+| 7 | | 3 boules, 1 trou noir |
+| 8 | | 3 boules, 1 chasseur, 1 gardien |
+| 9 | ESSAIM | 8 boules |
+| 10 | | 3 boules, 1 diviseur, 1 gardien |
+| 11 | | 3 boules, 1 pulsar, 2 gardiens |
+| 12 | FANTÔMES | 4 spectres, 1 gardien |
+| 13 | LA MEUTE | 3 chasseurs, 2 boules |
+| 14 | | 3 boules, 2 perforateurs, 2 gardiens, 1 trou noir |
+| 15 | MITOSE | 3 diviseurs, 1 gardien |
+| 16 | PULSATIONS | 2 pulsars, 2 boules, 2 gardiens |
+| 17 | | 3 boules, 2 chasseurs, 2 spectres, 2 gardiens |
+| 18 | FOREUSES | 5 perforateurs, 2 gardiens |
+| 19 | | 2 boules, 2 diviseurs, 2 spectres, 2 gardiens, 1 trou noir |
+| 20 | OMBRES | 3 spectres, 2 chasseurs, 1 pulsar, 2 gardiens |
+| 21 | GARDE RAPPROCHÉE | 6 gardiens, 3 boules, 1 perforateur |
+| 22 | | 3 boules, 2 chasseurs, 2 pulsars, 2 gardiens, 1 trou noir |
+| 23 | TEMPÊTE | 4 perforateurs, 2 diviseurs, 2 boules, 2 gardiens |
+| 24 | | 2 boules, 2 chasseurs, 2 spectres, 2 pulsars, 2 diviseurs, 2 gardiens |
+| 25 | BOUQUET FINAL | 3 boules, 2 perforateurs, 2 chasseurs, 2 spectres, 1 pulsar, 1 diviseur, 3 gardiens, 1 trou noir |
 
-La vitesse augmente de 2 % par niveau (2,5 % avant la hausse du nombre d'ennemis).
+Totaux au départ du niveau : 2 à 15 en Confirmé, 4 à 21 en Expert, 2 à 10 en Débutant (les diviseurs se multiplient ensuite). La vitesse augmente de 2 % par niveau. L'équilibrage reste à valider en jouant.
 
 Fin de niveau : bonus de niveau et bonus de dépassement de l'objectif. **Plus de vie offerte** en fin de niveau (retirée à la demande de Fabien) : les vies ne se gagnent qu'avec le bonus vie. Les pouvoirs actifs sont perdus. Après le niveau 25 : écran de victoire.
 
@@ -85,9 +106,14 @@ Fin de niveau : bonus de niveau et bonus de dépassement de l'objectif. **Plus d
 | `perf` | Perforateur (vert, foreuse) | à conquérir | Plus rapide (8,8 contre 7,2), **transperce** le fil au lieu de rebondir, onde foudroyante. Rendu plus redoutable que la boule à la demande de Fabien. |
 | `inn` | Gardien (étoile rose) | terrain conquis | Patrouille sur le terrain, angles de 30/60°, part du bas. |
 | `amph` | Amphibie = **trou noir** (violet, présenté comme « TROU NOIR ») | partout | Lent (2,8). Ne rebondit que sur les bords de l'écran. De près, il **aspire le vaisseau** (rayon `PULL_R = 7.5`, `3 + 18·s²` cases/s avec `s = 1 − d/PULL_R`, `suckStep`, jamais sur son propre fil). **S'il croise le fil** (son centre sur une case de fil), **pas d'onde de choc** : il l'**avale** (`grabTrail`, état global `grab`) et ramène le vaisseau vers lui le long de son tracé (`reel()` depuis le vaisseau vers la case du fil la plus proche du trou, puis aspiration directe), **de plus en plus fort** : `GRAB_V0 + GRAB_ACC·t` = 3 + 9·t cases/s (plafond 45). Il faut regagner son terrain au plus court (ça annule l'emprise). Précision de Fabien : la « corde » dont il parlait était une métaphore, le trou n'agit sur le fil que s'il le croise. Aucun effet sous Casque, ne croise jamais le fil sous Super Casque (mur). Horizon `R_AMPH = 1.2`, collision à 1,45 (taille réduite d’un quart à la demande de Fabien : il était trop grand à côté du reste), il avale le fil dès que son horizon l'effleure. Fabien veut qu'il soit **très dangereux**. Rendu (`drawAmph`, dessiné après les autres ennemis et avant le vaisseau) : **lentille gravitationnelle** (`LENS_R = 5.5` : copie de la zone autour du trou dans `lensCv`, puis 12 anneaux concentriques de plus en plus rétrécis et tordus : l'espace tombe vers le centre en spirale, les étoiles s'étirent en arcs), anneau d'Einstein discret, puis **obscurité** qui engloutit tout jusqu’à environ 4 cases, **terrain conquis compris**, le temps de son passage, fines traînées qui tourbillonnent, poussière en spirale, anneau de photons et horizon noir absolu. Pas de disque façon Saturne ni de cercle en pointillés (retirés à la demande de Fabien). Le fil est courbé vers lui (`bend`, visuel) ; pendant l'emprise, le fil entre le trou et le vaisseau s'illumine et file vers le trou de plus en plus vite, avec un tourbillon (`drawSuck`). Horizon en couleurs inversées au-dessus du terrain. |
-| `eat` | **Rongeur** (orange, création maison) | à conquérir | Lent (3,4). **Grignote une case de terrain** à chaque contact (cooldown 0,35 s). Ne touche jamais la bordure d'origine ni la case du joueur. Fait baisser le pourcentage. |
+| `ghost` | **Spectre** (lavande, fantôme) | à conquérir | Comme une boule (6,6). Cycle de 6,4 s (`GHOST_T`, `ghostAlpha`) : visible 3,2 s, s'efface, **invisible** 2,2 s (toujours dangereux ; seul un petit scintillement le trahit), réapparaît. |
+| `hunt` | **Chasseur** (rouge-rose, fléchette) | à conquérir | Tranquille (3,2) tant que le joueur est sur son terrain. Dès qu'il trace (`huntAI`) : il freine et **vise** 0,6 s (il tremble, un **pointillé** file vers le vaisseau), **fonce** 0,5 s à 15 cases/s vers la position visée (images rémanentes), souffle 0,65 s, recommence. Rebondit sur le fil comme une boule (onde de choc). |
+| `div` | **Diviseur** (orange, cellule) | à conquérir | Grosse cellule (5,2, rayon `DIV_R` 0,85). Chaque contact avec le fil déclenche l'onde de choc **et la coupe en deux** (`divSplit`), plus petites et 30 % plus rapides, **deux fois au plus** (4 morceaux). Deux noyaux tant qu'elle peut encore se diviser deux fois. Les morceaux naissent dans `spawned` et rejoignent `foes` après la boucle. |
+| `puls` | **Pulsar** (cyan, étoile à rayons) | à conquérir | Presque immobile (1,4). Toutes les 3,6 s (`PULS_T`), il se **charge** 0,9 s (anneau qui se resserre, halo, rayons qui s'allongent), puis envoie une **onde circulaire** (12 cases/s, jusqu'à 11 cases). L'anneau **coupe le fil** qu'il traverse (onde de choc, `pulsarHits`) et **touche le vaisseau** s'il est dans la zone à conquérir (`hitPlayer(null)`). Sans effet sous Casque. |
 
-Tous les ennemis sont « polarisés » : leur dessin suit leur sens de déplacement (doc original). Rendu soigné (même niveau de finition que le vaisseau) : halo lumineux additif (`halo()`), œil qui regarde dans le sens du déplacement (`eye()`). **Boule** : orbe de plasma en dégradé, traînée de comète, légère déformation dans le sens du mouvement, reflet qui tourne. **Perforateur** : foreuse conique en dégradé, rainures en spirale qui défilent, pointe incandescente, sillage vert. **Gardien** : shuriken rose à deux couches qui tournent en sens inverse et pulsent, étincelles en orbite. **Rongeur** : croqueur en dégradé, bouche sombre bien ouverte et dents blanches (pour ne pas le confondre avec la boule), se tasse quand il mord et projette des miettes de terrain. Les ennemis de mer servent de graines au flood fill (`seaSeeds()`).
+Le **rongeur** (il grignotait le terrain) a été **retiré** et remplacé par ces quatre ennemis, à la demande de Fabien.
+
+Tous les ennemis sont « polarisés » : leur dessin suit leur sens de déplacement (doc original). Rendu soigné (même niveau de finition que le vaisseau) : halo lumineux additif (`halo()`), œil qui regarde dans le sens du déplacement (`eye()`). **Boule** : orbe de plasma en dégradé, traînée de comète, légère déformation dans le sens du mouvement, reflet qui tourne. **Perforateur** : foreuse conique en dégradé, rainures en spirale qui défilent, pointe incandescente, sillage vert. **Gardien** : shuriken rose à deux couches qui tournent en sens inverse et pulsent, étincelles en orbite. Nouveaux ennemis : voir le tableau (dessins `drawPuls`, `drawHunt`, `drawDiv`, `drawGhost`, couleurs `T.puls/hunt/div/ghost`). Un contact avec le vaisseau passe par `hitPlayer` (Super Casque, Casque, zone protégée, Encaisseur, crash). Les ennemis de mer servent de graines au flood fill (`seaSeeds()`).
 
 ---
 
@@ -157,7 +183,7 @@ Arrêté dans la zone à conquérir (coup encaissé, Chrono), le vaisseau ne peu
 - **Clavier** : flèches ou ZQSD (AZERTY) / WASD, Espace = stop, P/Échap = pause, Entrée = valider, F ou E = pouvoir du vaisseau (frénésie), ← → pour changer de vaisseau sur l'écran de choix.
 
 ### Mode test (bac à sable)
-Bouton dans le menu. Vies infinies, pas d'objectif, pas de sauvegarde ni de record. Une barre sous le terrain permet de faire apparaître chaque bonus près du joueur et d'ajouter chaque ennemi, ainsi que Vider, Réinitialiser et Quitter. Pratique pour régler l'équilibrage.
+Bouton dans le menu. Vies infinies, pas d'objectif, pas de sauvegarde ni de record. On choisit son vaisseau. Une barre sous le terrain permet de faire apparaître chaque bonus près du joueur et d'ajouter chaque ennemi (dont pulsar, chasseur, diviseur, spectre), ainsi que Vider, Réinitialiser et Quitter. Pratique pour régler l'équilibrage.
 
 ---
 
@@ -180,12 +206,12 @@ Le script est une IIFE découpée en sections commentées `/* ---------- … ---
 1. Constantes, `DIFFS`, `THEMES`, `ITEM`, `INTRO` (textes de présentation des ennemis)
 2. **Stockage**, **Son** (`sfx.*`, `tone()`)
 3. **Taille et dessin du terrain** : `resize()` avec un `ResizeObserver`. Trois canvas : `bg` (fond statique), `board` (cases conquises, redessiné entièrement par `drawBoard()` ou incrémentalement via `paintCellIdx()`), et le canvas principal. Le dessin se fait **en unités de case** grâce à `setTransform(scale…)`.
-4. **Composition des niveaux** : `comp()`, `makeFoe()`
+4. **Composition des niveaux** : `LEVELS`, `FOES`, `comp()`, `makeFoe()`
 5. **Partie** : `newGame`, `continueGame`, `setupLevel`, `newPlayer`
 6. **Fil** : `pushTrail`, `eraseK`, `dissolveTrail`, `cancelConquest`, `onTrailHit`, `updateWave`. Le fil est un tableau ordonné `trail` + `erased` + `trailPos` (index inverse).
 7. **Joueur** : `setDir`, `stepPlayer`, `moveInto`, `updatePull` (trou noir), `playerPos` (interpolation + décalage visuel `vox/voy`)
 8. **Conquête** : `capture()` (flood fill depuis les ennemis de mer, puis révélation animée en vague via `startReveal`), `awardCells`, `checkGoal`
-9. **Ennemis** : `moveSea`, `moveLand`, `moveAmph`, `landHit` (rongeur), `updateFoes`, `smash` (Super Casque), `superOn`, `superMusic`
+9. **Ennemis** : `moveSea`, `huntAI`, `pulsarTick`/`pulsarHits`, `divSplit`, `ghostAlpha`, `moveLand`, `moveAmph`, `updateFoes`, `hitPlayer`, `smash` (Super Casque), `superOn`, `superMusic`
 10. **Pouvoirs des vaisseaux** : `usePower`, `updateAbility`, `absorb`, `waveStop` ; **Crash** : `crash(cause)`, `updateCrash`
 11. **Bonus** : `pickType`, `spawnItem`, `collect`, `territoryBurst`, `pushOut`, `updateItems`, `powersHud`, `pwHud`
 12. **Boucle** : `update(dt)` (machine à états via `S.phase` : `title`, `ready`, `play`, `pause`, `crash`, `clearing`, `clear`, `over`) et `render()` avec les fonctions de dessin `draw*`
@@ -196,18 +222,18 @@ Le script est une IIFE découpée en sections commentées `/* ---------- … ---
 Le `dt` est plafonné à 0,05 s. Le ralenti du Super Casque multiplie `dt` dans `frame()`.
 
 ### Tester sans navigateur
-Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'exécute dans Node avec un faux `document`, un faux canvas (Proxy), une fausse horloge et un faux `requestAnimationFrame` (le `ResizeObserver` factice doit appeler `resize()`, sinon rien ne tourne). Il affiche la composition des niveaux, vérifie l'onde de choc (on s'échappe / on se fait rattraper), le bonus territoire, le trou noir, les super bonus, le chrono, la zone protégée, les 4 vaisseaux (bonus du Robuste, vitesse et vies de la frénésie, coups encaissés et onde de l'Encaisseur), puis simule 6000 frames avec des touches aléatoires à plusieurs niveaux, difficultés et vaisseaux. Doit finir par `OK`. Lancer aussi `node --check` sur le script extrait après chaque modification. Pour tester dans le navigateur en local, passer par un serveur http (le service worker sert sinon l'ancienne version en cache : le désenregistrer d'abord).
+Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'exécute dans Node avec un faux `document`, un faux canvas (Proxy), une fausse horloge et un faux `requestAnimationFrame` (le `ResizeObserver` factice doit appeler `resize()`, sinon rien ne tourne). Il affiche la composition des niveaux, vérifie l'onde de choc (on s'échappe / on se fait rattraper), le bonus territoire, le trou noir, les super bonus, le chrono, la zone protégée, les 4 vaisseaux (bonus du Robuste, vitesse et vies de la frénésie, coups encaissés et onde de l'Encaisseur), les nouveaux ennemis (division, ruée du chasseur, anneau du pulsar), puis simule 6000 frames avec des touches aléatoires à plusieurs niveaux, difficultés et vaisseaux, et joue les 25 niveaux un par un. Doit finir par `OK`. Lancer aussi `node --check` sur le script extrait après chaque modification. Pour tester dans le navigateur en local, passer par un serveur http (le service worker sert sinon l'ancienne version en cache : le désenregistrer d'abord).
 
 ---
 
 ## Écarts volontaires par rapport à l'original
 
 - Objectifs 75/80/85 % au lieu de 75/65/55.
-- Beaucoup plus d'ennemis (jusqu'à 21-23 au niveau 25), et le joueur n'est jamais figé (ni par l'onde de choc, ni par le bonus territoire).
+- 25 niveaux écrits un par un, avec des niveaux à thème et quatre ennemis inédits, et le joueur n'est jamais figé (ni par l'onde de choc, ni par le bonus territoire).
 - Perforateur plus redoutable (transperce, onde foudroyante) au lieu de « coupe le fil et annule la conquête ».
 - Amphibie transformé en trou noir qui aspire le vaisseau et avale le fil qu'il croise.
 - Pas de vie offerte en fin de niveau.
-- Nouvel ennemi : le rongeur.
+- Nouveaux ennemis : spectre, chasseur, diviseur, pulsar (le rongeur, essayé un temps, a été retiré).
 - Super Casque, Super Bombe, Super Vitesse et Super Vie (n'existent pas dans l'original).
 - Bonus aléatoires sur tous les niveaux (0 à 3, moments imprévisibles) au lieu d'un bonus par niveau impair, et une durée de 10 s pour casque et vitesse (non précisée dans l'original).
 - Score maison, contrôles tactiles, thème MyX-3 en option, effets modernes (particules, vague de remplissage, sons).
@@ -220,13 +246,7 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 
 ## Pistes pour la suite
 
-### Refonte des ennemis et des niveaux (demandée par Fabien, pas encore faite)
-- **Moins d'ennemis** dans les derniers niveaux (trop, c'est l'enfer dès qu'on veut tracer un long fil), compensés par de **nouveaux ennemis plus coriaces**.
-- **Un seul trou noir au maximum**, et pas dans tous les niveaux une fois qu'il est apparu (sinon on le voit tout le temps). Aujourd'hui `ROSTER.amph` monte jusqu'à 3.
-- **Variété** : des niveaux à thème, par exemple un seul type d'ennemi, ou des combos difficiles entre deux types.
-- Le **rongeur** sera remplacé par un nouvel ennemi (à définir). Fabien a écarté l'idée de la « mèche » façon Qix qui court le long du fil : tracer un long fil est déjà assez dur.
-
 ### Divers
-- Équilibrage à affiner en jouant (vitesse du perforateur, force du trou noir, objectif Expert avec les rongeurs).
+- Équilibrage à affiner en jouant : nouveaux niveaux et nouveaux ennemis (rythme du pulsar, ruée du chasseur, invisibilité du spectre), vaisseaux.
 - Design général à peaufiner (Fabien l'a évoqué sans détailler).
 - Éventuellement l'écran d'intro et les « slides » de crash dessinés, comme prévus dans le doc original.
