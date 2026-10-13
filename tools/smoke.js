@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -237,6 +237,28 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`spectre : cycle ${e.gt === 0 ? 'ok' : '?'} (visible, puis invisible ~2 s toutes les 6,4 s)`);
 }
 
+
+// 5h) Fulgurant : une seule vie, pas de bonus de vie ni de vitesse, tracé éclair
+{
+  g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
+  const types = new Set(); for (let k = 0; k < 3000; k++) { g.S.level = 5; types.add(g.pickType()); }
+  g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 });
+  console.log(`fulgurant : ${g.S.lives} vie après une Super Vie, bonus tirés : ${[...types].sort().join(' ')}`);
+  g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
+  const ball = g.makeFoe('out', 1); ball.x = 40.5; ball.y = 45.5; g.foes.push(ball);
+  const f0 = g.S.filled, x0 = g.P.x;
+  g.planStart(); g.planTo(x0, 20); g.planTo(x0 - 12, 20); g.planTo(x0 - 12, 1);
+  const n = g.plan.cells.length, closed = g.plan.closed;
+  g.planLaunch();
+  let frames = 0; while (g.dash && frames < 60) { step(); frames++; }
+  console.log(`fulgurant : trajet de ${n} cases (refermé ${closed}) parcouru en ${frames} frames, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, sur son terrain ${!g.P.drawing}`);
+  // un ennemi sur le trajet : crash, et une seule vie = fin de partie
+  g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
+  const e = g.makeFoe('out', 1); e.x = g.P.x + .5; e.y = 12.5; e.vx = 0; e.vy = 0; g.foes.push(e);
+  g.planStart(); g.planTo(g.P.x, 30); g.planLaunch(); step(150);
+  console.log(`fulgurant : trajet à travers un ennemi -> ${g.S.phase}`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 2], [2, 25, 3], [0, 25, 1]]) {
@@ -246,7 +268,7 @@ for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 4); maxFoes = Math.max(maxFoes, g.foes.length); }
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 5); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');

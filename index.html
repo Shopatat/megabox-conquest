@@ -373,9 +373,19 @@ const SHIPS = [
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.14, s * .36); g.lineTo(-.6, s * .56); g.lineTo(-.46, s * .14); g.closePath(); g.fill(); }
       g.beginPath(); g.ellipse(0, 0, .56, .42, 0, 0, Math.PI * 2); g.fill();
       g.beginPath(); g.moveTo(.38, -.22); g.quadraticCurveTo(.8, 0, .38, .22); g.closePath(); g.fill();
+    } },
+  // Fulgurant (idée de Fabien) : une seule vie, jamais plus, ni bonus de vitesse ; en échange, tracé éclair illimité
+  { key: 'ful', name: 'FULGURANT', tag: 'Une vie, un éclair', lives: 1, maxLives: 1, bonus: 1, spd: 5, bon: 2, power: 'TRACÉ ÉCLAIR',
+    noItems: ['life', 'slife', 'spd', 'sspd'],
+    desc: 'Une seule vie, jamais plus. Pose le doigt sur le vaisseau et dessine ton trajet : il le parcourt en un éclair.',
+    hullA: '#ffffff', hullB: '#8fa6cf', glow: '#9fe8ff', pit: '#7df9ff', land: '#dfe8ff', flame: '120,220,255', tail: -.5, fw: .07, pitXY: [.3, .16, .05],
+    body(g) {
+      g.beginPath(); g.moveTo(.98, 0); g.lineTo(.1, -.12); g.lineTo(-.32, -.4); g.lineTo(-.22, -.1); g.lineTo(-.52, -.06);
+      g.lineTo(-.52, .06); g.lineTo(-.22, .1); g.lineTo(-.32, .4); g.lineTo(.1, .12); g.closePath(); g.fill();
     } }
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
+const maxLives = () => SH().maxLives || 9;
 
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
@@ -695,7 +705,7 @@ function setupLevel(L) {
   // Robuste : chaque bonus prévu n'a que 3 chances sur 4 d'apparaître (25 % de bonus en moins)
   if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
-  ab.on = 0; ab.cd = 0;
+  ab.on = 0; ab.cd = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -1299,6 +1309,86 @@ function waveStop() {
   }
 }
 
+// Fulgurant : tracé éclair. Depuis son terrain, on dessine un trajet (doigt posé sur le vaisseau, ou Maj + flèches) ;
+// au lâcher, le vaisseau le parcourt à DASH_V cases/s. Le trajet ne se croise pas, passe éventuellement sur le terrain
+// avant d'entrer dans la zone à conquérir, et se termine à la première case de terrain qui suit.
+const DASH_V = 150;
+let plan = null, dash = null;
+function planStart() {
+  if (SH().key !== 'ful' || S.phase !== 'play' || P.drawing || dash) return false;
+  P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0;
+  plan = { cells: [], sea: false, closed: false };
+  return true;
+}
+const planHead = () => plan.cells.length ? plan.cells[plan.cells.length - 1] : at(P.x, P.y);
+// ajoute (ou retire, en revenant en arrière) une case voisine de la tête du trajet
+function planStep(dx, dy) {
+  const h = planHead(), x = h % COLS + dx, y = ((h / COLS) | 0) + dy;
+  if (!inB(x, y)) return false;
+  const i = at(x, y), c = plan.cells;
+  const prev = c.length >= 2 ? c[c.length - 2] : at(P.x, P.y);
+  if (i === prev) { c.pop(); if (plan.closed) plan.closed = false; plan.sea = c.some(j => grid[j] === 0); return true; }
+  if (plan.closed || c.includes(i) || i === at(P.x, P.y) || grid[i] === 2 || c.length >= 400) return false;
+  c.push(i);
+  if (grid[i] === 0) plan.sea = true; else if (plan.sea) plan.closed = true;
+  return true;
+}
+// prolonge le trajet jusqu'à la case (x, y), une case à la fois (axe le plus éloigné d'abord)
+function planTo(x, y) {
+  for (let n = 0; n < 200; n++) {
+    const h = planHead(), dx = x - h % COLS, dy = y - ((h / COLS) | 0);
+    if (!dx && !dy) return;
+    const ok = Math.abs(dx) >= Math.abs(dy) ? planStep(Math.sign(dx), 0) || (dy && planStep(0, Math.sign(dy))) : planStep(0, Math.sign(dy)) || (dx && planStep(Math.sign(dx), 0));
+    if (!ok) return;
+  }
+}
+function planLaunch() {
+  const p = plan; plan = null;
+  if (!p || !p.sea || S.phase !== 'play') return;
+  dropShield();
+  dash = { cells: p.cells, k: 0, acc: 0 };
+  const pp = playerPos();
+  superFlash = .35; superTint = '200,240,255';
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: 4, age: 0, color: T.rainbow ? '#bfefff' : T.shock });
+  sfx.zap();
+}
+// le vaisseau file le long du trajet ; chaque case est vérifiée (ennemis, bonus), rien n'est sauté
+function updateDash(dt) {
+  dash.acc += dt * DASH_V;
+  while (dash && dash.acc >= 1 && S.phase === 'play') {
+    dash.acc -= 1;
+    const i = dash.cells[dash.k++], nx = i % COLS, ny = (i / COLS) | 0;
+    P.dir = { x: nx - P.x, y: ny - P.y }; P.next = null;
+    const wasDrawing = P.drawing;
+    moveInto(nx, ny);
+    P.px = P.x; P.py = P.y; P.acc = 0;
+    if (T.glow) for (let k = 0; k < 2; k++) particles.push({ x: nx + .5 + (Math.random() - .5) * .4, y: ny + .5 + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 0, max: .35, color: Math.random() < .5 ? '#ffffff' : '#9fe8ff', size: .16, ng: 1 });
+    for (const e of foes) {
+      if (e.dead) continue;
+      const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9;
+      if (Math.hypot(e.x - nx - .5, e.y - ny - .5) < r) { hitPlayer(e); break; }
+    }
+    // arrivé sur son terrain (zone refermée) ou trajet terminé : fin de l'éclair
+    if (S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) dash = null;
+  }
+  if (dash && S.phase !== 'play') dash = null;
+}
+// trajet prévu : pointillé lumineux qui part du vaisseau
+function drawPlan() {
+  if (!plan || !plan.cells.length) return;
+  ctx.beginPath(); ctx.moveTo(P.x + .5, P.y + .5);
+  for (const i of plan.cells) ctx.lineTo(i % COLS + .5, ((i / COLS) | 0) + .5);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  glowOn('#9fe8ff', 1.2);
+  ctx.globalAlpha = plan.sea ? .9 : .45;
+  ctx.strokeStyle = T.rainbow ? '#bfefff' : T.shock; ctx.lineWidth = .22;
+  ctx.setLineDash([.4, .3]); ctx.lineDashOffset = -time * 3; ctx.stroke(); ctx.setLineDash([]);
+  glowOff(); ctx.globalAlpha = 1;
+  const h = planHead();
+  ctx.fillStyle = T.rainbow ? '#ffffff' : T.shock;
+  ctx.beginPath(); ctx.arc(h % COLS + .5, ((h / COLS) | 0) + .5, plan.closed ? .45 : .28, 0, Math.PI * 2); ctx.fill();
+}
+
 /* ---------- Crash ---------- */
 // cause 'self' : le vaisseau a croisé son propre fil (pas un ennemi : la frénésie ne coûte pas 2 vies)
 function crash(cause) {
@@ -1309,6 +1399,7 @@ function crash(cause) {
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   if (ab.on > 0) { ab.on = 0; ab.cd = FR_CD; }
+  plan = null; dash = null;
   powersHud(); pwHud();
   sfx.crash();
 }
@@ -1348,13 +1439,16 @@ function bonusDelay(first) {
   return (first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14);
 }
 function pickType() {
-  const pool = [['terr', 3], ['inv', 3], ['spd', 2.5], ['chr', 2.5]];
-  if (S.lives < 9) pool.push(['life', 1.5]);
+  let pool = [['terr', 3], ['inv', 3], ['spd', 2.5], ['chr', 2.5]];
+  if (S.lives < maxLives()) pool.push(['life', 1.5]);
   // super bonus : rares (environ 1 bonus sur 8 en tout), à partir du niveau 3
   if (S.level >= 3) {
     pool.push(['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35], ['schr', 0.35]);
-    if (S.lives < 9) pool.push(['slife', 0.3]);
+    if (S.lives < maxLives()) pool.push(['slife', 0.3]);
   }
+  // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse)
+  const no = SH().noItems;
+  if (no) pool = pool.filter(([t]) => !no.includes(t));
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;
   for (const [t, w] of pool) { if ((r -= w) <= 0) return t; }
   return 'inv';
@@ -1402,7 +1496,7 @@ function collect(it) {
   const color = T.items[it.type];
   burst(it.x, it.y, color, 30, 9);
   if (ITEM[it.type].label) popups.push({ x: it.x, y: it.y - 1.2, text: ITEM[it.type].label, age: 0, color });
-  if (it.type === 'life') { S.lives = Math.min(9, S.lives + 1); hud(); sfx.power(); }
+  if (it.type === 'life') { S.lives = Math.min(maxLives(), S.lives + 1); hud(); sfx.power(); }
   else if (it.type === 'sup') superOn(it);
   else if (it.type === 'terr') territoryBurst(it);
   else if (it.type === 'sterr') superBomb(it);
@@ -1440,7 +1534,7 @@ function superSpeed(it) {
 }
 // Super Vie : +3 vies
 function superLife(it) {
-  const gain = Math.min(9, S.lives + 3) - S.lives;
+  const gain = Math.min(maxLives(), S.lives + 3) - S.lives;
   S.lives += gain; hud();
   superIntro(it, 'SUPER VIE !', '255,93,143');
   for (let k = 0; k < 3; k++) {
@@ -1611,7 +1705,7 @@ function update(dt) {
   tweenScore(dt);
   const ph = S.phase;
   if (ph === 'play') {
-    updatePlayer(dt);
+    if (dash) updateDash(dt); else if (!plan) updatePlayer(dt);
     const fdt = dt * foeSlow();
     if (S.phase === 'play') updatePull(fdt);
     if (S.phase === 'play') updateWave(fdt);
@@ -1697,6 +1791,7 @@ function render() {
 
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
+  if (plan && P) drawPlan();
   for (const r of rings) {
     if (r.fill) {
       // boule de feu de la Super Bombe
@@ -2009,7 +2104,7 @@ function drawHull(g, sh, o) {
   const glow = (c, k) => { if (o.neon) { g.shadowColor = c; g.shadowBlur = o.px * k; } }, noGlow = () => { g.shadowBlur = 0; };
   if (o.moving) {
     const fl = .34 + Math.sin(time * 38) * .07 + Math.sin(time * 23) * .05 + (o.fast ? .35 : 0) + (o.rage ? .25 : 0), x0 = sh.tail, w = sh.fw;
-    const fc = !o.neon ? '11,24,56' : o.rage ? '255,40,60' : o.fast ? '70,217,255' : '255,138,61';
+    const fc = !o.neon ? '11,24,56' : o.rage ? '255,40,60' : o.fast ? '70,217,255' : sh.flame || '255,138,61';
     const fg = g.createLinearGradient(x0, 0, x0 - fl, 0);
     fg.addColorStop(0, o.neon ? 'rgba(255,255,255,0.95)' : `rgba(${fc},1)`); fg.addColorStop(.35, `rgba(${fc},0.9)`); fg.addColorStop(1, `rgba(${fc},0)`);
     g.fillStyle = fg;
@@ -2519,6 +2614,7 @@ function newcomers() {
   if (S.shipTip) {
     S.shipTip = false;
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
+    if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Un 2ᵉ coup dans les 10 s coûte une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
@@ -2607,7 +2703,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer).</li>
+        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau).</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -2694,7 +2790,7 @@ function startDemo() {
   for (let y = B; y < 14; y++) for (let x = 34; x < COLS - B; x++) grid[at(x,y)] = 1;
   foes = [makeFoe('out', .8), makeFoe('perf', .8), makeFoe('amph', .8)];
   foes[2].y = 30;
-  items = []; trail = []; erased = []; wave = null; P = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  items = []; trail = []; erased = []; wave = null; P = null; plan = null; dash = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   S.filled = 0; reveal = null; drawBoard();
 }
 function togglePause() {
@@ -2757,22 +2853,42 @@ addEventListener('keydown', e => {
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (k === 'Enter' && onGo && !ov.hidden) { e.preventDefault(); ensureAudio(); go(); return; }
   if (shipPick && !ov.hidden && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); shipPick.step(menuShip + (k === 'ArrowRight' ? 1 : -1)); return; }
+  if (plan) {
+    const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], z: [0, -1], w: [0, -1], s: [0, 1], q: [-1, 0], a: [-1, 0], d: [1, 0] }[k];
+    if (d) { e.preventDefault(); planStep(d[0], d[1]); return; }
+    if (k === 'Shift' || k === 'Enter') { e.preventDefault(); planLaunch(); return; }
+    if (k === 'Escape' || k === ' ') { e.preventDefault(); plan = null; return; }
+  }
+  if (k === 'Shift' && !e.repeat) { if (planStart()) { e.preventDefault(); return; } }
   if (k === 'p' || k === 'Escape') { e.preventDefault(); togglePause(); return; }
   if (k === 'f' || k === 'e') { e.preventDefault(); usePower(); return; }
   if (KEYS[k]) { e.preventDefault(); setDir(KEYS[k]); }
 });
 let touch = null;
-cv.addEventListener('pointerdown', e => { touch = { x: e.clientX, y: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} ensureAudio(); });
+// case de la grille sous le doigt
+function cellAt(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * COLS, y: (e.clientY - r.top) / r.height * ROWS, px: r.width / COLS };
+}
+cv.addEventListener('pointerdown', e => {
+  touch = { x: e.clientX, y: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} ensureAudio();
+  // Fulgurant : poser le doigt sur (ou tout près de) son vaisseau commence un tracé éclair
+  if (SH().key === 'ful' && S.phase === 'play' && P && !P.drawing && !dash) {
+    const c = cellAt(e);
+    if (Math.hypot(c.x - P.x - .5, c.y - P.y - .5) * c.px < Math.max(36, 2.5 * c.px) && planStart()) touch.plan = true;
+  }
+});
 cv.addEventListener('pointermove', e => {
   if (!touch) return;
+  if (touch.plan) { if (plan) { const c = cellAt(e); planTo(Math.floor(c.x), Math.floor(c.y)); } return; }
   const dx = e.clientX - touch.x, dy = e.clientY - touch.y;
   if (Math.hypot(dx, dy) > 18) {
     setDir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
     touch = { x: e.clientX, y: e.clientY, moved: true };
   }
 });
-cv.addEventListener('pointerup', () => { if (touch && !touch.moved) setDir('stop'); touch = null; });
-cv.addEventListener('pointercancel', () => { touch = null; });
+cv.addEventListener('pointerup', () => { if (touch && touch.plan) planLaunch(); else if (touch && !touch.moved) setDir('stop'); touch = null; });
+cv.addEventListener('pointercancel', () => { if (touch && touch.plan) plan = null; touch = null; });
 ov.addEventListener('pointerup', e => {
   if (e.target.closest('button, details')) return;
   if (S.phase === 'pause') { ensureAudio(); resume(); }
