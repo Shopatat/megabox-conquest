@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -41,13 +41,14 @@ const g = globalThis.__g;
 const step = (n = 1) => { for (let i = 0; i < n; i++) { now += 16.7; const cb = rafCb; rafCb = null; cb && cb(now); } };
 const DIRS = ['up', 'down', 'left', 'right'];
 
-function play(d, L, frames, seed) {
+function play(d, L, frames, seed, ship = 0) {
   let s = seed; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
-  g.newGame(d, L); g.setDir('down'); step(2);
+  g.newGame(d, L, ship); g.setDir('down'); step(2);
   let crashes = 0, lastPhase = '';
   for (let f = 0; f < frames; f++) {
     if (g.S.phase === 'ready') g.setDir('down');
-    if (g.S.phase === 'over') g.newGame(d, L);
+    if (g.S.phase === 'over') g.newGame(d, L, ship);
+    if (rnd() < 0.01) g.usePower();
     if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
     if (rnd() < 0.005) g.setDir('stop');
     step();
@@ -178,10 +179,46 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`bonus aléatoires : ${(spawned / levels).toFixed(2)} par niveau (niveaux pairs compris), 1er bonus entre ${first[0].toFixed(1)} s et ${first[first.length - 1].toFixed(1)} s`);
 }
 
+
+// 5f) Vaisseaux
+{
+  // Robuste : 4 vies, 25 % de bonus en moins
+  let n0 = 0, n1 = 0;
+  for (let k = 0; k < 400; k++) { g.newGame(1, 2, 0); n0 += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
+  console.log(`robuste : ${g.S.lives} vies, ${(n1 / 400).toFixed(2)} bonus par niveau contre ${(n0 / 400).toFixed(2)} (attendu -25 %)`);
+  // Frénétique : +50 % de vitesse, 2 vies si un ennemi le touche pendant, 1 s'il croise son fil, recharge de 20 s
+  const run = fr => { g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
+  const dn = run(false), df = run(true);
+  console.log(`frénésie : ${dn} cases sans, ${df} avec (x${(df / dn).toFixed(2)})`);
+  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); g.usePower(); step(2); g.crash(); step(60);
+  const l2 = g.S.lives;
+  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); g.usePower(); step(2); g.crash('self'); step(60);
+  console.log(`frénésie : touché par un ennemi 3 -> ${l2} vies, croise son fil 3 -> ${g.S.lives} vies`);
+  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
+  const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20 + 10); g.usePower();
+  console.log(`frénésie : finie après 5 s ${cd > 19}, refusée pendant la recharge ${refused}, de nouveau dispo après 20 s ${g.ab.on > 0}`);
+  // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
+  g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
+  const pyB = g.P.y;
+  g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
+  step(3); const stopped = g.S.phase === 'play' && !g.P.dir.x && !g.P.dir.y; const yS = g.P.y; step(30);
+  console.log(`encaisseur : ${g.SHIPS[3].lives} vies, coup encaissé (phase ${g.S.phase}), arrêté net ${stopped && g.P.y === yS} (y ${pyB} -> ${g.P.y}), bouclier ${g.P.guard.toFixed(1)} s`);
+  g.foes.length = 0; step(60);
+  g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
+  step(5); console.log(`encaisseur : 2e coup dans les 10 s -> ${g.S.phase}`);
+  // onde de choc : fil effacé, conquête annulée, le retour ne referme aucune zone
+  g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
+  g.foes.push({ kind: 'out', x: 40, y: 40, vx: 7.2, vy: 4, hist: [], ph: 0, dead: false });
+  g.onTrailHit({ kind: 'perf' }, g.trail[0]); step(20);
+  const kept = g.trail.length, f0 = g.S.filled, ph = g.S.phase;
+  g.setDir('left'); step(4); g.setDir('up'); step(120);
+  console.log(`encaisseur et onde : phase ${ph}, fil restant ${kept}, au retour +${g.S.filled - f0} cases (que le bout de fil), sur son terrain ${!g.P.drawing}`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
-for (const [d, L] of [[0, 1], [1, 1], [1, 13], [2, 13], [2, 21], [2, 25], [0, 25]]) {
-  const c = play(d, L, 6000, 12345 + d * 7 + L);
-  tot += c; console.log(`partie d=${d} L=${L} : 6000 frames ok, ${c} crashs, ${g.foes.length} ennemis`);
+for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 2], [2, 25, 3], [0, 25, 1]]) {
+  const c = play(d, L, 6000, 12345 + d * 7 + L, sh);
+  tot += c; console.log(`partie d=${d} L=${L} vaisseau ${g.SHIPS[sh].name} : 6000 frames ok, ${c} crashs, ${g.foes.length} ennemis`);
 }
 console.log('OK');

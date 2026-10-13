@@ -44,17 +44,33 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .hud,.foot{width:100%;max-width:max(var(--pw,100%),min(100%,343px))}
 .hud{display:grid;gap:9px;box-sizing:border-box;padding:10px 12px 11px;background:var(--panel);border:1px solid var(--line);border-radius:18px;
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 12px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
-.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.brand{font-family:var(--body);font-weight:600;font-size:9.5px;line-height:1.15;letter-spacing:.32em;color:var(--muted)}
-.brand b{display:block;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px rgba(255,92,138,.35))}
-.stats{display:flex;gap:12px;align-items:center}
-.stat{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.k{font-family:var(--body);font-weight:600;font-size:9px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
+/* en haut : niveau, gros score et vies à gauche ; bouton de pouvoir du vaisseau et pause à droite */
+.top{display:flex;align-items:center;gap:10px;min-height:46px}
+.who{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.who .k{overflow:hidden;text-overflow:ellipsis}
+.who .v{font-size:22px;letter-spacing:.02em}
+.k{font-family:var(--body);font-weight:600;font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
 .v{font-family:var(--display);font-size:15px;line-height:1;font-variant-numeric:tabular-nums}
 .v small{font-size:9px;color:var(--muted)}
-.lives{display:flex;gap:3px;height:14px;align-items:flex-end}
-.lives i{width:7px;height:14px;background:var(--grad);border-radius:4px;box-shadow:0 0 6px rgba(255,92,138,.45)}
+.lives{display:flex;gap:4px;height:7px;align-items:center;margin-top:2px}
+.lives i{width:15px;height:7px;background:var(--accent);border-radius:4px;box-shadow:0 0 8px rgba(255,92,138,.65)}
 .lives i.off{background:rgba(255,255,255,.1);box-shadow:none}
+/* bouton de pouvoir : anneau (conic-gradient) qui se vide pendant l'effet et se remplit pendant la recharge */
+.pw{--p:1;--c:#ff9a4d;flex:none;width:46px;height:46px;padding:3px;box-sizing:border-box;border:0;border-radius:50%;cursor:pointer;
+  background:conic-gradient(var(--c) calc(var(--p) * 1turn),rgba(255,255,255,.1) 0);transition:transform .15s var(--ease),box-shadow .3s}
+.pw .in{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1d3d;color:#c9cdf2;font-family:var(--display);font-size:14px}
+.pw svg{width:20px;height:20px;fill:currentColor}
+.pw:active{transform:scale(.9)}
+.pw.ready{box-shadow:0 0 0 3px rgba(255,154,77,.2),0 0 18px rgba(255,92,138,.6);animation:pwpulse 1.6s ease-in-out infinite}
+.pw.ready .in{background:var(--grad);color:#fff}
+.pw.on{--c:#ffd0d6;box-shadow:0 0 22px rgba(255,31,61,.75)}
+.pw.on .in{background:linear-gradient(135deg,#ff6b6b,#ff1f3d);color:#fff}
+.pw.cd{--c:#8f95c6}
+.pw.guard{--c:#5dffb0;cursor:default;box-shadow:0 0 14px rgba(93,255,176,.35)}
+.pw.guard .in{background:radial-gradient(circle,#1d4a3c,#12261f);color:#5dffb0}
+.pw.hurt{--c:#ff5c8a;cursor:default}
+.pw.hurt .in{color:#ff9fb5}
+@keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
   background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
 .pbtn i{width:4px;height:13px;background:var(--text);border-radius:2px}
@@ -147,6 +163,36 @@ details li::marker{color:var(--accent)}
 details li b{color:var(--text);font-weight:600}
 .btn:focus-visible,.mini:focus-visible,.pbtn:focus-visible,.seg button:focus-visible,.stepper button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
+/* ---- Choix du vaisseau ---- */
+.card.ships{gap:11px}
+.shead{display:flex;align-items:center;gap:10px}
+.shead h2{flex:1}
+.back{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid var(--line-2)}
+.back svg,.arrow svg{width:16px;height:16px;fill:none;stroke:var(--text);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.sstage{position:relative;height:128px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+#shipcv{width:100%;height:100%;border-radius:18px;box-shadow:none}
+.arrow{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border-radius:50%;
+  background:rgba(7,9,22,.6);border:1px solid var(--line-2);transition:transform .15s var(--ease)}
+.arrow:active{transform:scale(.88)}
+.arrow.l{left:8px}.arrow.r{right:8px}
+.sname{text-align:center;display:grid;gap:3px}
+.sname b{font-family:var(--display);font-weight:400;font-size:24px;line-height:1}
+.sname span{font-size:12px;color:var(--muted)}
+.sstats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;padding:11px 13px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+.sstats div{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.sstats .k{letter-spacing:.1em}
+.sstats .dots{display:flex;gap:3px}
+.sstats .dots i{width:9px;height:6px;border-radius:3px;background:rgba(255,255,255,.12)}
+.sstats .dots.l i{background:var(--accent);box-shadow:0 0 6px rgba(255,92,138,.6)}
+.sstats .dots.s i.on{background:var(--cyan)}
+.sstats .dots.b i.on{background:var(--ball)}
+.sstats .pwr{font-family:var(--display);font-size:10px}
+.card p.sdesc{font-size:13px;line-height:1.4;color:#c9cdf2;text-align:center;min-height:3.5em}
+.spage{display:flex;justify-content:center;gap:2px}
+.spage button{width:28px;height:22px;padding:0;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.spage button i{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.25);transition:width .25s var(--ease),background .25s}
+.spage button[aria-current="true"] i{width:22px;background:var(--text)}
+
 /* ---- Pied de page, mode test ---- */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex:none}
 .foot .tools{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto}
@@ -172,13 +218,16 @@ details li b{color:var(--text);font-weight:600}
 .chip.hyp b{background:#fff;box-shadow:0 0 6px #46d9ff}
 .chip.chr{color:#7cf5c4}.chip.chr b{background:#7cf5c4;box-shadow:0 0 6px #7cf5c4}
 .chip.schr{color:#7cf5c4;border-color:#7cf5c4;animation:supchip 1.6s linear infinite}.chip.schr b{background:radial-gradient(circle,#fff,#7cf5c4 60%,#43e0ff)}
+.chip.rage{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}.chip.rage b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
+@keyframes ragechip{50%{box-shadow:0 0 12px rgba(255,31,61,.8)}}
+.chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
 @keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
 .lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
 @keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
 /* ---- Finitions animées ---- */
-.brand b,.card h1{background:linear-gradient(90deg,#ff5c8a,#ff9a4d,#ffd23f,#ff9a4d,#ff5c8a);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:sheen 7s linear infinite;filter:none}
+.card h1{background:linear-gradient(90deg,#ff5c8a,#ff9a4d,#ffd23f,#ff9a4d,#ff5c8a);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:sheen 7s linear infinite;filter:none}
 .btn{position:relative;overflow:hidden;isolation:isolate}
 .btn:not(.ghost)::after{content:'';position:absolute;top:0;bottom:0;left:0;width:38%;pointer-events:none;
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.4),rgba(255,255,255,0));animation:shine 3.8s ease-in-out infinite}
@@ -190,7 +239,7 @@ details li b{color:var(--text);font-weight:600}
 .lives i{transition:background .3s,box-shadow .3s}
 .seg button{transition:background .3s,color .3s,box-shadow .3s,transform .15s var(--ease)}
 .seg button:active{transform:scale(.95)}
-@media (prefers-reduced-motion:reduce){.brand b,.card h1,.btn::after,.meter .fill::after,.chip,.overlay{animation:none}}
+@media (prefers-reduced-motion:reduce){.card h1,.btn::after,.pw.ready,.meter .fill::after,.chip,.overlay{animation:none}}
 @media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
 </style>
 </head>
@@ -199,13 +248,13 @@ details li b{color:var(--text);font-weight:600}
 <div class="app">
   <header class="hud">
     <div class="top">
-      <div class="brand">MEGABOX<b>CONQUEST</b></div>
-      <div class="stats">
-        <div class="stat"><span class="k" id="dlab">NIV</span><span class="v" id="lvl">01<small>/25</small></span></div>
-        <div class="stat"><span class="k">SCORE</span><span class="v" id="score">0</span></div>
-        <div class="stat"><span class="k">VIES</span><span class="lives" id="lives"></span></div>
-        <button class="pbtn" id="pz" aria-label="Pause"><i></i><i></i></button>
+      <div class="who">
+        <span class="k" id="lab">MEGABOX CONQUEST</span>
+        <span class="v" id="score" aria-label="Score">0</span>
+        <span class="lives" id="lives" aria-label="Vies"></span>
       </div>
+      <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span></button>
+      <button class="pbtn" id="pz" aria-label="Pause"><i></i><i></i></button>
     </div>
     <div class="meterRow">
       <div class="meter" aria-label="Terrain conquis"><div class="fill" id="bar"></div><i class="goal" id="goal"></i></div>
@@ -280,6 +329,54 @@ const ITEM = {
 // Versions « super » (rares) : type super -> bonus de base dont elles reprennent l'icône
 const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'chr' };
 
+// Vaisseaux au choix (idée de Fabien). body() trace et remplit la coque (unités de case, nez vers +x) ;
+// tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
+const FR_T = 5, FR_CD = 20, GUARD_T = 10;
+const SHIPS = [
+  { key: 'cla', name: 'CLASSIQUE', tag: 'L\'équilibre', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'AUCUN',
+    desc: 'Le vaisseau d\'origine. Rien à gérer, juste toi et le terrain.',
+    hullA: '#ffffff', hullB: '#c9d2ff', glow: '#ff7a4d', pit: '#43e0ff', land: '#c9d2ff', tail: -.36, fw: .15, pitXY: [.16, .2, .1],
+    body(g) {
+      g.beginPath(); g.moveTo(-.12, -.3); g.quadraticCurveTo(-.36, -.62, -.62, -.6); g.quadraticCurveTo(-.5, -.42, -.44, -.22); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(-.12, .3); g.quadraticCurveTo(-.36, .62, -.62, .6); g.quadraticCurveTo(-.5, .42, -.44, .22); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(.72, 0);
+      g.quadraticCurveTo(.3, -.36, -.1, -.32); g.quadraticCurveTo(-.4, -.3, -.42, -.16);
+      g.lineTo(-.42, .16); g.quadraticCurveTo(-.4, .3, -.1, .32); g.quadraticCurveTo(.3, .36, .72, 0);
+      g.closePath(); g.fill();
+    } },
+  { key: 'rob', name: 'ROBUSTE', tag: 'Coque blindée', lives: 4, bonus: .75, spd: 3, bon: 2, power: 'AUCUN',
+    desc: 'Une vie de plus au départ, mais 25 % de bonus en moins.',
+    hullA: '#e2f4ff', hullB: '#4fb4ff', glow: '#4fb4ff', pit: '#ffd23f', land: '#9fd3ff', tail: -.46, fw: .18, pitXY: [.2, .14, .12],
+    body(g) {
+      // nacelles latérales blindées
+      for (const s of [-1, 1]) {
+        g.beginPath(); g.moveTo(.22, s * .34); g.lineTo(.06, s * .56); g.lineTo(-.5, s * .56); g.lineTo(-.58, s * .44); g.lineTo(-.5, s * .32); g.closePath(); g.fill();
+      }
+      // coque trapue, nez en chevron
+      g.beginPath(); g.moveTo(.7, 0); g.lineTo(.34, -.32); g.lineTo(-.36, -.32); g.lineTo(-.46, -.18); g.lineTo(-.46, .18); g.lineTo(-.36, .32); g.lineTo(.34, .32); g.closePath(); g.fill();
+      // plaques de blindage
+      const f = g.fillStyle; g.fillStyle = 'rgba(8,24,60,0.32)';
+      g.fillRect(-.42, -.5, .36, .07); g.fillRect(-.42, .43, .36, .07); g.fillRect(-.3, -.04, .26, .08);
+      g.fillStyle = f;
+    } },
+  { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FRÉNÉSIE',
+    desc: 'Frénésie : +50 % de vitesse pendant 5 s, puis 20 s de recharge. Touché pendant la frénésie, tu perds 2 vies.',
+    hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
+    body(g) {
+      g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
+      g.lineTo(-.3, .14); g.lineTo(-.5, .6); g.lineTo(.12, .17); g.closePath(); g.fill();
+    } },
+  { key: 'enc', name: 'ENCAISSEUR', tag: 'Sang-froid', lives: 2, bonus: 1, spd: 3, bon: 3, power: 'ENCAISSE',
+    desc: 'Deux vies seulement, mais un coup l\'arrête net au lieu de le tuer. Un 2ᵉ coup dans les 10 s coûte une vie.',
+    hullA: '#ebe4ff', hullB: '#8c6bff', glow: '#a58cff', pit: '#5dffb0', land: '#d2c4ff', tail: -.52, fw: .16, pitXY: [.12, .2, .14],
+    body(g) {
+      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.14, s * .36); g.lineTo(-.6, s * .56); g.lineTo(-.46, s * .14); g.closePath(); g.fill(); }
+      g.beginPath(); g.ellipse(0, 0, .56, .42, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(.38, -.22); g.quadraticCurveTo(.8, 0, .38, .22); g.closePath(); g.fill();
+    } }
+];
+const SH = () => SHIPS[S.ship] || SHIPS[0];
+
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
   inn:  ['GARDIEN', 'Il patrouille sur ton terrain conquis. Ne le croise pas.'],
@@ -310,13 +407,15 @@ const pad2 = n => String(n).padStart(2, '0');
 const fmt = n => n.toLocaleString('fr-FR');
 
 const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (COLS-2*B)*(ROWS-2*B),
-  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false };
+  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, crashCost: 1, shipTip: false };
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
 const power = { inv: 0, spd: 0, sup: 0, hyp: 0, chr: 0, schr: 0 };
+// pouvoir du Frénétique : on = temps de frénésie restant, cd = recharge restante
+const ab = { on: 0, cd: 0, beat: 0 };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
-let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1;
+let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
 /* ---------- Son ---------- */
 let actx = null, muted = store.get('mute', false);
@@ -359,6 +458,12 @@ const sfx = {
   bomb(){ tone(55,1.4,'sawtooth',.09,-25); tone(110,1,'square',.06,-80,.02); tone(900,.8,'sawtooth',.03,-850,.05); [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'square',.04,0,.45+i*.07)); },
   zap(){ for(let i=0;i<6;i++) tone(1800-i*200+Math.random()*300,.05,'sawtooth',.04,-900,i*.04); [880,1320,1760,2640].forEach((f,i)=>tone(f,.12,'square',.035,0,.28+i*.05)); },
   crackle(){ tone(2400+Math.random()*1600,.025,'sawtooth',.012,-1500); },
+  rage(){ tone(70,.7,'sawtooth',.08,90); tone(140,.5,'square',.04,-60,.05); [392,523,784,1047].forEach((f,i)=>tone(f,.09,'sawtooth',.04,0,.08+i*.05)); },
+  rageEnd(){ tone(620,.35,'triangle',.04,-420); },
+  heart(){ tone(58,.11,'sine',.09); tone(52,.1,'sine',.07,0,.13); },
+  ready(){ tone(1320,.06,'sine',.03); tone(1760,.1,'sine',.03,0,.06); },
+  guard(){ tone(1900,.28,'triangle',.05,-1300); tone(150,.3,'square',.05,-70); tone(2700,.14,'sine',.03,-1600,.02); },
+  guardUp(){ [784,1175,1568].forEach((f,i)=>tone(f,.09,'sine',.04,0,i*.07)); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
 
@@ -533,9 +638,9 @@ function makeFoe(kind, sp) {
 }
 
 /* ---------- Partie ---------- */
-function newGame(d, L) {
+function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.score = 0; S.lives = 3;
+  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -544,7 +649,7 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives;
+  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
   setupLevel(sv.L);
 }
 function setupLevel(L) {
@@ -562,18 +667,21 @@ function setupLevel(L) {
   for (let i = 0; i < C.amph; i++) foes.push(makeFoe('amph', C.sp));
   for (let i = 0; i < C.eat; i++) foes.push(makeFoe('eat', C.sp));
   items = []; S.bonusLeft = C.bonus ? bonusCount() : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
+  // Robuste : chaque bonus prévu n'a que 3 chances sur 4 d'apparaître (25 % de bonus en moins)
+  if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  ab.on = 0; ab.cd = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
-    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives });
+    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship });
   }
   $('testbar').hidden = !S.test;
-  drawBoard(); hud(); powersHud();
+  drawBoard(); hud(); powersHud(); pwHud();
   showReady('start');
 }
 function newPlayer(x = COLS >> 1, y = 0) {
-  return { x, y, px: x, py: y, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0, shield: true, shieldFade: 0, shieldHit: 0 };
+  return { x, y, px: x, py: y, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0, shield: true, shieldFade: 0, shieldHit: 0, guard: 0, grace: 0, noFill: false };
 }
 // Zone protégée tant qu'on n'a pas bougé (départ et reprise) : les ennemis rebondissent sur le cercle
 const SHIELD_R = 3;
@@ -644,7 +752,7 @@ function updateWave(dt) {
   const last = trail.length - 1;
   const a = Math.max(0, Math.ceil(wave.lo)), b = Math.min(last, Math.floor(wave.hi));
   for (let k = a; k <= b; k++) eraseK(k);
-  if (wave.hi >= last) crash();
+  if (wave.hi >= last) { if (SH().key === 'enc' && absorb(null)) waveStop(); else crash(); }
 }
 
 /* ---------- Joueur ---------- */
@@ -660,13 +768,15 @@ function setDir(d) {
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
-const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1);
+const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1);
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
 function stepPlayer() {
   if (P.next) {
-    const rev = P.drawing && P.next.x === -P.dir.x && P.next.y === -P.dir.y;
+    // pas de demi-tour sur son fil, même à l'arrêt dans la zone à conquérir (chrono, coup encaissé)
+    const d = P.dir.x || P.dir.y ? P.dir : P.face;
+    const rev = P.drawing && P.next.x === -d.x && P.next.y === -d.y;
     if (!rev) P.dir = P.next;
     P.next = null;
   }
@@ -681,7 +791,7 @@ function moveInto(nx, ny) {
   if (c === 2) {
     P.x = nx; P.y = ny;
     if (power.inv > 0 || power.sup > 0) { dissolveTrail(); pickItems(); return; }
-    crash(); return;
+    crash('self'); return;
   }
   const ox = P.x, oy = P.y;
   P.x = nx; P.y = ny;
@@ -690,7 +800,7 @@ function moveInto(nx, ny) {
     pushTrail(at(nx, ny));
   } else if (P.drawing) {
     if (wave) cancelConquest(); else capture();
-    P.drawing = false; P.dir = {x:0,y:0}; P.next = null;
+    P.drawing = false; P.dir = {x:0,y:0}; P.next = null; P.noFill = false;
   }
   pickItems();
 }
@@ -809,7 +919,8 @@ function capture() {
   }
   const newSet = new Uint8Array(N), cells = [...tcells];
   for (const i of tcells) newSet[i] = 1;
-  for (let i = 0; i < N; i++) if (grid[i] === 0 && !seen[i]) { grid[i] = 1; newSet[i] = 1; cells.push(i); }
+  // après un coup encaissé sur l'onde, le bout de fil devient du terrain mais ne referme aucune zone
+  if (!P.noFill) for (let i = 0; i < N; i++) if (grid[i] === 0 && !seen[i]) { grid[i] = 1; newSet[i] = 1; cells.push(i); }
   resetTrailArrays();
 
   const dist = new Int32Array(N).fill(-1), q = [];
@@ -953,6 +1064,7 @@ function updateFoes(dt) {
       if (power.sup > 0) smash(e);
       else if (power.inv > 0 || P.shield) continue;
       else if (invuln > 0 && !P.drawing) continue;
+      else if (SH().key === 'enc' && absorb(e)) continue;
       else crash();
     }
   }
@@ -1026,13 +1138,82 @@ function drawStun(e) {
   ctx.restore();
 }
 
+/* ---------- Pouvoirs des vaisseaux ---------- */
+const frenzyOn = () => ab.on > 0;
+// Frénétique : 5 s de frénésie (+50 % de vitesse, vaisseau rouge vif), puis 20 s de recharge
+function usePower() {
+  if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
+  ab.on = FR_T; ab.beat = 0;
+  const pp = playerPos();
+  superFlash = .7; superTint = '255,31,61'; shake = REDUCED ? 0 : .6;
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: 9, age: 0, color: T.rainbow ? '#ff1f3d' : T.shock, big: true });
+  burst(pp.x, pp.y, T.rainbow ? '#ff1f3d' : T.ball, 30, 12); burst(pp.x, pp.y, T.rainbow ? '#ffd0d6' : T.shock, 12, 7);
+  popups.push({ x: pp.x, y: pp.y - 1.6, text: 'FRÉNÉSIE !', age: 0, color: T.rainbow ? '#ff4d5e' : T.ball });
+  sfx.rage(); powersHud(); pwHud();
+}
+function updateAbility(dt) {
+  if (ab.on > 0) {
+    ab.on = Math.max(0, ab.on - dt);
+    // battements de cœur, de plus en plus rapides
+    ab.beat -= dt; if (ab.beat <= 0) { ab.beat = .32 + ab.on * .06; sfx.heart(); }
+    if (ab.on === 0) { ab.cd = FR_CD; sfx.rageEnd(); powersHud(); }
+    pwHud();
+  } else if (ab.cd > 0) {
+    ab.cd = Math.max(0, ab.cd - dt);
+    if (ab.cd === 0) sfx.ready();
+    pwHud();
+  }
+  if (P && P.grace > 0) P.grace -= dt;
+  if (P && P.guard > 0) {
+    P.guard = Math.max(0, P.guard - dt);
+    if (P.guard === 0) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
+    pwHud();
+  }
+}
+// Encaisseur : le premier coup l'arrête net au lieu de le tuer ; un 2e coup dans les 10 s coûte une vie.
+// Renvoie true si le coup est encaissé (1 s de répit juste après, pour que le même ennemi ne frappe pas deux fois).
+function absorb(e) {
+  if (P.grace > 0) return true;
+  if (P.guard > 0) return false;
+  P.guard = GUARD_T; P.grace = 1;
+  P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y;
+  const pp = playerPos();
+  if (e) {
+    // l'ennemi est renvoyé dans l'autre sens
+    const dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d, dot = e.vx * nx + e.vy * ny;
+    if (dot < 0) { e.vx -= 2 * dot * nx; e.vy -= 2 * dot * ny; }
+  }
+  const c = T.rainbow ? '#5dffb0' : T.shock;
+  burst(pp.x, pp.y, c, 34, 11); burst(pp.x, pp.y, T.rainbow ? '#ffffff' : T.ball, 12, 6);
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: 5, age: 0, color: c });
+  popups.push({ x: pp.x, y: pp.y - 1.6, text: 'ENCAISSÉ !', age: 0, color: c });
+  shake = REDUCED ? 0 : .7; flash = .5;
+  sfx.guard(); powersHud(); pwHud();
+  return true;
+}
+// Encaisseur rattrapé par l'onde de choc : le fil est effacé (conquête annulée) et il repart de là où il est ;
+// le bout de fil qu'il trace ensuite devient du terrain en arrivant, sans refermer de zone
+function waveStop() {
+  for (let k = 0; k < trail.length; k++) eraseK(k);
+  resetTrailArrays();
+  if (P.drawing) {
+    const ci = at(P.x, P.y);
+    if (grid[ci] === 0) pushTrail(ci);
+    P.start = { x: P.x, y: P.y }; P.noFill = true;
+  }
+}
+
 /* ---------- Crash ---------- */
-function crash() {
+// cause 'self' : le vaisseau a croisé son propre fil (pas un ennemi : la frénésie ne coûte pas 2 vies)
+function crash(cause) {
   if (S.phase !== 'play') return;
   if (power.inv > 0 || power.sup > 0) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
+  S.crashCost = frenzyOn() && cause !== 'self' ? 2 : 1;
   crashPos = playerPos();
-  power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud();
+  power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CD; }
+  powersHud(); pwHud();
   sfx.crash();
 }
 function updateCrash(dt) {
@@ -1042,7 +1223,7 @@ function updateCrash(dt) {
   else cv.style.filter = '';
   if (t >= 0.48 && !S.exploded) {
     S.exploded = true;
-    if (!S.test) S.lives--;
+    if (!S.test) S.lives = Math.max(0, S.lives - S.crashCost);
     hud();
     burst(crashPos.x, crashPos.y, T.danger, 60, 16); burst(crashPos.x, crashPos.y, T.shock, 24, 9);
     rings.push({ x: crashPos.x, y: crashPos.y, r: 0, max: 9, age: 0, color: T.danger });
@@ -1271,11 +1452,14 @@ function updateItems(dt) {
 }
 let powersSig = '';
 function powersHud() {
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0);
+  const guard = P && P.guard > 0 && SH().key === 'enc';
+  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig;
-    el.innerHTML = (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
+    el.innerHTML = (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
+      + (guard ? `<div class="chip guard"><b></b><span>BOUCLIER</span><div class="t"><i id="tguard"></i></div></div>` : '')
+      + (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
       + (power.inv > 0 ? `<div class="chip inv"><b></b><span>CASQUE</span><div class="t"><i id="tinv"></i></div></div>` : '')
       + (power.spd > 0 ? `<div class="chip spd"><b></b><span>VITESSE</span><div class="t"><i id="tspd"></i></div></div>` : '')
       + (power.hyp > 0 ? `<div class="chip hyp"><b></b><span>SUPER VITESSE</span><div class="t"><i id="thyp"></i></div></div>` : '')
@@ -1288,6 +1472,33 @@ function powersHud() {
   if (a) a.style.width = (power.inv / POWER_T * 100) + '%';
   if (b) b.style.width = (power.spd / POWER_T * 100) + '%';
   const c = $('tsup'); if (c) c.style.width = (power.sup / POWER_T * 100) + '%';
+  const r = $('trage'); if (r) r.style.width = (ab.on / FR_T * 100) + '%';
+  // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
+  const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_T) * 100) + '%';
+}
+// Bouton de pouvoir du HUD : Frénétique (prêt / actif / recharge) ou Encaisseur (bouclier prêt / en recharge)
+let pwSig = '';
+const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
+const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
+function pwHud() {
+  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc');
+  if (b.hidden === show) b.hidden = !show;
+  if (!show) { pwSig = ''; return; }
+  let cls, p, inner, label;
+  if (k === 'fre') {
+    if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
+    else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CD; inner = Math.ceil(ab.cd); label = 'Frénésie en recharge'; }
+    else { cls = 'ready'; p = 1; inner = BOLT; label = 'Déclencher la frénésie'; }
+  } else {
+    const g = P ? P.guard : 0;
+    if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_T; inner = Math.ceil(g); label = 'Bouclier en recharge'; }
+    else { cls = 'guard'; p = 1; inner = SHIELDI; label = 'Bouclier prêt'; }
+  }
+  b.style.setProperty('--p', p.toFixed(3));
+  const sig = cls + inner;
+  if (sig === pwSig) return;
+  pwSig = sig;
+  b.className = 'pw ' + cls; $('pwi').innerHTML = inner; b.setAttribute('aria-label', label);
 }
 
 /* ---------- Effets ---------- */
@@ -1311,13 +1522,14 @@ function update(dt) {
     if (S.phase === 'play') updateFoes(fdt);
     if (chronoOn()) chronoTick(dt);
     if (S.phase === 'play') updateItems(dt);
+    if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || chronoOn()) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0)) powersHud();
     if (power.sup > 0) superMusic(dt);
-    // traînée du réacteur dans la zone à conquérir
-    if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < .6) {
-      const pp = playerPos();
-      particles.push({ x: pp.x - P.dir.x * .55 + (Math.random() - .5) * .2, y: pp.y - P.dir.y * .55 + (Math.random() - .5) * .2, vx: -P.dir.x * 2.5 + (Math.random() - .5), vy: -P.dir.y * 2.5 + (Math.random() - .5), life: 0, max: .25 + Math.random() * .2, color: Math.random() < .5 ? '#ff8a3d' : '#ffd23f', size: .12 + Math.random() * .1, ng: 1 });
+    // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
+    if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
+      const pp = playerPos(), rage = frenzyOn();
+      particles.push({ x: pp.x - P.dir.x * .55 + (Math.random() - .5) * .2, y: pp.y - P.dir.y * .55 + (Math.random() - .5) * .2, vx: -P.dir.x * 2.5 + (Math.random() - .5), vy: -P.dir.y * 2.5 + (Math.random() - .5), life: 0, max: .25 + Math.random() * .2, color: rage ? (Math.random() < .5 ? '#ff1f3d' : '#ff8a5c') : Math.random() < .5 ? '#ff8a3d' : '#ffd23f', size: .12 + Math.random() * .1, ng: 1 });
     }
   } else if (ph === 'crash') {
     updateCrash(dt);
@@ -1456,6 +1668,11 @@ function drawFx() {
     ctx.font = `700 ${3 + s * 3}px Silkscreen, "Courier New", monospace`;
     ctx.fillStyle = T.textShadow; ctx.fillText('CRASH !', COLS/2 + .25, ROWS/2 + .25);
     ctx.fillStyle = T.danger; ctx.fillText('CRASH !', COLS/2, ROWS/2);
+    if (S.crashCost > 1 && !S.test) {
+      ctx.font = `700 ${2 + s * 1.5}px Silkscreen, "Courier New", monospace`;
+      ctx.fillStyle = T.textShadow; ctx.fillText('−2 VIES', COLS/2 + .2, ROWS/2 + 5.2);
+      ctx.fillStyle = T.danger; ctx.fillText('−2 VIES', COLS/2, ROWS/2 + 5);
+    }
     ctx.globalAlpha = 1;
   }
   // éclairs (ramassage de la Super Vitesse)
@@ -1481,6 +1698,12 @@ function drawFx() {
     ctx.stroke();
   }
   drawChrono('tint');
+  // frénésie : bords de l'écran teintés de rouge, au rythme du cœur
+  if (frenzyOn() && S.phase === 'play') {
+    const beat = Math.pow(Math.max(0, Math.sin(time * 9)), 6), g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .32, COLS / 2, ROWS / 2, ROWS * .78);
+    g.addColorStop(0, 'rgba(255,31,61,0)'); g.addColorStop(1, `rgba(${T.rainbow ? '255,31,61' : '11,24,56'},${(.16 + beat * .14) * Math.min(1, ab.on / .4)})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+  }
   if (superFlash > 0) { ctx.fillStyle = T.rainbow ? `rgba(${superTint},${superFlash * 0.45})` : `rgba(11,24,56,${superFlash * 0.3})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
 }
@@ -1545,7 +1768,7 @@ function drawTrail(pp) {
   // halo doux sous le fil (remplace les cases teintées)
   ctx.strokeStyle = T.trailFill; ctx.lineWidth = 1.1; ctx.stroke();
   const sup = power.sup > 0 && !dead;
-  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
+  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : frenzyOn() && T.rainbow ? '#ff2e4a' : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
   glowOn(tc, sup ? 1.8 : .9);
   ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.8 : 0.58; ctx.stroke();
   if (sup) { ctx.strokeStyle = T.rainbow ? `hsl(${(time * 300) % 360},100%,70%)` : T.empty; ctx.lineWidth = .3; ctx.stroke(); }
@@ -1570,9 +1793,30 @@ function drawTrail(pp) {
 }
 
 function drawPlayer(pp) {
-  const vis = invuln <= 0 || Math.floor(time * 12) % 2 === 0;
+  const vis = (invuln <= 0 && !(P.grace > 0)) || Math.floor(time * 12) % 2 === 0;
   if (!vis) return;
-  const sup = power.sup > 0;
+  const sup = power.sup > 0, sh = SH(), rage = frenzyOn() && S.phase !== 'crash';
+  // frénésie : aura rouge qui bat comme un cœur
+  if (rage) {
+    const beat = Math.pow(Math.max(0, Math.sin(time * 9)), 6), blink = ab.on < 1.5 && Math.floor(time * 10) % 2 === 0;
+    halo(pp.x, pp.y, 2.2 + beat * .8, '#ff1f3d', blink ? .2 : .45 + beat * .25);
+    if (!T.glow) { ctx.strokeStyle = T.shock; ctx.lineWidth = .1; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.1 + beat * .2, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  // Encaisseur : anneau de bouclier quand il est prêt, arc rouge qui se referme pendant les 10 s de vulnérabilité
+  if (sh.key === 'enc' && S.phase !== 'crash') {
+    ctx.lineCap = 'round';
+    if (!(P.guard > 0)) {
+      glowOn('#5dffb0', 1);
+      ctx.strokeStyle = T.rainbow ? 'rgba(93,255,176,0.75)' : T.shock; ctx.lineWidth = .09;
+      ctx.setLineDash([.32, .2]); ctx.lineDashOffset = -time * 1.2;
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      glowOff();
+    } else if (!(P.guard < 2 && Math.floor(time * 8) % 2 === 0)) {
+      const a0 = -Math.PI / 2;
+      ctx.strokeStyle = T.rainbow ? 'rgba(255,92,138,0.8)' : T.shock; ctx.lineWidth = .08;
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, a0, a0 + (1 - P.guard / GUARD_T) * Math.PI * 2); ctx.stroke();
+    }
+  }
   if (sup && !(power.sup < 2 && Math.floor(time * 10) % 2 === 0)) {
     ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(-time * 2);
     for (let k = 0; k < 8; k++) {
@@ -1643,8 +1887,8 @@ function drawPlayer(pp) {
   if (m < 0.98) {
     // sur le terrain : gemme carrée aux coins arrondis
     ctx.globalAlpha = 1 - m;
-    glowOn(T.trail, .8);
-    if (neon && !hot) { const g = ctx.createLinearGradient(-.42, -.42, .42, .42); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#c9d2ff'); ctx.fillStyle = g; }
+    glowOn(rage ? '#ff1f3d' : T.trail, rage ? 1.6 : .8);
+    if (neon && !hot) { const g = ctx.createLinearGradient(-.42, -.42, .42, .42); g.addColorStop(0, rage ? '#ff8a8a' : '#ffffff'); g.addColorStop(1, rage ? '#ff1f3d' : sh.land); ctx.fillStyle = g; }
     else ctx.fillStyle = hot ? '#ffe27a' : T.playerLand;
     rrect(-.42, -.42, .84, .84, .22); ctx.fill();
     glowOff();
@@ -1656,38 +1900,36 @@ function drawPlayer(pp) {
   if (m > 0.02) {
     // dans la zone à conquérir : vaisseau effilé (nez pointu, deux ailerons à l'arrière, comme l'original)
     ctx.globalAlpha = m;
-    // flamme du réacteur : dégradé chaud qui ondule
-    if (moving) {
-      const fl = .34 + Math.sin(time * 38) * .07 + Math.sin(time * 23) * .05 + (power.spd > 0 || power.hyp > 0 ? .35 : 0);
-      const fg = ctx.createLinearGradient(-.36, 0, -.36 - fl, 0);
-      const fc = (power.spd > 0 || power.hyp > 0) && neon ? '70,217,255' : neon ? '255,138,61' : '11,24,56';
-      fg.addColorStop(0, neon ? 'rgba(255,255,255,0.95)' : `rgba(${fc},1)`); fg.addColorStop(.35, `rgba(${fc},0.9)`); fg.addColorStop(1, `rgba(${fc},0)`);
-      ctx.fillStyle = fg;
-      ctx.beginPath(); ctx.moveTo(-.34, -.15); ctx.quadraticCurveTo(-.36 - fl * .6, -.1, -.36 - fl, 0); ctx.quadraticCurveTo(-.36 - fl * .6, .1, -.34, .15); ctx.closePath(); ctx.fill();
-    }
-    glowOn(T.trail, 1.3);
-    let hull = hot ? '#ffe27a' : T.playerSea;
-    if (neon && !hot) { const g = ctx.createLinearGradient(-.4, 0, .7, 0); g.addColorStop(0, '#c9d2ff'); g.addColorStop(1, '#ffffff'); hull = g; }
-    ctx.fillStyle = hull;
-    // ailerons arrondis
-    ctx.beginPath(); ctx.moveTo(-.12, -.3); ctx.quadraticCurveTo(-.36, -.62, -.62, -.6); ctx.quadraticCurveTo(-.5, -.42, -.44, -.22); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-.12, .3); ctx.quadraticCurveTo(-.36, .62, -.62, .6); ctx.quadraticCurveTo(-.5, .42, -.44, .22); ctx.closePath(); ctx.fill();
-    // coque effilée
-    ctx.beginPath();
-    ctx.moveTo(.72, 0);
-    ctx.quadraticCurveTo(.3, -.36, -.1, -.32); ctx.quadraticCurveTo(-.4, -.3, -.42, -.16);
-    ctx.lineTo(-.42, .16); ctx.quadraticCurveTo(-.4, .3, -.1, .32); ctx.quadraticCurveTo(.3, .36, .72, 0);
-    ctx.closePath(); ctx.fill();
-    glowOff();
-    // cockpit lumineux
-    if (neon) { glowOn(hot ? '#ffd23f' : '#43e0ff', 1); ctx.fillStyle = hot ? '#ff7a4d' : '#43e0ff'; }
-    else ctx.fillStyle = T.playerSeaInk;
-    ctx.beginPath(); ctx.ellipse(.16, 0, .2, .1, 0, 0, Math.PI * 2); ctx.fill();
-    glowOff();
-    if (neon) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(.21, -.035, .07, .03, 0, 0, Math.PI * 2); ctx.fill(); }
+    drawHull(ctx, sh, { neon, hot, rage, moving, fast: power.spd > 0 || power.hyp > 0, px: scale });
     ctx.globalAlpha = 1;
   }
   ctx.restore();
+}
+// Coque du vaisseau (sert aussi à l'aperçu de l'écran de choix) : flamme qui ondule, coque en dégradé, cockpit lumineux.
+// o.hot : Super Casque (doré) ; o.rage : frénésie (rouge vif) ; o.px : pixels par case, pour les halos
+function drawHull(g, sh, o) {
+  const glow = (c, k) => { if (o.neon) { g.shadowColor = c; g.shadowBlur = o.px * k; } }, noGlow = () => { g.shadowBlur = 0; };
+  if (o.moving) {
+    const fl = .34 + Math.sin(time * 38) * .07 + Math.sin(time * 23) * .05 + (o.fast ? .35 : 0) + (o.rage ? .25 : 0), x0 = sh.tail, w = sh.fw;
+    const fc = !o.neon ? '11,24,56' : o.rage ? '255,40,60' : o.fast ? '70,217,255' : '255,138,61';
+    const fg = g.createLinearGradient(x0, 0, x0 - fl, 0);
+    fg.addColorStop(0, o.neon ? 'rgba(255,255,255,0.95)' : `rgba(${fc},1)`); fg.addColorStop(.35, `rgba(${fc},0.9)`); fg.addColorStop(1, `rgba(${fc},0)`);
+    g.fillStyle = fg;
+    g.beginPath(); g.moveTo(x0 + .02, -w); g.quadraticCurveTo(x0 - fl * .6, -w * .66, x0 - fl, 0); g.quadraticCurveTo(x0 - fl * .6, w * .66, x0 + .02, w); g.closePath(); g.fill();
+  }
+  let hull = o.hot ? '#ffe27a' : T.playerSea;
+  if (o.neon && !o.hot) {
+    const gr = g.createLinearGradient(-.5, 0, .75, 0);
+    gr.addColorStop(0, o.rage ? '#ff1030' : sh.hullB); gr.addColorStop(1, o.rage ? '#ff9a9a' : sh.hullA); hull = gr;
+  }
+  glow(o.rage ? '#ff1f3d' : sh.glow, o.rage ? 2 : 1.3);
+  g.fillStyle = hull; sh.body(g);
+  noGlow();
+  const [cx, rx, ry] = sh.pitXY, pit = o.hot ? '#ff7a4d' : o.rage ? '#fff1a8' : sh.pit;
+  if (o.neon) { glow(pit, 1); g.fillStyle = pit; } else g.fillStyle = T.playerSeaInk;
+  g.beginPath(); g.ellipse(cx, 0, rx, ry, 0, 0, Math.PI * 2); g.fill();
+  noGlow();
+  if (o.neon) { g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.ellipse(cx + rx * .25, -ry * .35, rx * .35, ry * .3, 0, 0, Math.PI * 2); g.fill(); }
 }
 
 // Halo lumineux additif (thème couleur seulement)
@@ -2039,6 +2281,7 @@ function frame(now) {
   if (slow > 0) { slow -= dt; dt *= 0.3; }
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
   if (scale > 0 && cv.width) { update(dt); render(); }
+  if (shipPick) drawPreview();
   requestAnimationFrame(frame);
 }
 
@@ -2052,11 +2295,10 @@ function tweenScore(dt) {
   $('score').textContent = fmt(Math.round(scoreShown));
 }
 function hud() {
-  $('dlab').textContent = S.test ? 'MODE' : S.phase === 'title' ? 'NIV' : 'NIV ' + DIFFS[S.diff].short;
-  if (S.test) { $('lvl').textContent = 'TEST'; }
-  if (!S.test) $('lvl').innerHTML = `${pad2(S.level)}<small>/${MAX_LEVEL}</small>`;
+  $('lab').textContent = S.phase === 'title' ? 'MEGABOX CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
+    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL} · ${DIFFS[S.diff].name.toUpperCase()}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
-  const max = Math.max(3, S.lives);
+  const max = Math.max(SH().lives, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
   const goal = Math.round(DIFFS[S.diff].goal * 100);
   const p = Math.min(100, Math.floor(S.filled / S.interior * 100));
@@ -2083,6 +2325,7 @@ function infoRows(done) {
   const D = DIFFS[S.diff];
   return `<div class="rows">
       <div><span>Difficulté</span><span>${D.name}</span></div>
+      <div><span>Vaisseau</span><span>${SH().name}</span></div>
       <div><span>Vies</span><span>${S.lives}</span></div>
       <div><span>${done ? 'Réalisé' : 'Objectif'}</span><span>${done ? Math.floor(S.filled / S.interior * 100) + ' %' : Math.round(D.goal * 100) + ' %'}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
@@ -2093,13 +2336,19 @@ function newcomers() {
   if (S.readyMode !== 'start') return '';
   const now = S.comp, prev = S.level > 1 ? comp(S.level - 1, S.diff) : { out: 0, inn: 0, perf: 0, amph: 0, eat: 0 };
   let html = '';
+  // rappel du pouvoir du vaisseau, au premier niveau de la partie
+  if (S.shipTip) {
+    S.shipTip = false;
+    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
+    if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Un 2ᵉ coup dans les 10 s coûte une vie.</p>`;
+  }
   for (const k of ['out', 'inn', 'perf', 'amph', 'eat']) if (now[k] > 0 && prev[k] === 0) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
   if (now.mobile && !comp(Math.max(1, S.level - 1), S.diff).mobile) html += `<p class="keys">À partir de maintenant, les bonus se déplacent.</p>`;
   return html;
 }
 function showReady(mode) {
   S.readyMode = mode; S.phase = 'ready';
-  hud();
+  hud(); pwHud();
   showOverlay(`
     <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
     ${infoRows(mode === 'restart')}
@@ -2113,10 +2362,10 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud();
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; ab.on = 0; powersHud(); pwHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
-  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives });
+  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship });
   showOverlay(`
     <h2><span>${D.name.toUpperCase()}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
     <div class="rows">
@@ -2176,17 +2425,86 @@ function titleScreen() {
         <li><b>Rongeur</b> : lent, il grignote ton terrain à chaque contact.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
+        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer).</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
-    </details>`, () => newGame(menuDiff, menuLevel));
+    </details>`, () => showShips(false));
   ov.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { menuDiff = +b.dataset.d; store.set('diff', menuDiff); menuLevel = 1; titleScreen(); }));
   const lm = $('lm'), lp = $('lp');
   lm && lm.addEventListener('click', () => { menuLevel = Math.max(1, menuLevel - 1); titleScreen(); });
   lp && lp.addEventListener('click', () => { menuLevel = Math.min(maxL, menuLevel + 1); titleScreen(); });
   const c = $('cont'); c && c.addEventListener('click', () => { onGo = null; continueGame(); });
-  $('tmode').addEventListener('click', () => { onGo = null; ensureAudio(); S.test = true; S.diff = menuDiff; S.score = 0; S.lives = 3; setupLevel(1); });
-  S.diff = menuDiff; S.level = menuLevel; S.score = 0; S.lives = 3;
-  hud(); powersHud();
+  $('tmode').addEventListener('click', () => { onGo = null; ensureAudio(); showShips(true); });
+  S.diff = menuDiff; S.level = menuLevel; S.score = 0; S.ship = menuShip; S.lives = SH().lives;
+  hud(); powersHud(); pwHud();
+}
+// Écran « Choisis ton vaisseau » : aperçu animé, flèches (ou glisser, ou ← →), jauges, description
+let shipPick = null;
+const ARROW = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+function showShips(test) {
+  shipPick = { test };
+  const sh = SHIPS[menuShip], dots = (n, on) => Array.from({ length: 5 }, (_, i) => `<i class="${i < n ? on : ''}"></i>`).join('');
+  showOverlay(`
+    <div class="shead">
+      <button class="back" id="sback" aria-label="Retour au menu">${ARROW('M15 5 L8 12 L15 19')}</button>
+      <h2><span>${test ? 'MODE TEST' : DIFFS[menuDiff].name.toUpperCase() + ' · NIVEAU ' + pad2(menuLevel)}</span>VAISSEAU</h2>
+    </div>
+    <div class="sstage">
+      <canvas id="shipcv" aria-label="Aperçu du vaisseau ${sh.name}"></canvas>
+      <button class="arrow l" id="sprev" aria-label="Vaisseau précédent">${ARROW('M15 5 L8 12 L15 19')}</button>
+      <button class="arrow r" id="snext" aria-label="Vaisseau suivant">${ARROW('M9 5 L16 12 L9 19')}</button>
+    </div>
+    <div class="sname"><b style="color:${sh.hullA === '#ffffff' ? '#f2f3ff' : sh.glow}">${sh.name}</b><span>${sh.tag}</span></div>
+    <div class="sstats">
+      <div><span class="k">Vies</span><span class="dots l">${'<i></i>'.repeat(sh.lives)}</span></div>
+      <div><span class="k">Vitesse</span><span class="dots s">${dots(sh.spd, 'on')}</span></div>
+      <div><span class="k">Bonus</span><span class="dots b">${dots(sh.bon, 'on')}</span></div>
+      <div><span class="k">Pouvoir</span><span class="pwr">${sh.power}</span></div>
+    </div>
+    <p class="sdesc">${sh.desc}</p>
+    <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
+    <button class="btn" id="go">C'EST PARTI</button>`, () => {
+      shipPick = null; store.set('ship', menuShip);
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; setupLevel(1); }
+      else newGame(menuDiff, menuLevel, menuShip);
+    });
+  ov.querySelector('.card').classList.add('ships');
+  const pick = i => { menuShip = (i + SHIPS.length) % SHIPS.length; sfx.draw(); showShips(test); };
+  $('sprev').addEventListener('click', () => pick(menuShip - 1));
+  $('snext').addEventListener('click', () => pick(menuShip + 1));
+  ov.querySelectorAll('.spage button').forEach(b => b.addEventListener('click', () => pick(+b.dataset.s)));
+  $('sback').addEventListener('click', () => { shipPick = null; titleScreen(); });
+  // glisser sur l'aperçu pour changer de vaisseau
+  const c = $('shipcv');
+  let sx = null;
+  c.addEventListener('pointerdown', e => { sx = e.clientX; });
+  c.addEventListener('pointerup', e => { if (sx !== null && Math.abs(e.clientX - sx) > 30) pick(menuShip + (e.clientX < sx ? 1 : -1)); sx = null; });
+  shipPick.step = pick;
+}
+// Aperçu du vaisseau choisi : il file vers le haut au milieu d'étoiles qui défilent
+function drawPreview() {
+  const c = $('shipcv');
+  if (!c || !c.clientWidth) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext('2d'), sh = SHIPS[menuShip], px = h / 2.6, cx = w / 2, cy = h / 2;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+  const hg = g.createRadialGradient(cx, cy, 0, cx, cy, h * .62);
+  hg.addColorStop(0, `rgba(${rgbOf(sh.glow)},0.32)`); hg.addColorStop(1, `rgba(${rgbOf(sh.glow)},0)`);
+  g.fillStyle = hg; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#ffffff';
+  for (let k = 0; k < 26; k++) {
+    const sp = 1 + k % 3, y = ((k * 53 + time * 38 * sp) % 130) / 130 * h, x = ((k * 37) % 100) / 100 * w;
+    g.globalAlpha = .2 + (k % 4) * .15; g.fillRect(x, y, dpr * (sp > 2 ? 1.6 : 1), dpr * (2 + sp * 2.5));
+  }
+  g.globalAlpha = 1;
+  g.setTransform(px, 0, 0, px, cx, cy + Math.sin(time * 2) * .05 * px);
+  if (sh.key === 'enc') {
+    g.strokeStyle = 'rgba(93,255,176,0.75)'; g.lineWidth = .06; g.setLineDash([.32, .2]); g.lineDashOffset = -time * 1.2;
+    g.beginPath(); g.arc(0, 0, .98, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+  }
+  g.rotate(-Math.PI / 2 + Math.sin(time * 1.3) * .08);
+  drawHull(g, sh, { neon: true, moving: true, px });
 }
 function startDemo() {
   resetGrid();
@@ -2202,7 +2520,7 @@ function togglePause() {
     S.pausedFrom = 'play'; S.phase = 'pause';
     showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">QUITTER LA PARTIE</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
     // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
-    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; powersHud(); titleScreen(); });
+    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; ab.on = 0; ab.cd = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
 }
 function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }
@@ -2256,7 +2574,9 @@ addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (k === 'Enter' && onGo && !ov.hidden) { e.preventDefault(); ensureAudio(); go(); return; }
+  if (shipPick && !ov.hidden && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); shipPick.step(menuShip + (k === 'ArrowRight' ? 1 : -1)); return; }
   if (k === 'p' || k === 'Escape') { e.preventDefault(); togglePause(); return; }
+  if (k === 'f' || k === 'e') { e.preventDefault(); usePower(); return; }
   if (KEYS[k]) { e.preventDefault(); setDir(KEYS[k]); }
 });
 let touch = null;
@@ -2277,6 +2597,7 @@ ov.addEventListener('pointerup', e => {
   else if (S.phase === 'ready') { ensureAudio(); go(); }
 });
 $('pz').addEventListener('click', togglePause);
+$('pw').addEventListener('click', e => { ensureAudio(); usePower(); e.currentTarget.blur(); });
 const snd = $('snd');
 const sndLabel = () => snd.textContent = 'SON : ' + (muted ? 'NON' : 'OUI');
 sndLabel();

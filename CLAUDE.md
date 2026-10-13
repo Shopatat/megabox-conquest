@@ -119,11 +119,32 @@ Historique de l'invincibilité, pour mémoire : 1) les ennemis étaient pulvéri
 
 ---
 
+## Vaisseaux (idée de Fabien)
+
+On choisit son vaisseau après « Nouveau jeu » (et avant le mode test), sur l'écran **VAISSEAU** (`showShips`). Le choix est mémorisé (`ship`) et sauvegardé avec la partie. Table `SHIPS` : nom, devise, vies, facteur de bonus, jauges de l'écran de choix, couleurs, et `body(g)` qui trace la coque (chaque vaisseau a sa silhouette). `SH()` donne le vaisseau en cours (`S.ship`). Base : 17 cases/s.
+
+| Clé | Vaisseau | Vies | Particularité |
+|---|---|---|---|
+| `cla` | **Classique** (blanc, cockpit cyan) | 3 | Le vaisseau d'origine, sans particularité. |
+| `rob` | **Robuste** (bleu, coque trapue, nez en chevron, nacelles blindées) | 4 | **25 % de bonus en moins** : chaque bonus prévu n'a que 3 chances sur 4 d'apparaître (dans `setupLevel`). |
+| `fre` | **Frénétique** (corail, cockpit doré, très effilé) | 3 | **Frénésie** (`usePower`, état `ab`) : **5 s** à **+50 %** de vitesse (`stepTime`), puis **20 s de recharge** (`FR_T`, `FR_CD`). Pendant la frénésie, le vaisseau est **rouge vif** (« enragé », demande de Fabien) : aura rouge qui bat comme un cœur, fil et flamme rouges, bords de l'écran rougis, battements de cœur sonores qui accélèrent. **Touché par un ennemi pendant la frénésie : −2 vies** (`S.crashCost`, « −2 VIES » sous « CRASH ! »). Croiser son propre fil ne coûte qu'une vie (`crash('self')`). La frénésie s'arrête au crash (recharge lancée) et en fin de niveau. Bouton ⚡ dans le HUD, ou F / E au clavier. |
+| `enc` | **Encaisseur** (violet, coque ronde, anneau de bouclier vert menthe en pointillés) | 2 | **Encaisse un coup** (`absorb`) : le premier coup d'ennemi ne le tue pas mais **l'arrête net** (l'ennemi est renvoyé, 1 s de répit `P.grace`). Pendant les **10 s** suivantes (`P.guard`, `GUARD_T`), un 2ᵉ coup coûte une vie. Une **onde de choc qui rattrape la tête du fil compte comme un coup** (`waveStop`) : le fil est effacé, la conquête annulée, il s'arrête ; le bout de fil qu'il trace ensuite devient du terrain en arrivant **sans refermer de zone** (`P.noFill`). Anneau qui devient un arc rose pendant la vulnérabilité, puce « BOUCLIER », bouton bouclier (non cliquable) dans le HUD. |
+
+Arrêté dans la zone à conquérir (coup encaissé, Chrono), le vaisseau ne peut pas repartir en arrière sur son fil (on compare avec `P.face`).
+
+**Interface** (atelier de 4 styles, Fabien a choisi « A · Néon Arcade » : https://claude.ai/artifact/2p9dD2ytaPYR6Lw8ughAx6) :
+- **HUD** : à gauche, niveau et difficulté en petit (ou « MEGABOX CONQUEST » au menu, « MODE TEST · vaisseau »), **gros score**, vies en pilules roses horizontales ; à droite, **bouton de pouvoir rond** (`#pw`, `pwHud`, seulement pour Frénétique et Encaisseur) puis pause. Bouton de pouvoir : anneau en `conic-gradient` (variable `--p`). Frénétique : prêt (dégradé rose → orange, éclair, pulse), actif (rouge, anneau qui se vide), recharge (sombre, secondes restantes). Encaisseur : bouclier vert, puis rose avec le compte à rebours.
+- **Écran VAISSEAU** : bouton retour, aperçu animé dans un canvas (`drawPreview`, appelée par `frame()` tant que `shipPick` existe : le vaisseau file vers le haut parmi des étoiles qui défilent), flèches ‹ ›, glisser sur l'aperçu ou ← → au clavier, nom dans la couleur du vaisseau, devise, jauges Vies / Vitesse / Bonus / Pouvoir, description, pagination, bouton « C'EST PARTI ».
+- La coque est dessinée par `drawHull(g, sh, o)`, commune au jeu et à l'aperçu. Sur le terrain, la gemme carrée prend la teinte du vaisseau (`land`).
+- L'écran d'info du premier niveau rappelle le pouvoir du vaisseau (`S.shipTip`) et affiche le vaisseau dans le récapitulatif.
+
+---
+
 ## Écrans et interface
 
-- **Menu** : choix de la difficulté, niveau de départ (jusqu'au plus haut atteint), Nouveau jeu, **Continuer** (sauvegarde), **Mode test**, record par difficulté, « Comment jouer ».
+- **Menu** : choix de la difficulté, niveau de départ (jusqu'au plus haut atteint), Nouveau jeu (puis choix du vaisseau), **Continuer** (sauvegarde), **Mode test** (puis choix du vaisseau), record par difficulté, « Comment jouer ».
 - **Écran d'info** avant chaque niveau et après un crash : niveau, difficulté, vies, objectif ou réalisé, score, présentation des nouveaux ennemis. **Pas de compte à rebours** (retiré à la demande de Fabien) : bouton PARTIR (toujours visible en bas de la carte) ou tap n'importe où.
-- **Pause** uniquement via le bouton ⏸ à côté du score (ou P/Échap au clavier), plus une pause automatique si l'onglet est masqué. Boutons REPRENDRE et QUITTER LA PARTIE (retour au menu ; la partie reste sauvegardée au début du niveau). Pas de chrono : jeu « tranquillou », sans limite de temps.
+- **Pause** uniquement via le bouton ⏸ en haut à droite du HUD (ou P/Échap au clavier), plus une pause automatique si l'onglet est masqué. Boutons REPRENDRE et QUITTER LA PARTIE (retour au menu ; la partie reste sauvegardée au début du niveau). Pas de chrono : jeu « tranquillou », sans limite de temps.
 - **Game over** : si le record est battu, « FÉLICITATIONS ! VOUS AVEZ BATTU LE RECORD ! » (texte de l'original).
 - **Écran** : bouton pour passer du thème `COULEUR` au thème `MYX-3` (monochrome bleu rétroéclairé, comme le vrai MyX-3). Tous les dessins passent par l'objet de thème `T`.
 - **Son** : WebAudio synthétisé (aucun fichier audio), bouton ON/OFF.
@@ -133,7 +154,7 @@ Historique de l'invincibilité, pour mémoire : 1) les ennemis étaient pulvéri
 
 ### Contrôles (choix de Fabien, important)
 - **Tactile** : **glisser** pour diriger, **un tap = s'arrêter** (sur son terrain). Un tap ne met **pas** en pause. Pas de croix directionnelle à l'écran (retirée à sa demande).
-- **Clavier** : flèches ou ZQSD (AZERTY) / WASD, Espace = stop, P/Échap = pause, Entrée = valider.
+- **Clavier** : flèches ou ZQSD (AZERTY) / WASD, Espace = stop, P/Échap = pause, Entrée = valider, F ou E = pouvoir du vaisseau (frénésie), ← → pour changer de vaisseau sur l'écran de choix.
 
 ### Mode test (bac à sable)
 Bouton dans le menu. Vies infinies, pas d'objectif, pas de sauvegarde ni de record. Une barre sous le terrain permet de faire apparaître chaque bonus près du joueur et d'ajouter chaque ennemi, ainsi que Vider, Réinitialiser et Quitter. Pratique pour régler l'équilibrage.
@@ -148,7 +169,7 @@ Bouton dans le menu. Vies infinies, pas d'objectif, pas de sauvegarde ni de reco
 
 ## Stockage (`localStorage`, préfixe `mbc2-`)
 
-`theme`, `mute`, `diff` (dernière difficulté choisie), `max0/1/2` (plus haut niveau atteint par difficulté), `best0/1/2` (record par difficulté), `save` (`{d, L, score, lives}`, partie en cours, mise à jour au début de chaque niveau et effacée au game over ou à la victoire). Tous les accès sont protégés par `try/catch`.
+`theme`, `mute`, `diff` (dernière difficulté choisie), `ship` (dernier vaisseau choisi), `max0/1/2` (plus haut niveau atteint par difficulté), `best0/1/2` (record par difficulté), `save` (`{d, L, score, lives, ship}`, partie en cours, mise à jour au début de chaque niveau et effacée au game over ou à la victoire). Tous les accès sont protégés par `try/catch`.
 
 ---
 
@@ -165,17 +186,17 @@ Le script est une IIFE découpée en sections commentées `/* ---------- … ---
 7. **Joueur** : `setDir`, `stepPlayer`, `moveInto`, `updatePull` (trou noir), `playerPos` (interpolation + décalage visuel `vox/voy`)
 8. **Conquête** : `capture()` (flood fill depuis les ennemis de mer, puis révélation animée en vague via `startReveal`), `awardCells`, `checkGoal`
 9. **Ennemis** : `moveSea`, `moveLand`, `moveAmph`, `landHit` (rongeur), `updateFoes`, `smash` (Super Casque), `superOn`, `superMusic`
-10. **Crash** : `crash`, `updateCrash`
-11. **Bonus** : `pickType`, `spawnItem`, `collect`, `territoryBurst`, `pushOut`, `updateItems`, `powersHud`
+10. **Pouvoirs des vaisseaux** : `usePower`, `updateAbility`, `absorb`, `waveStop` ; **Crash** : `crash(cause)`, `updateCrash`
+11. **Bonus** : `pickType`, `spawnItem`, `collect`, `territoryBurst`, `pushOut`, `updateItems`, `powersHud`, `pwHud`
 12. **Boucle** : `update(dt)` (machine à états via `S.phase` : `title`, `ready`, `play`, `pause`, `crash`, `clearing`, `clear`, `over`) et `render()` avec les fonctions de dessin `draw*`
-13. **HUD et écrans** : `hud`, `showOverlay`, `showReady`, `showClear`, `endScreen`, `titleScreen`, `togglePause`
+13. **HUD et écrans** : `hud`, `showOverlay`, `showReady`, `showClear`, `endScreen`, `titleScreen`, `showShips`, `drawPreview`, `togglePause`
 14. **Mode test** : `testItem`, `testFoe`
 15. **Contrôles** : clavier, swipe et tap sur le canvas
 
 Le `dt` est plafonné à 0,05 s. Le ralenti du Super Casque multiplie `dt` dans `frame()`.
 
 ### Tester sans navigateur
-Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'exécute dans Node avec un faux `document`, un faux canvas (Proxy), une fausse horloge et un faux `requestAnimationFrame` (le `ResizeObserver` factice doit appeler `resize()`, sinon rien ne tourne). Il affiche la composition des niveaux, vérifie l'onde de choc (on s'échappe / on se fait rattraper) et le bonus territoire, puis simule 6000 frames avec des touches aléatoires à plusieurs niveaux et difficultés. Doit finir par `OK`. Lancer aussi `node --check` sur le script extrait après chaque modification. Pour tester dans le navigateur en local, passer par un serveur http (le service worker sert sinon l'ancienne version en cache : le désenregistrer d'abord).
+Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'exécute dans Node avec un faux `document`, un faux canvas (Proxy), une fausse horloge et un faux `requestAnimationFrame` (le `ResizeObserver` factice doit appeler `resize()`, sinon rien ne tourne). Il affiche la composition des niveaux, vérifie l'onde de choc (on s'échappe / on se fait rattraper), le bonus territoire, le trou noir, les super bonus, le chrono, la zone protégée, les 4 vaisseaux (bonus du Robuste, vitesse et vies de la frénésie, coups encaissés et onde de l'Encaisseur), puis simule 6000 frames avec des touches aléatoires à plusieurs niveaux, difficultés et vaisseaux. Doit finir par `OK`. Lancer aussi `node --check` sur le script extrait après chaque modification. Pour tester dans le navigateur en local, passer par un serveur http (le service worker sert sinon l'ancienne version en cache : le désenregistrer d'abord).
 
 ---
 
@@ -199,6 +220,13 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 
 ## Pistes pour la suite
 
+### Refonte des ennemis et des niveaux (demandée par Fabien, pas encore faite)
+- **Moins d'ennemis** dans les derniers niveaux (trop, c'est l'enfer dès qu'on veut tracer un long fil), compensés par de **nouveaux ennemis plus coriaces**.
+- **Un seul trou noir au maximum**, et pas dans tous les niveaux une fois qu'il est apparu (sinon on le voit tout le temps). Aujourd'hui `ROSTER.amph` monte jusqu'à 3.
+- **Variété** : des niveaux à thème, par exemple un seul type d'ennemi, ou des combos difficiles entre deux types.
+- Le **rongeur** sera remplacé par un nouvel ennemi (à définir). Fabien a écarté l'idée de la « mèche » façon Qix qui court le long du fil : tracer un long fil est déjà assez dur.
+
+### Divers
 - Équilibrage à affiner en jouant (vitesse du perforateur, force du trou noir, objectif Expert avec les rongeurs).
 - Design général à peaufiner (Fabien l'a évoqué sans détailler).
 - Éventuellement l'écran d'intro et les « slides » de crash dessinés, comme prévus dans le doc original.
