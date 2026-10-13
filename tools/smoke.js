@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -288,18 +288,30 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.camo.on = 2; const blind = !g.huntSees(h); g.camo.on = 0; const sees = g.huntSees(h);
   console.log(`furtif : camouflé, le chasseur ne le voit pas ${blind} ; visible, il le voit ${sees}`);
 }
-// 5j) Rembobineur : remonte le temps de 3 s, même juste après un crash ; se recharge en traçant
+// 5j) Rembobineur : rembobinage continu (on rappuie pour s'arrêter), fenêtre de 3 s au crash, 2 vies max
 {
-  g.newGame(1, 1, 6); g.go(); g.foes.length = 0;
-  const ball = g.makeFoe('out', 1); ball.x = 40.5; ball.y = 50.5; g.foes.push(ball);
-  g.setDir('down'); step(90);
-  const y1 = g.P.y; g.crash(); step(40);
-  const lost = g.S.lives;
-  g.usePower(); const ph = g.S.phase; step(60);
-  console.log(`rembobineur : crash (vies ${lost}), rembobinage ${ph}, après : phase ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, recharge ${g.rw.charge}`);
-  g.usePower(); const again = g.S.phase;
-  for (let i = 0; i < 120; i++) g.seaStep();
-  console.log(`rembobineur : refusé sans recharge (${again}), rechargé après 120 cases ${g.rw.charge === 1}`);
+  const start = () => { g.newGame(1, 1, 6); g.go(); g.foes.length = 0; const ball = g.makeFoe('out', 1); ball.x = 40.5; ball.y = 50.5; g.foes.push(ball); g.setDir('down'); step(150); };
+  start();
+  const y1 = g.P.y; g.crash(); step(150);
+  const held = g.S.phase, lost = g.S.lives;
+  g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 200) { step(); n++; }
+  console.log(`rembobineur : 2,5 s après le crash, toujours en suspens (${held}, vies ${lost}) ; rembobinage ${ph} pendant ${n} frames, puis ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, jauge ${g.rw.charge.toFixed(1)} s`);
+  start();
+  g.usePower(); step(12); g.usePower(); step(3);
+  console.log(`rembobineur : arrêté tôt -> phase ${g.S.phase}, jauge économisée ${g.rw.charge.toFixed(1)} s sur 3`);
+  start(); g.rw.charge = 0; g.crash(); step(140);
+  console.log(`rembobineur sans jauge : crash normal, reprise après 2,1 s (${g.S.phase})`);
+  g.newGame(1, 1, 6); g.collect({ type: 'life', x: 25.5, y: 33.5, done: false, age: 0 });
+  console.log(`rembobineur : ${g.S.lives} vies après un bonus vie (max 2)`);
+}
+// 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
+{
+  g.newGame(1, 1, 2); g.go(); g.ab.cd = 40; g.showClear(); g.setupLevel(2);
+  const cdKept = g.ab.cd;
+  g.newGame(1, 1, 3); g.go(); g.P.guard = 30; g.showClear(); g.setupLevel(2);
+  const guardKept = g.P.guard;
+  g.newGame(1, 1, 6); g.go(); g.rw.charge = 1.2; g.showClear(); g.setupLevel(2);
+  console.log(`entre deux niveaux : recharge frénésie ${cdKept} (40), bouclier ${guardKept} (30), jauge rembobinage ${g.rw.charge} (1.2)`);
 }
 
 // 6) Parties aléatoires

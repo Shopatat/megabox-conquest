@@ -333,7 +333,9 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
 // Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
 // FR_CELLS cases pour la frénésie, GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
-const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = .1;
+// Rembobineur : jauge de RW_SPAN secondes de retour en arrière, rejouées à vitesse ×2 (RW_STEP par photo) ; au crash,
+// RW_WIN secondes pour décider de rembobiner
+const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = .1, RW_STEP = .05, RW_WIN = 3;
 const SHIPS = [
   { key: 'cla', name: 'CLASSIQUE', tag: 'L\'équilibre', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'AUCUN',
     desc: 'Le vaisseau d\'origine. Rien à gérer, juste toi et le terrain.',
@@ -398,8 +400,8 @@ const SHIPS = [
       g.fillStyle = f;
     } },
   // Rembobineur (idée de Fabien, façon Prince of Persia) : remonte le temps de 3 s, se recharge en traçant
-  { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'RETOUR 3 S',
-    desc: 'Bouton ⏪ : remonte le temps de 3 secondes, même juste après un crash. Il se recharge en traçant dans la zone à conquérir.',
+  { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 2, maxLives: 2, bonus: 1, spd: 3, bon: 3, power: 'RETOUR 3 S',
+    desc: 'Bouton ⏪ : remonte le temps (jusqu\'à 3 s), rappuie pour t\'arrêter avant. Au crash, tu as 3 s pour rembobiner. 2 vies au maximum, recharge en traçant.',
     hullA: '#ffe2a0', hullB: '#c4782a', glow: '#ffb84d', pit: '#7cf5ff', land: '#ffd9a0', tail: -.44, fw: .13, pitXY: [.16, .15, .09],
     body(g) {
       g.beginPath(); g.moveTo(.76, 0); g.lineTo(.1, -.3); g.lineTo(-.44, -.3); g.lineTo(-.3, 0); g.lineTo(-.44, .3); g.lineTo(.1, .3); g.closePath(); g.fill();
@@ -707,7 +709,8 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = 1;
+  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
+  rw.charge = RW_SPAN; ab.cd = 0; carry = null;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -716,7 +719,8 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; rw.charge = 1;
+  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
+  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
 function setupLevel(L) {
@@ -733,12 +737,14 @@ function setupLevel(L) {
   // Robuste : chaque bonus prévu n'a que 3 chances sur 4 d'apparaître (25 % de bonus en moins)
   if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
-  ab.on = 0; ab.cd = 0; plan = null; dash = null; slow = 0; superFlash = 0;
+  // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : recharge de la frénésie, bouclier et jauge conservés
+  ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
+  if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
-    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship });
+    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState() });
   }
   $('testbar').hidden = !S.test;
   drawBoard(); hud(); powersHud(); pwHud();
@@ -1290,6 +1296,9 @@ function drawStun(e) {
 
 /* ---------- Pouvoirs des vaisseaux ---------- */
 const frenzyOn = () => ab.on > 0;
+// état des pouvoirs gardé d'un niveau à l'autre (carry) et dans la sauvegarde
+let carry = null;
+const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge });
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
   if (SH().key === 'rew') { rewind(); return; }
@@ -1323,7 +1332,7 @@ function seaStep() {
     if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
     pwHud();
   }
-  if (k === 'rew' && rw.charge < 1) { rw.charge = Math.min(1, rw.charge + 1 / RW_CELLS); if (rw.charge === 1) sfx.ready(); pwHud(); }
+  if (k === 'rew' && rw.charge < RW_SPAN) { rw.charge = Math.min(RW_SPAN, rw.charge + RW_SPAN / RW_CELLS); if (rw.charge === RW_SPAN) sfx.ready(); pwHud(); }
 }
 // Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
 const camo = { on: 0, next: 5 };
@@ -1334,9 +1343,11 @@ function updateCamo(dt) {
     if (!camo.on) { camo.next = 6 + Math.random() * 7; sfx.decloak(); const pp = playerPos(); burst(pp.x, pp.y, T.rainbow ? '#46ffc8' : T.shock, 14, 5); }
   } else if ((camo.next -= dt) <= 0) { camo.on = 2.5 + Math.random() * 1.5; sfx.cloak(); }
 }
-// Rembobineur : on garde une photo de la partie toutes les RW_SNAP s sur les RW_SPAN dernières secondes ;
-// le pouvoir les rejoue à l'envers (effet VHS) puis reprend à la plus ancienne. Marche aussi pendant un crash.
-const rw = { charge: 1, hist: [], t: 0, play: null };
+// Rembobineur (façon Prince of Persia) : on garde une photo de la partie toutes les RW_SNAP s sur les RW_SPAN dernières
+// secondes. Le pouvoir les rejoue à l'envers (effet VHS) tant qu'on ne rappuie pas, et chaque photo rejouée consomme
+// RW_SNAP s de la jauge (rw.charge, en secondes). Au crash, le jeu laisse RW_WIN s pour décider de rembobiner.
+const rw = { charge: RW_SPAN, hist: [], t: 0, play: null };
+const canRewind = () => SH().key === 'rew' && rw.charge >= RW_SNAP - 1e-6 && rw.hist.length > 0;
 function snap() {
   const gi = grab ? foes.indexOf(grab.e) : -1;
   return { grid: grid.slice(), trail: trail.slice(), erased: erased.slice(), P: structuredClone(P), foes: structuredClone(foes),
@@ -1360,18 +1371,27 @@ function recordRewind(dt) {
   rw.t = 0; rw.hist.push(snap());
   if (rw.hist.length > RW_SPAN / RW_SNAP + 1) rw.hist.shift();
 }
+// 1er appui : le temps remonte ; 2e appui : il s'arrête là (le reste de la jauge est économisé)
 function rewind() {
-  if (rw.charge < 1 || !rw.hist.length || rw.play) return;
-  if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < 2)) return;
-  rw.play = { list: rw.hist.slice().reverse(), i: 0, t: 0 }; rw.hist = []; rw.charge = 0;
+  if (rw.play) { rw.play.stop = true; return; }
+  if (!canRewind()) return;
+  if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < RW_WIN)) return;
+  rw.play = { t: RW_STEP, n: 0, stop: false };
   S.phase = 'rewind'; S.exploded = false; cv.style.filter = ''; plan = null; dash = null;
   sfx.rewind(); pwHud();
 }
 function updateRewind(dt) {
   const r = rw.play;
   r.t += dt;
-  while (r.t >= .022 && r.i < r.list.length) { r.t -= .022; unsnap(r.list[r.i++]); }
-  if (r.i >= r.list.length) { rw.play = null; S.phase = 'play'; flash = .35; hud(); powersHud(); pwHud(); }
+  // au moins une photo est rejouée, même si on rappuie tout de suite
+  while (r.t >= RW_STEP && (!r.stop || r.n === 0)) {
+    r.t -= RW_STEP;
+    if (!rw.hist.length || rw.charge < RW_SNAP - 1e-6) { r.stop = true; break; }
+    unsnap(rw.hist.pop()); rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
+    if (!muted && r.n % 3 === 0) tone(1300 - (r.n % 12) * 60, .04, 'square', .02, 400);
+  }
+  hud(); pwHud();
+  if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); }
 }
 // Encaisseur : le premier coup l'arrête net au lieu de le tuer ; un 2e coup avant d'avoir retracé 80 cases coûte une vie.
 // Renvoie true si le coup est encaissé (1 s de répit juste après, pour que le même ennemi ne frappe pas deux fois).
@@ -1521,11 +1541,14 @@ function updateCrash(dt) {
     shake = REDUCED ? 0 : 1.3; flash = 1;
     sfx.boom();
   }
-  if (t >= 2.1) {
+  // Rembobineur avec du pouvoir : le crash reste en suspens RW_WIN s, le temps de décider de rembobiner
+  if (t >= (canRewind() ? RW_WIN : 2.1)) {
     if (S.lives <= 0) { gameOver(); return; }
     clearTrail();
     const [rx, ry] = respawnCell(crashPos.x, crashPos.y);
-    P = newPlayer(rx, ry);
+    // le bouclier de l'Encaisseur ne se recharge pas en mourant : il faut toujours retracer pour le récupérer
+    const guard = P.guard;
+    P = newPlayer(rx, ry); P.guard = guard;
     rw.hist = []; camo.on = 0;
     invuln = 0;
     showReady('restart');
@@ -1786,8 +1809,9 @@ function pwHud() {
     else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CELLS; inner = BOLT; label = 'Frénésie en recharge : trace dans la zone à conquérir'; }
     else { cls = 'ready'; p = 1; inner = BOLT; label = 'Déclencher la frénésie'; }
   } else if (k === 'rew') {
-    if (rw.charge >= 1) { cls = 'ready'; p = 1; inner = REWI; label = 'Remonter le temps'; }
-    else { cls = 'cd'; p = rw.charge; inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
+    if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
+    else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
+    else { cls = 'cd'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
   } else {
     const g = P ? P.guard : 0;
     if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_CELLS; inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
@@ -1968,10 +1992,19 @@ function drawFx() {
 
   if (S.phase === 'crash' && S.exploded) {
     const t = S.crashT - 0.48, s = Math.min(1, t * 5);
-    ctx.globalAlpha = Math.min(1, (2.1 - S.crashT) / 0.4);
+    ctx.globalAlpha = canRewind() ? 1 : Math.min(1, (2.1 - S.crashT) / 0.4);
     ctx.font = `700 ${3 + s * 3}px Silkscreen, "Courier New", monospace`;
     ctx.fillStyle = T.textShadow; ctx.fillText('CRASH !', COLS/2 + .25, ROWS/2 + .25);
     ctx.fillStyle = T.danger; ctx.fillText('CRASH !', COLS/2, ROWS/2);
+    // Rembobineur : invitation à rembobiner, avec le temps qu'il reste pour décider
+    if (canRewind()) {
+      ctx.globalAlpha = Math.floor(time * 4) % 2 ? 1 : .55;
+      ctx.font = '700 2.2px Silkscreen, "Courier New", monospace';
+      const msg = '◀◀ REMBOBINER ? ' + Math.max(1, Math.ceil(RW_WIN - S.crashT));
+      ctx.fillStyle = T.textShadow; ctx.fillText(msg, COLS/2 + .15, ROWS/2 + 9.15);
+      ctx.fillStyle = T.rainbow ? '#ffd27a' : T.shock; ctx.fillText(msg, COLS/2, ROWS/2 + 9);
+      ctx.globalAlpha = 1;
+    }
     if (S.crashCost > 1 && !S.test) {
       ctx.font = `700 ${2 + s * 1.5}px Silkscreen, "Courier New", monospace`;
       ctx.fillStyle = T.textShadow; ctx.fillText('−2 VIES', COLS/2 + .2, ROWS/2 + 5.2);
@@ -2753,7 +2786,7 @@ function newcomers() {
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
-    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps de 3 s, même juste après un crash. Il se recharge en traçant dans la zone à conquérir.</p>`;
+    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps, et rappuie pour t'arrêter (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
@@ -2776,10 +2809,13 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; ab.on = 0; powersHud(); pwHud();
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CELLS; }
+  carry = { guard: P ? P.guard : 0 };
+  powersHud(); pwHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
-  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship });
+  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState() });
   showOverlay(`
     <h2><span>${D.name.toUpperCase()}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
     <div class="rows">
@@ -2842,7 +2878,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps de 3 s). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -2882,7 +2918,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = 1; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -3010,6 +3046,7 @@ function cellAt(e) {
   return { x: (e.clientX - r.left) / r.width * COLS, y: (e.clientY - r.top) / r.height * ROWS, px: r.width / COLS };
 }
 cv.addEventListener('pointerdown', e => {
+  if (SH().key === 'rew' && (S.phase === 'rewind' || (S.phase === 'crash' && canRewind()))) { ensureAudio(); rewind(); touch = null; return; }
   touch = { x: e.clientX, y: e.clientY, moved: false }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} ensureAudio();
   // Fulgurant : poser le doigt sur (ou tout près de) son vaisseau commence un tracé éclair
   if (SH().key === 'ful' && S.phase === 'play' && P && !dash) {
