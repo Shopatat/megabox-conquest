@@ -338,8 +338,8 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = .1, RW_STEP = .05, RW_WIN = 3;
 const SHIPS = [
   // Veinard (ex-Classique, nom choisi par Fabien) : le vaisseau d'origine, avec la chance en plus
-  { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, spd: 3, bon: 5, power: 'CHANCE',
-    desc: 'Le vaisseau d\'origine, avec la chance en plus : 50 % de bonus en plus, et deux fois plus de super bonus.',
+  { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, itemLife: 1.5, spd: 3, bon: 5, power: 'CHANCE',
+    desc: 'Le vaisseau d\'origine, avec la chance en plus : 50 % de bonus en plus, deux fois plus de super bonus, et ils restent plus longtemps.',
     deco(g, o) {
       // trèfle à quatre feuilles sur le cockpit
       g.fillStyle = o.neon ? '#ffd23f' : T.playerSea;
@@ -1662,7 +1662,7 @@ function spawnItem() {
   const [x, y] = cands[(Math.random() * cands.length) | 0];
   const a = Math.PI / 4 + ((Math.random() * 4) | 0) * Math.PI / 2;
   const mob = S.comp.mobile ? 2.2 : 0;
-  items.push({ type, x: x + .5, y: y + .5, vx: Math.cos(a) * mob, vy: Math.sin(a) * mob, age: 0, ttl: Math.max(9, 18 - S.comp.p * 0.6), done: false });
+  items.push({ type, x: x + .5, y: y + .5, vx: Math.cos(a) * mob, vy: Math.sin(a) * mob, age: 0, ttl: Math.max(9, 18 - S.comp.p * 0.6) * (SH().itemLife || 1), done: false });
   announce(items[items.length - 1]);
   return true;
 }
