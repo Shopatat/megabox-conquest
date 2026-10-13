@@ -335,9 +335,9 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
 // Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
 // FR_CELLS cases pour la frénésie, GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
-// Rembobineur : jauge de RW_SPAN secondes de retour en arrière, rejouées à vitesse ×2 (RW_STEP par photo) ; au crash,
-// RW_WIN secondes pour décider de rembobiner
-const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = .1, RW_STEP = .05, RW_WIN = 3;
+// Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
+// (RW_STEP par photo, soit demi-vitesse) pour bien voir et s'arrêter pile où on veut ; au crash, RW_WIN s pour décider
+const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 1 / 30, RW_WIN = 3;
 const SHIPS = [
   // Veinard (ex-Classique, nom choisi par Fabien) : le vaisseau d'origine, avec la chance en plus
   { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, itemLife: 1.5, spd: 3, bon: 5, power: 'CHANCE',
@@ -413,7 +413,7 @@ const SHIPS = [
     } },
   // Rembobineur (idée de Fabien, façon Prince of Persia) : remonte le temps de 3 s, se recharge en traçant
   { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 2, maxLives: 2, bonus: 1, spd: 3, bon: 3, power: 'RETOUR 3 S',
-    desc: 'Bouton ⏪ : remonte le temps (jusqu\'à 3 s), rappuie pour t\'arrêter avant. Au crash, tu as 3 s pour rembobiner. 2 vies au maximum, recharge en traçant.',
+    desc: 'Sablier : remonte le temps au ralenti (jusqu\'à 3 s), rappuie pour t\'arrêter pile où tu veux. Au crash, tu as 3 s pour rembobiner. 2 vies au maximum, recharge en traçant.',
     hullA: '#ffe2a0', hullB: '#c4782a', glow: '#ffb84d', pit: '#7cf5ff', land: '#ffd9a0', tail: -.44, fw: .13, pitXY: [.16, .15, .09],
     body(g) {
       g.beginPath(); g.moveTo(.76, 0); g.lineTo(.1, -.3); g.lineTo(-.44, -.3); g.lineTo(-.3, 0); g.lineTo(-.44, .3); g.lineTo(.1, .3); g.closePath(); g.fill();
@@ -1412,9 +1412,10 @@ function unsnap(sn) {
   if (redraw) drawBoard();
 }
 function recordRewind(dt) {
+  // une photo par image (à 60 Hz ; une image sur deux à 120 Hz), sans dériver si l'image dure un poil moins de 1/60 s
   rw.t += dt;
-  if (rw.t < RW_SNAP) return;
-  rw.t = 0; rw.hist.push(snap());
+  if (rw.t < RW_SNAP * .9) return;
+  rw.t = Math.max(0, rw.t - RW_SNAP); rw.hist.push(snap());
   if (rw.hist.length > RW_SPAN / RW_SNAP + 1) rw.hist.shift();
 }
 // 1er appui : le temps remonte ; 2e appui : il s'arrête là (le reste de la jauge est économisé)
@@ -1434,7 +1435,7 @@ function updateRewind(dt) {
     r.t -= RW_STEP;
     if (!rw.hist.length || rw.charge < RW_SNAP - 1e-6) { r.stop = true; break; }
     unsnap(rw.hist.pop()); rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
-    if (!muted && r.n % 3 === 0) tone(1300 - (r.n % 12) * 60, .04, 'square', .02, 400);
+    if (!muted && r.n % 6 === 0) tone(1300 - (r.n % 24) * 30, .04, 'square', .02, 400);
   }
   hud(); pwHud();
   if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); }
@@ -1917,7 +1918,7 @@ function powersHud() {
 // Bouton de pouvoir du HUD : Frénétique (prêt / actif / recharge) ou Encaisseur (bouclier prêt / en recharge)
 let pwSig = '';
 const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
-const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6 L3 12 L11 18 Z M20 6 L12 12 L20 18 Z"/></svg>';
+const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H17.5 C17.5 7.5 15.5 9.6 13.3 12 C15.5 14.4 17.5 16.5 17.5 20 H19 V22 H5 V20 H6.5 C6.5 16.5 8.5 14.4 10.7 12 C8.5 9.6 6.5 7.5 6.5 4 H5 Z M8.6 4 C8.8 6.6 10.2 8.2 12 10 C13.8 8.2 15.2 6.6 15.4 4 Z M9 19.5 H15 C14.6 17.6 13.4 16.4 12 15.2 C10.6 16.4 9.4 17.6 9 19.5 Z" fill-rule="evenodd"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
   const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob');
@@ -2124,9 +2125,13 @@ function drawFx() {
     if (canRewind()) {
       ctx.globalAlpha = Math.floor(time * 4) % 2 ? 1 : .55;
       ctx.font = '700 2.2px Silkscreen, "Courier New", monospace';
-      const msg = '◀◀ REMBOBINER ? ' + Math.max(1, Math.ceil(RW_WIN - S.crashT));
-      ctx.fillStyle = T.textShadow; ctx.fillText(msg, COLS/2 + .15, ROWS/2 + 9.15);
-      ctx.fillStyle = T.rainbow ? '#ffd27a' : T.shock; ctx.fillText(msg, COLS/2, ROWS/2 + 9);
+      const msg = 'REMBOBINER ? ' + Math.max(1, Math.ceil(RW_WIN - S.crashT)), w = ctx.measureText(msg).width, hx = COLS/2 - w/2 - 1.6, hy = ROWS/2 + 9;
+      ctx.fillStyle = T.textShadow; ctx.fillText(msg, COLS/2 + 1 + .15, hy + .15);
+      ctx.fillStyle = T.rainbow ? '#ffd27a' : T.shock; ctx.fillText(msg, COLS/2 + 1, hy);
+      // petit sablier qui se retourne
+      ctx.save(); ctx.translate(hx + 1, hy); ctx.rotate(Math.min(1, (S.crashT % 1) * 3) * Math.PI);
+      ctx.beginPath(); ctx.moveTo(-.7, -1); ctx.lineTo(.7, -1); ctx.lineTo(-.7, 1); ctx.lineTo(.7, 1); ctx.closePath(); ctx.fill();
+      ctx.restore();
       ctx.globalAlpha = 1;
     }
     if (S.crashCost > 1 && !S.test) {
@@ -2168,7 +2173,7 @@ function drawFx() {
     ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.fillRect(0, by, COLS, 2.2);
     ctx.fillStyle = T.rainbow ? '#ffffff' : T.shock;
     if (Math.floor(time * 4) % 2) for (const x0 of [2, 4.4]) { ctx.beginPath(); ctx.moveTo(x0 + 2.4, 2); ctx.lineTo(x0, 3.4); ctx.lineTo(x0 + 2.4, 4.8); ctx.closePath(); ctx.fill(); }
-    ctx.textAlign = 'left'; ctx.font = '700 2px Silkscreen, "Courier New", monospace'; ctx.fillText('REMBOBINAGE', 8, 3.5); ctx.textAlign = 'center';
+    ctx.textAlign = 'left'; ctx.font = '700 2px Silkscreen, "Courier New", monospace'; ctx.fillText('REMBOBINAGE  -' + (rw.play ? rw.play.n * RW_SNAP : 0).toFixed(1).replace('.', ',') + ' S', 8, 3.5); ctx.textAlign = 'center';
   }
   // frénésie : bords de l'écran teintés de rouge, au rythme du cœur
   if (frenzyOn() && S.phase === 'play') {
@@ -2913,7 +2918,7 @@ function newcomers() {
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
-    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps, et rappuie pour t'arrêter (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
+    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;

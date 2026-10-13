@@ -297,7 +297,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   start();
   const y1 = g.P.y; g.crash(); step(150);
   const held = g.S.phase, lost = g.S.lives;
-  g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 200) { step(); n++; }
+  g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 600) { step(); n++; }
   console.log(`rembobineur : 2,5 s après le crash, toujours en suspens (${held}, vies ${lost}) ; rembobinage ${ph} pendant ${n} frames, puis ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, jauge ${g.rw.charge.toFixed(1)} s`);
   start();
   g.usePower(); step(12); g.usePower(); step(3);
