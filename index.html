@@ -239,7 +239,7 @@ details li b{color:var(--text);font-weight:600}
 (() => {
 'use strict';
 const COLS = 50, ROWS = 66, B = 2, N = COLS * ROWS, STEP = 1 / 17, POWER_T = 10, MAX_LEVEL = 25;
-const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.5;
+const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.2;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const DIFFS = [
@@ -696,7 +696,7 @@ function moveInto(nx, ny) {
 }
 // Amphibie = trou noir. De près, il aspire le vaisseau. S'il croise le fil, il l'avale (pas d'onde de choc) :
 // le vaisseau est ramené vers lui le long de son tracé, de plus en plus fort, jusqu'à ce qu'il regagne son terrain.
-const PULL_R = 9, GRAB_V0 = 4, GRAB_ACC = 10;
+const PULL_R = 7.5, GRAB_V0 = 4, GRAB_ACC = 10;
 function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
 function grabTrail(e) {
   if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab) return;
@@ -1825,7 +1825,7 @@ function drawInn(e) {
 }
 // Trou noir : lentille gravitationnelle. Tout ce qui l'entoure (terrain conquis compris) est aspiré vers
 // le centre puis englouti dans le noir ; seul un fin anneau de lumière marque l'horizon.
-const LENS_R = 7.5, lensCv = document.createElement('canvas'), lctx = lensCv.getContext('2d');
+const LENS_R = 5.5, lensCv = document.createElement('canvas'), lctx = lensCv.getContext('2d');
 let shX = 0, shY = 0;
 function drawAmph(e) {
   const R = R_AMPH, TAU = Math.PI * 2, sy = cv.height / ROWS;
