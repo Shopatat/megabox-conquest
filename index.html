@@ -69,6 +69,8 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw.guard{--c:#5dffb0;cursor:default;box-shadow:0 0 14px rgba(93,255,176,.35)}
 .pw.guard .in{background:radial-gradient(circle,#1d4a3c,#12261f);color:#5dffb0}
 .pw.hurt{--c:#ff5c8a;cursor:default}
+.pw.armor{--c:var(--ac,#5dffb0);cursor:default}
+.pw.armor .in{color:var(--ac,#5dffb0);font-size:13px}
 .pw.hurt .in{color:#ff9fb5}
 @keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
@@ -356,9 +358,11 @@ const SHIPS = [
       g.lineTo(-.42, .16); g.quadraticCurveTo(-.4, .3, -.1, .32); g.quadraticCurveTo(.3, .36, .72, 0);
       g.closePath(); g.fill();
     } },
-  { key: 'rob', name: 'ROBUSTE', tag: 'Coque blindée', lives: 4, bonus: .75, spd: 3, bon: 2, power: 'AUCUN',
-    desc: 'Une vie de plus au départ, mais 25 % de bonus en moins.',
-    hullA: '#e2f4ff', hullB: '#4fb4ff', glow: '#4fb4ff', pit: '#ffd23f', land: '#9fd3ff', tail: -.46, fw: .18, pitXY: [.2, .14, .12],
+  // Blindé (ex-Robuste, idée de Fabien) : une seule vie mais un blindage qui encaisse les coups ; lent, peu de bonus
+  { key: 'rob', name: 'BLINDÉ', tag: 'Increvable, ou presque', lives: 1, maxLives: 1, bonus: .75, slow: 1.25, spd: 2, bon: 2, power: 'BLINDAGE',
+    noItems: ['life', 'slife'],
+    desc: 'Une seule vie, mais un blindage à 100 % : chaque choc l\'entame (boule 10 %, onde de choc 5 %…). Il se répare très lentement en traçant. 20 % plus lent, moins de bonus.',
+    hullA: '#dfe6ee', hullB: '#5b6876', glow: '#9fb3c8', pit: '#ffb347', land: '#c4ced8', tail: -.46, fw: .18, pitXY: [.2, .14, .12],
     body(g) {
       // nacelles latérales blindées
       for (const s of [-1, 1]) {
@@ -524,6 +528,7 @@ const sfx = {
   heart(){ tone(58,.11,'sine',.09); tone(52,.1,'sine',.07,0,.13); },
   ready(){ tone(1320,.06,'sine',.03); tone(1760,.1,'sine',.03,0,.06); },
   guard(){ tone(1900,.28,'triangle',.05,-1300); tone(150,.3,'square',.05,-70); tone(2700,.14,'sine',.03,-1600,.02); },
+  clang(){ tone(420, .12, 'square', .045, -200); tone(1900, .09, 'triangle', .02, -1200, .01); },
   trap(){ tone(220, .25, 'square', .05, -120); [659, 880, 1319].forEach((f, i) => tone(f, .1, 'triangle', .04, 0, .1 + i * .06)); },
   rewind(){ for (let i = 0; i < 10; i++) tone(1500 - i * 90, .05, 'square', .025, 500, i * .06); tone(180, .7, 'sawtooth', .035, 900); },
   cloak(){ tone(1100, .45, 'sine', .03, -850); tone(2200, .25, 'triangle', .012, -1800, .05); },
@@ -732,7 +737,7 @@ function makeFoe(kind, sp) {
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
   S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
-  rw.charge = RW_SPAN; ab.cd = 0; carry = null;
+  rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -742,7 +747,7 @@ function continueGame() {
   if (!sv) return;
   ensureAudio(); S.test = false;
   S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
-  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; carry = { guard: pw.guard || 0 };
+  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; armor.hp = pw.hp ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
 function setupLevel(L) {
@@ -756,7 +761,7 @@ function setupLevel(L) {
   const C = S.comp;
   for (const k of FOES) for (let i = 0; i < C[k]; i++) foes.push(makeFoe(k, C.sp));
   items = []; S.bonusLeft = C.bonus ? bonusCount() : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
-  // facteur de bonus du vaisseau : Robuste ×0,75 (chaque bonus prévu a 3 chances sur 4 d'apparaître), Veinard ×1,5
+  // facteur de bonus du vaisseau : Blindé ×0,75 (chaque bonus prévu a 3 chances sur 4 d'apparaître), Veinard ×1,5
   // (chaque bonus prévu a 1 chance sur 2 d'en amener un deuxième)
   const bf = SH().bonus;
   if (bf !== 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) n += Math.floor(bf) + (Math.random() < bf % 1 ? 1 : 0); S.bonusLeft = n; }
@@ -847,7 +852,11 @@ function updateWave(dt) {
   const last = trail.length - 1;
   const a = Math.max(0, Math.ceil(wave.lo)), b = Math.min(last, Math.floor(wave.hi));
   for (let k = a; k <= b; k++) eraseK(k);
-  if (wave.hi >= last) { if (SH().key === 'enc' && absorb(null)) waveStop(); else crash(); }
+  if (wave.hi >= last) {
+    if (SH().key === 'enc' && absorb(null)) waveStop();
+    else if (SH().key === 'rob') { const f = wave.fast; waveStop(); if (!(armor.cd > 0) && !foeTouching()) armorHit(f ? 'fastWave' : 'wave'); }
+    else crash();
+  }
 }
 
 /* ---------- Joueur ---------- */
@@ -863,7 +872,8 @@ function setDir(d) {
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
-const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1);
+const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1)
+  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1);
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
@@ -886,6 +896,7 @@ function moveInto(nx, ny) {
   if (c === 2) {
     P.x = nx; P.y = ny;
     if (power.inv > 0 || power.sup > 0) { dissolveTrail(); pickItems(); return; }
+    if (SH().key === 'rob' && S.phase === 'play') { dissolveTrail(); pickItems(); if (!(armor.cd > 0)) armorHit('self'); return; }
     crash('self'); return;
   }
   const ox = P.x, oy = P.y;
@@ -1142,7 +1153,7 @@ function pulsarHits(e) {
       if (Math.abs(d - w.r) < .55) { onTrailHit(e, i); break; }
     }
     const pp = playerPos();
-    if (S.phase === 'play' && Math.abs(Math.hypot(pp.x - e.x, pp.y - e.y) - w.r) < .5) hitPlayer(null);
+    if (S.phase === 'play' && !w.hitP && Math.abs(Math.hypot(pp.x - e.x, pp.y - e.y) - w.r) < .5) { w.hitP = true; hitPlayer(null); }
   }
 }
 // Diviseur : chaque contact avec le fil le coupe en deux, plus petits et plus rapides (deux fois au plus)
@@ -1236,6 +1247,7 @@ function updateFoes(dt) {
     if (P && P.shield) shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
     if (e.kind === 'puls') pulsarHits(e);
+    if (e.hitCd > 0) { e.hitCd -= dt; continue; }
     const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) hitPlayer(e);
   }
@@ -1249,6 +1261,7 @@ function hitPlayer(e) {
   if (power.inv > 0 || P.shield) return;
   if (invuln > 0 && !P.drawing) return;
   if (SH().key === 'enc' && absorb(e)) return;
+  if (SH().key === 'rob') { armorHit(e ? e : 'ring'); return; }
   crash();
 }
 function shieldBounce(e, ox, oy) {
@@ -1323,7 +1336,7 @@ function drawStun(e) {
 const frenzyOn = () => ab.on > 0;
 // état des pouvoirs gardé d'un niveau à l'autre (carry) et dans la sauvegarde
 let carry = null;
-const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge });
+const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp });
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
   if (SH().key === 'rew') { rewind(); return; }
@@ -1345,12 +1358,20 @@ function updateAbility(dt) {
     pwHud();
   }
   if (P && P.grace > 0) P.grace -= dt;
+  if (armor.jolt > 0) armor.jolt -= dt;
+  if (armor.cd > 0) armor.cd -= dt;
+  // Blindé abîmé : il fume, puis crache des étincelles
+  if (SH().key === 'rob' && armor.hp < .5 && P && Math.random() < (.5 - armor.hp) * .8) {
+    const pp = playerPos(), hot = armor.hp < .25 && Math.random() < .5;
+    particles.push({ x: pp.x + (Math.random() - .5) * .4, y: pp.y + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 1.5, vy: -1 - Math.random() * 1.5, life: 0, max: .6, color: hot ? '#ffb347' : 'rgba(150,160,175,0.7)', size: hot ? .14 : .3, ng: 1 });
+  }
   if (SH().key === 'fur') updateCamo(dt);
   if (SH().key === 'rew') recordRewind(dt);
 }
 // Chaque nouvelle case de fil recharge les pouvoirs (frénésie, bouclier, rembobinage)
 function seaStep() {
   const k = SH().key;
+  if (k === 'rob' && armor.hp < 1) { armor.hp = Math.min(1, armor.hp + 1 / ARMOR_CELLS); pwHud(); }
   if (k === 'fre' && ab.on === 0 && ab.cd > 0) { ab.cd--; if (!ab.cd) sfx.ready(); pwHud(); }
   if (k === 'enc' && P.guard > 0) {
     P.guard--;
@@ -1579,6 +1600,37 @@ function trapFoe(e) {
   hud();
 }
 
+// Blindé : blindage de 0 à 1. Chaque coup en retire une part selon l'ennemi ou le type de dégâts (demande de Fabien :
+// une boule environ 10 %, une onde de choc environ 5 %). Il est à peine ralenti (armor.jolt) et continue sa route ;
+// l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
+// pour 100 %. Le blindage n'est pas réparé entre les niveaux.
+const ARMOR_CELLS = 5000, HIT_CD = .8;
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, ring: .08, wave: .05, fastWave: .08, self: .20 };
+// cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
+const armor = { hp: 1, jolt: 0, cd: 0 };
+// un ennemi au contact du vaisseau : l'onde qu'il déclenche en touchant le bout du fil fait partie du même choc
+function foeTouching() {
+  const pp = playerPos();
+  return foes.some(e => !e.dead && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .4);
+}
+function armorHit(src) {
+  const e = typeof src === 'object' ? src : null, kind = e ? e.kind : src;
+  let dmg = ARMOR_DMG[kind] || .1;
+  if (e && e.kind === 'div') dmg = [.12, .09, .06][e.gen || 0];
+  armor.hp = Math.max(0, armor.hp - dmg); armor.jolt = .2; armor.cd = .6;
+  const pp = playerPos();
+  if (e) {
+    e.hitCd = HIT_CD;
+    const dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d, dot = e.vx * nx + e.vy * ny;
+    if (dot < 0) { e.vx -= 2 * dot * nx; e.vy -= 2 * dot * ny; }
+  }
+  burst(pp.x, pp.y, T.rainbow ? '#ffb347' : T.shock, 18, 8); burst(pp.x, pp.y, T.rainbow ? '#ffffff' : T.ball, 8, 5);
+  popups.push({ x: pp.x, y: pp.y - 1.4, text: '-' + Math.round(dmg * 100) + ' %', age: 0, color: armor.hp > .3 ? (T.rainbow ? '#ffb347' : T.ball) : T.danger });
+  shake = REDUCED ? 0 : Math.max(shake, .35); flash = Math.max(flash, .15);
+  sfx.clang(); pwHud();
+  if (armor.hp <= 0) crash();
+}
+
 /* ---------- Crash ---------- */
 // cause 'self' : le vaisseau a croisé son propre fil (pas un ennemi : la frénésie ne coûte pas 2 vies)
 function crash(cause) {
@@ -1615,6 +1667,7 @@ function updateCrash(dt) {
     // le bouclier de l'Encaisseur ne se recharge pas en mourant : il faut toujours retracer pour le récupérer
     const guard = P.guard;
     P = newPlayer(rx, ry); P.guard = guard;
+    if (S.test && armor.hp <= 0) armor.hp = 1;
     rw.hist = []; camo.on = 0;
     invuln = 0;
     showReady('restart');
@@ -1867,7 +1920,7 @@ const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H
 const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6 L3 12 L11 18 Z M20 6 L12 12 L20 18 Z"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
-  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew');
+  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob');
   if (b.hidden === show) b.hidden = !show;
   if (!show) { pwSig = ''; return; }
   let cls, p, inner, label;
@@ -1875,6 +1928,10 @@ function pwHud() {
     if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
     else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CELLS; inner = BOLT; label = 'Frénésie en recharge : trace dans la zone à conquérir'; }
     else { cls = 'ready'; p = 1; inner = BOLT; label = 'Déclencher la frénésie'; }
+  } else if (k === 'rob') {
+    const hp = armor.hp;
+    cls = 'armor'; p = hp; inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
+    b.style.setProperty('--ac', hp > .6 ? '#5dffb0' : hp > .3 ? '#ffb347' : '#ff4d5e');
   } else if (k === 'rew') {
     if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
     else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
@@ -2854,6 +2911,7 @@ function newcomers() {
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
+    if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps, et rappuie pour t'arrêter (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
@@ -2947,7 +3005,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -2987,7 +3045,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');

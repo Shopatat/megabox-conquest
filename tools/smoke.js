@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -187,7 +187,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   // (référence : le Frénétique, sans particularité sur les bonus)
   let n0 = 0, n1 = 0, nv = 0;
   for (let k = 0; k < 600; k++) { g.newGame(1, 2, 2); n0 += g.S.bonusLeft; g.newGame(1, 2, 0); nv += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
-  console.log(`robuste : ${g.S.lives} vies, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
+  console.log(`blindé : ${g.S.lives} vie, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
   const superShare = ship => { g.newGame(1, 5, ship); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
   console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(2).toFixed(0)} %`);
   // Frénétique : +50 % de vitesse, 2 vies si un ennemi le touche pendant, 1 s'il croise son fil, recharge de 20 s
@@ -306,6 +306,26 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`rembobineur sans jauge : crash normal, reprise après 2,1 s (${g.S.phase})`);
   g.newGame(1, 1, 6); g.collect({ type: 'life', x: 25.5, y: 33.5, done: false, age: 0 });
   console.log(`rembobineur : ${g.S.lives} vies après un bonus vie (max 2)`);
+}
+// 5m) Blindé : 20 % plus lent, blindage entamé selon le coup, réparation très lente, 0 % = crash
+{
+  const run = ship => { g.newGame(1, 1, ship); g.go(); g.foes.length = 0; g.setDir('down'); step(3); const y = g.P.y; step(60); return g.P.y - y; };
+  const vn = run(2), vb = run(1);
+  console.log(`blindé : ${vb} cases en 1 s contre ${vn} (x${(vb / vn).toFixed(2)})`);
+  const ball = () => { const b = g.makeFoe('out', 1); b.x = g.P.x + .5; b.y = g.P.y + 1.2; b.vx = 0; b.vy = -7.2; g.foes.push(b); return b; };
+  g.newGame(1, 1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
+  ball(); step(10);
+  const afterBall = g.armor.hp, moving = !!(g.P.dir.x || g.P.dir.y);
+  g.foes.length = 0; step(50);
+  const preWave = g.armor.hp;
+  g.onTrailHit({ kind: 'out' }, g.trail[0]); let n = 0; while (n++ < 120 && g.armor.hp > preWave - .01) step();
+  console.log(`blindé : après une boule ${(afterBall * 100).toFixed(0)} % (il continue ${moving}), après une onde de choc ${(g.armor.hp * 100).toFixed(0)} %, phase ${g.S.phase}`);
+  const before = g.armor.hp; for (let k = 0; k < 500; k++) g.seaStep();
+  console.log(`blindé : 500 cases tracées réparent ${((g.armor.hp - before) * 100).toFixed(0)} % (5000 pour 100 %)`);
+  g.armor.hp = .08; g.foes.length = 0; ball(); step(10);
+  console.log(`blindé : à 8 %, un dernier choc -> ${g.S.phase}`);
+  g.newGame(1, 1, 1); g.go(); g.armor.hp = .6; g.showClear(); g.setupLevel(2);
+  console.log(`blindé : blindage conservé entre deux niveaux ${g.armor.hp} (0.6)`);
 }
 // 5l) Piégeur : une petite zone refermée sur un ennemi l'élimine pour de bon
 {
