@@ -183,10 +183,13 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 
 // 5f) Vaisseaux
 {
-  // Robuste : 4 vies, 25 % de bonus en moins
-  let n0 = 0, n1 = 0;
-  for (let k = 0; k < 400; k++) { g.newGame(1, 2, 0); n0 += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
-  console.log(`robuste : ${g.S.lives} vies, ${(n1 / 400).toFixed(2)} bonus par niveau contre ${(n0 / 400).toFixed(2)} (attendu -25 %)`);
+  // Robuste : 4 vies, 25 % de bonus en moins ; Veinard : 50 % de bonus en plus et deux fois plus de super bonus
+  // (référence : le Frénétique, sans particularité sur les bonus)
+  let n0 = 0, n1 = 0, nv = 0;
+  for (let k = 0; k < 600; k++) { g.newGame(1, 2, 2); n0 += g.S.bonusLeft; g.newGame(1, 2, 0); nv += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
+  console.log(`robuste : ${g.S.lives} vies, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
+  const superShare = ship => { g.newGame(1, 5, ship); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
+  console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(2).toFixed(0)} %`);
   // Frénétique : +50 % de vitesse, 2 vies si un ennemi le touche pendant, 1 s'il croise son fil, recharge de 20 s
   const run = fr => { g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
   const dn = run(false), df = run(true);
