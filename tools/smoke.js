@@ -304,7 +304,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 6); g.collect({ type: 'life', x: 25.5, y: 33.5, done: false, age: 0 });
   console.log(`rembobineur : ${g.S.lives} vies après un bonus vie (max 2)`);
 }
-// 5l) Piégeur : une petite zone refermée sur un ennemi le détruit ; il revient 15 s plus tard
+// 5l) Piégeur : une petite zone refermée sur un ennemi l'élimine pour de bon
 {
   const run = (ship) => {
     g.newGame(1, 1, ship); g.go(); g.foes.length = 0;
@@ -318,7 +318,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const t = run(7), c = run(0);
   console.log(`piégeur : ennemi piégé ${t.dead}, +${t.pct.toFixed(1)} % (Classique dans la même situation : piégé ${c.dead}, +${c.pct.toFixed(1)} %)`);
   run(7); const n0 = g.foes.length; step(60 * 16);
-  console.log(`piégeur : ${n0} ennemi(s) juste après, ${g.foes.length} 16 s plus tard (il est revenu)`);
+  console.log(`piégeur : ${n0} ennemi(s) juste après, ${g.foes.length} 16 s plus tard (il ne revient pas)`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {

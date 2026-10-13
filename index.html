@@ -410,9 +410,9 @@ const SHIPS = [
       g.beginPath(); g.arc(-.04, 0, .52, -2.5, -.75); g.stroke();
       g.beginPath(); g.arc(-.04, 0, .52, .75, 2.5); g.stroke();
     } },
-  // Piégeur (proposé à Fabien, retenu) : refermer une petite zone sur des ennemis les détruit, mais ils reviennent
+  // Piégeur (proposé à Fabien, retenu) : refermer une petite zone sur des ennemis les élimine pour de bon
   { key: 'trap', name: 'PIÉGEUR', tag: 'Le chasseur chassé', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'PIÈGE',
-    desc: 'Referme une petite zone sur des ennemis : ils sont détruits et la zone est conquise. Mais ils reviennent 15 s plus tard par un portail.',
+    desc: 'Referme une petite zone (12 % du terrain au plus) sur des ennemis : ils sont éliminés pour de bon et la zone est conquise.',
     hullA: '#e4ff9a', hullB: '#3fae3a', glow: '#b6ff5c', pit: '#ffef5c', land: '#d4ffb0', flame: '170,255,90', tail: -.42, fw: .1, pitXY: [-.04, .12, .1],
     body(g) {
       // deux pinces vers l'avant, prêtes à se refermer
@@ -460,7 +460,7 @@ const pad2 = n => String(n).padStart(2, '0');
 const fmt = n => n.toLocaleString('fr-FR');
 
 const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (COLS-2*B)*(ROWS-2*B),
-  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, crashCost: 1, shipTip: false, back: [] };
+  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, crashCost: 1, shipTip: false };
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
@@ -752,7 +752,7 @@ function setupLevel(L) {
   if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : recharge de la frénésie, bouclier et jauge conservés
-  ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0; S.back = [];
+  ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (!S.test) {
@@ -1529,9 +1529,9 @@ function drawPlan() {
 }
 
 // Piégeur : chaque zone fermée par le fil qui contient des ennemis, fait au plus TRAP_MAX du terrain et n'est pas
-// la plus grande zone restante, se referme sur eux : ils sont détruits (la zone devient alors conquérable).
-// Chacun revient TRAP_BACK s plus tard, par un portail qui s'ouvre TRAP_PORTAL s avant.
-const TRAP_MAX = .12, TRAP_BACK = 15, TRAP_PORTAL = 2;
+// la plus grande zone restante, se referme sur eux : ils sont éliminés pour de bon (demande de Fabien) et la zone
+// devient conquérable.
+const TRAP_MAX = .12;
 function trapFoes() {
   const comp = new Int32Array(N).fill(-1), sizes = [], q = [];
   for (let i0 = 0; i0 < N; i0++) {
@@ -1566,45 +1566,7 @@ function trapFoe(e) {
   rings.push({ x: e.x, y: e.y, r: 3, max: 3, age: 0, color: T.rainbow ? '#b6ff5c' : T.shock });
   const pts = 300 * S.level; S.score += pts;
   popups.push({ x: e.x, y: e.y - 1.2, text: '+' + pts, age: -0.2, color });
-  S.back.push({ kind: e.kind, gen: e.gen || 0, t: TRAP_BACK });
   hud();
-}
-// retour des ennemis piégés : portail qui tourbillonne, puis l'ennemi réapparaît, loin du vaisseau si possible
-function updateBack(dt) {
-  for (const r of S.back) {
-    r.t -= dt;
-    if (r.t <= TRAP_PORTAL && r.x === undefined) {
-      const pp = playerPos(), c = [];
-      for (let y = B; y < ROWS - B; y++) for (let x = B; x < COLS - B; x++) if (grid[at(x, y)] === 0 && Math.hypot(x + .5 - pp.x, y + .5 - pp.y) > 10) c.push([x, y]);
-      if (!c.length) { r.gone = true; continue; }
-      [r.x, r.y] = c[(Math.random() * c.length) | 0].map(v => v + .5);
-      if (!muted) tone(300, .5, 'sine', .025, 400);
-    }
-    if (r.t <= 0 && !r.gone) {
-      r.gone = true;
-      if (grid[at(Math.floor(r.x), Math.floor(r.y))] !== 0) continue;
-      const e = makeFoe(r.kind, S.comp.sp);
-      e.x = r.x; e.y = r.y;
-      if (r.kind === 'div') { e.gen = r.gen; e.r = DIV_R[r.gen]; }
-      foes.push(e);
-      burst(e.x, e.y, foeColor(e), 20, 7); rings.push({ x: e.x, y: e.y, r: 0, max: 2.5, age: 0, color: foeColor(e) });
-      sfx.appear();
-    }
-  }
-  S.back = S.back.filter(r => !r.gone);
-}
-function drawPortals() {
-  for (const r of S.back) {
-    if (r.x === undefined) continue;
-    const f = 1 - Math.max(0, r.t) / TRAP_PORTAL, c = foeColor({ kind: r.kind }), TAU = Math.PI * 2;
-    halo(r.x, r.y, 1.6 * f + .3, c, .35 * f);
-    ctx.lineCap = 'round'; ctx.strokeStyle = c; ctx.lineWidth = .1;
-    for (let k = 0; k < 3; k++) {
-      const a = time * 6 + k * TAU / 3, rr = .3 + f * .8;
-      ctx.globalAlpha = .4 + .5 * f; ctx.beginPath(); ctx.arc(r.x, r.y, rr, a, a + 1.6); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
 }
 
 /* ---------- Crash ---------- */
@@ -1940,7 +1902,6 @@ function update(dt) {
     if (chronoOn()) chronoTick(dt);
     if (S.phase === 'play') updateItems(dt);
     if (S.phase === 'play') updateAbility(dt);
-    if (S.phase === 'play' && S.back.length) updateBack(dt * foeSlow());
     if (invuln > 0) invuln -= dt;
     if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0)) powersHud();
     if (power.sup > 0) superMusic(dt);
@@ -2034,7 +1995,6 @@ function render() {
     ctx.globalAlpha = 1;
   }
   for (const it of items) drawItem(it);
-  if (S.back.length) drawPortals();
   for (const e of foes) {
     if (e.kind === 'amph') continue;
     ctx.globalAlpha = e.stun > 0 ? 0.55 : 1;
@@ -2882,7 +2842,7 @@ function newcomers() {
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
-    if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les détruire. Attention, ils reviennent 15 s plus tard par un portail.</p>`;
+    if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps, et rappuie pour t'arrêter (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
@@ -2975,7 +2935,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les détruire, mais ils reviennent). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
