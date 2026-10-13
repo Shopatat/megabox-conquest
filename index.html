@@ -331,7 +331,9 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 
 // Vaisseaux au choix (idée de Fabien). body() trace et remplit la coque (unités de case, nez vers +x) ;
 // tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
-const FR_T = 5, FR_CD = 20, GUARD_T = 10;
+// Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
+// FR_CELLS cases pour la frénésie, GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
+const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = .1;
 const SHIPS = [
   { key: 'cla', name: 'CLASSIQUE', tag: 'L\'équilibre', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'AUCUN',
     desc: 'Le vaisseau d\'origine. Rien à gérer, juste toi et le terrain.',
@@ -360,14 +362,14 @@ const SHIPS = [
       g.fillStyle = f;
     } },
   { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FRÉNÉSIE',
-    desc: 'Frénésie : +50 % de vitesse pendant 5 s, puis 20 s de recharge. Touché pendant la frénésie, tu perds 2 vies.',
+    desc: 'Frénésie : +50 % de vitesse pendant 5 s. Pour la recharger, trace 100 cases dans la zone à conquérir. Touché pendant la frénésie, tu perds 2 vies.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
       g.lineTo(-.3, .14); g.lineTo(-.5, .6); g.lineTo(.12, .17); g.closePath(); g.fill();
     } },
   { key: 'enc', name: 'ENCAISSEUR', tag: 'Sang-froid', lives: 2, bonus: 1, spd: 3, bon: 3, power: 'ENCAISSE',
-    desc: 'Deux vies seulement, mais un coup l\'arrête net au lieu de le tuer. Un 2ᵉ coup dans les 10 s coûte une vie.',
+    desc: 'Deux vies seulement, mais un coup l\'arrête net au lieu de le tuer. Son bouclier revient après 80 cases tracées ; touché avant, il perd une vie.',
     hullA: '#ebe4ff', hullB: '#8c6bff', glow: '#a58cff', pit: '#5dffb0', land: '#d2c4ff', tail: -.52, fw: .16, pitXY: [.12, .2, .14],
     body(g) {
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.14, s * .36); g.lineTo(-.6, s * .56); g.lineTo(-.46, s * .14); g.closePath(); g.fill(); }
@@ -382,6 +384,29 @@ const SHIPS = [
     body(g) {
       g.beginPath(); g.moveTo(.98, 0); g.lineTo(.1, -.12); g.lineTo(-.32, -.4); g.lineTo(-.22, -.1); g.lineTo(-.52, -.06);
       g.lineTo(-.52, .06); g.lineTo(-.22, .1); g.lineTo(-.32, .4); g.lineTo(.1, .12); g.closePath(); g.fill();
+    } },
+  // Furtif (idée de Fabien) : les ennemis ne voient pas son fil, mais lui passe parfois en camouflage optique (façon MGS)
+  { key: 'fur', name: 'FURTIF', tag: 'Camouflage optique', lives: 2, bonus: 1, spd: 3, bon: 3, power: 'FIL INVISIBLE',
+    desc: 'Les ennemis ne voient pas ton fil : pas d\'onde de choc, rien ne l\'avale. Mais de temps en temps, ton vaisseau passe en camouflage optique et tu le vois à peine.',
+    hullA: '#7d8b9c', hullB: '#262e3a', glow: '#46ffc8', pit: '#46ffc8', land: '#9fb0c4', flame: '70,255,200', tail: -.44, fw: .07, pitXY: [.2, .14, .05],
+    body(g) {
+      g.beginPath(); g.moveTo(.72, 0); g.lineTo(-.12, -.62); g.lineTo(-.36, -.46); g.lineTo(-.24, -.2); g.lineTo(-.46, 0);
+      g.lineTo(-.24, .2); g.lineTo(-.36, .46); g.lineTo(-.12, .62); g.closePath(); g.fill();
+      // liserés lumineux sur les bords d'attaque
+      const f = g.fillStyle; g.strokeStyle = 'rgba(70,255,200,0.55)'; g.lineWidth = .035;
+      g.beginPath(); g.moveTo(.62, -.02); g.lineTo(-.1, -.56); g.moveTo(.62, .02); g.lineTo(-.1, .56); g.stroke();
+      g.fillStyle = f;
+    } },
+  // Rembobineur (idée de Fabien, façon Prince of Persia) : remonte le temps de 3 s, se recharge en traçant
+  { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'RETOUR 3 S',
+    desc: 'Bouton ⏪ : remonte le temps de 3 secondes, même juste après un crash. Il se recharge en traçant dans la zone à conquérir.',
+    hullA: '#ffe2a0', hullB: '#c4782a', glow: '#ffb84d', pit: '#7cf5ff', land: '#ffd9a0', tail: -.44, fw: .13, pitXY: [.16, .15, .09],
+    body(g) {
+      g.beginPath(); g.moveTo(.76, 0); g.lineTo(.1, -.3); g.lineTo(-.44, -.3); g.lineTo(-.3, 0); g.lineTo(-.44, .3); g.lineTo(.1, .3); g.closePath(); g.fill();
+      // cadran : deux arcs autour de la coque
+      g.strokeStyle = g.fillStyle; g.lineWidth = .08; g.lineCap = 'round';
+      g.beginPath(); g.arc(-.04, 0, .52, -2.5, -.75); g.stroke();
+      g.beginPath(); g.arc(-.04, 0, .52, .75, 2.5); g.stroke();
     } }
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
@@ -476,6 +501,9 @@ const sfx = {
   heart(){ tone(58,.11,'sine',.09); tone(52,.1,'sine',.07,0,.13); },
   ready(){ tone(1320,.06,'sine',.03); tone(1760,.1,'sine',.03,0,.06); },
   guard(){ tone(1900,.28,'triangle',.05,-1300); tone(150,.3,'square',.05,-70); tone(2700,.14,'sine',.03,-1600,.02); },
+  rewind(){ for (let i = 0; i < 10; i++) tone(1500 - i * 90, .05, 'square', .025, 500, i * .06); tone(180, .7, 'sawtooth', .035, 900); },
+  cloak(){ tone(1100, .45, 'sine', .03, -850); tone(2200, .25, 'triangle', .012, -1800, .05); },
+  decloak(){ tone(300, .3, 'sine', .03, 800); },
   guardUp(){ [784,1175,1568].forEach((f,i)=>tone(f,.09,'sine',.04,0,i*.07)); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
@@ -679,7 +707,7 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
+  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -688,7 +716,7 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
+  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; rw.charge = 1;
   setupLevel(sv.L);
 }
 function setupLevel(L) {
@@ -706,6 +734,7 @@ function setupLevel(L) {
   if (SH().bonus < 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) if (Math.random() < SH().bonus) n++; S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
   ab.on = 0; ab.cd = 0; plan = null; dash = null; slow = 0; superFlash = 0;
+  rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -769,7 +798,7 @@ function cancelConquest() {
 }
 function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
-  if (power.inv > 0 || power.sup > 0) return;
+  if (power.inv > 0 || power.sup > 0 || SH().key === 'fur') return;
   const k = trailPos[i];
   if (k < 0) return;
   const fast = e.kind === 'perf';
@@ -833,7 +862,7 @@ function moveInto(nx, ny) {
   P.x = nx; P.y = ny;
   if (c === 0) {
     if (!P.drawing) { P.drawing = true; P.start = { x: ox, y: oy }; resetTrailArrays(); sfx.draw(); }
-    pushTrail(at(nx, ny));
+    pushTrail(at(nx, ny)); seaStep();
   } else if (P.drawing) {
     if (wave) cancelConquest(); else capture();
     P.drawing = false; P.dir = {x:0,y:0}; P.next = null; P.noFill = false;
@@ -845,7 +874,7 @@ function moveInto(nx, ny) {
 const PULL_R = 7.5, GRAB_V0 = 4, GRAB_ACC = 10;
 function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
 function grabTrail(e) {
-  if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab) return;
+  if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab || SH().key === 'fur') return;
   grab = { e, t: 0, k: -1 };
   burst(e.x, e.y, T.amphHi, 18, 6);
   sfx.grab();
@@ -1002,7 +1031,7 @@ function checkGoal() {
 function moveSea(e, dt) {
   const R = e.r || R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
-  const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || power.inv > 0);
+  const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || power.inv > 0 || SH().key === 'fur');
   for (let s = 0; s < steps; s++) {
     let nx = e.x + e.vx * h, cx = Math.floor(nx + Math.sign(e.vx) * R), cy = Math.floor(e.y), c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.x = nx; else e.vx = -e.vx; }
@@ -1027,7 +1056,7 @@ const HUNT_AIM = .6, HUNT_DASH = .5, HUNT_REST = .65, HUNT_V = 15;
 // et sans terrain conquis entre eux. Une fois verrouillé, il finit sa visée.
 const HUNT_FOV = 50 * Math.PI / 180, HUNT_RANGE = 22;
 function huntSees(e) {
-  if (S.phase !== 'play' || !P || !P.drawing || P.shield) return false;
+  if (S.phase !== 'play' || !P || !P.drawing || P.shield || camoOn()) return false;
   const pp = playerPos(), dx = pp.x - e.x, dy = pp.y - e.y, d = Math.hypot(dx, dy);
   if (d > HUNT_RANGE) return false;
   let da = Math.abs(Math.atan2(dy, dx) - e.hd);
@@ -1261,8 +1290,9 @@ function drawStun(e) {
 
 /* ---------- Pouvoirs des vaisseaux ---------- */
 const frenzyOn = () => ab.on > 0;
-// Frénétique : 5 s de frénésie (+50 % de vitesse, vaisseau rouge vif), puis 20 s de recharge
+// Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
+  if (SH().key === 'rew') { rewind(); return; }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
   ab.on = FR_T; ab.beat = 0;
   const pp = playerPos();
@@ -1277,26 +1307,78 @@ function updateAbility(dt) {
     ab.on = Math.max(0, ab.on - dt);
     // battements de cœur, de plus en plus rapides
     ab.beat -= dt; if (ab.beat <= 0) { ab.beat = .32 + ab.on * .06; sfx.heart(); }
-    if (ab.on === 0) { ab.cd = FR_CD; sfx.rageEnd(); powersHud(); }
-    pwHud();
-  } else if (ab.cd > 0) {
-    ab.cd = Math.max(0, ab.cd - dt);
-    if (ab.cd === 0) sfx.ready();
+    if (ab.on === 0) { ab.cd = FR_CELLS; sfx.rageEnd(); powersHud(); }
     pwHud();
   }
   if (P && P.grace > 0) P.grace -= dt;
-  if (P && P.guard > 0) {
-    P.guard = Math.max(0, P.guard - dt);
-    if (P.guard === 0) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
+  if (SH().key === 'fur') updateCamo(dt);
+  if (SH().key === 'rew') recordRewind(dt);
+}
+// Chaque nouvelle case de fil recharge les pouvoirs (frénésie, bouclier, rembobinage)
+function seaStep() {
+  const k = SH().key;
+  if (k === 'fre' && ab.on === 0 && ab.cd > 0) { ab.cd--; if (!ab.cd) sfx.ready(); pwHud(); }
+  if (k === 'enc' && P.guard > 0) {
+    P.guard--;
+    if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
     pwHud();
   }
+  if (k === 'rew' && rw.charge < 1) { rw.charge = Math.min(1, rw.charge + 1 / RW_CELLS); if (rw.charge === 1) sfx.ready(); pwHud(); }
 }
-// Encaisseur : le premier coup l'arrête net au lieu de le tuer ; un 2e coup dans les 10 s coûte une vie.
+// Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
+const camo = { on: 0, next: 5 };
+const camoOn = () => SH().key === 'fur' && camo.on > 0;
+function updateCamo(dt) {
+  if (camo.on > 0) {
+    camo.on = Math.max(0, camo.on - dt);
+    if (!camo.on) { camo.next = 6 + Math.random() * 7; sfx.decloak(); const pp = playerPos(); burst(pp.x, pp.y, T.rainbow ? '#46ffc8' : T.shock, 14, 5); }
+  } else if ((camo.next -= dt) <= 0) { camo.on = 2.5 + Math.random() * 1.5; sfx.cloak(); }
+}
+// Rembobineur : on garde une photo de la partie toutes les RW_SNAP s sur les RW_SPAN dernières secondes ;
+// le pouvoir les rejoue à l'envers (effet VHS) puis reprend à la plus ancienne. Marche aussi pendant un crash.
+const rw = { charge: 1, hist: [], t: 0, play: null };
+function snap() {
+  const gi = grab ? foes.indexOf(grab.e) : -1;
+  return { grid: grid.slice(), trail: trail.slice(), erased: erased.slice(), P: structuredClone(P), foes: structuredClone(foes),
+    wave: wave && { ...wave }, grab: grab && gi >= 0 ? { ...grab, e: gi } : null, items: structuredClone(items), power: { ...power },
+    filled: S.filled, score: S.score, lives: S.lives, ab: { ...ab }, invuln };
+}
+function unsnap(sn) {
+  const redraw = sn.filled !== S.filled;
+  grid.set(sn.grid); trail = sn.trail.slice(); erased = sn.erased.slice();
+  trailPos.fill(-1); trail.forEach((i, k) => { if (!erased[k]) trailPos[i] = k; });
+  P = structuredClone(sn.P); foes = structuredClone(sn.foes); items = structuredClone(sn.items);
+  wave = sn.wave && { ...sn.wave }; grab = sn.grab ? { ...sn.grab, e: foes[sn.grab.e] } : null;
+  Object.assign(power, sn.power); Object.assign(ab, sn.ab);
+  S.filled = sn.filled; S.score = sn.score; S.lives = sn.lives; invuln = sn.invuln;
+  reveal = null; spawned = [];
+  if (redraw) drawBoard();
+}
+function recordRewind(dt) {
+  rw.t += dt;
+  if (rw.t < RW_SNAP) return;
+  rw.t = 0; rw.hist.push(snap());
+  if (rw.hist.length > RW_SPAN / RW_SNAP + 1) rw.hist.shift();
+}
+function rewind() {
+  if (rw.charge < 1 || !rw.hist.length || rw.play) return;
+  if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < 2)) return;
+  rw.play = { list: rw.hist.slice().reverse(), i: 0, t: 0 }; rw.hist = []; rw.charge = 0;
+  S.phase = 'rewind'; S.exploded = false; cv.style.filter = ''; plan = null; dash = null;
+  sfx.rewind(); pwHud();
+}
+function updateRewind(dt) {
+  const r = rw.play;
+  r.t += dt;
+  while (r.t >= .022 && r.i < r.list.length) { r.t -= .022; unsnap(r.list[r.i++]); }
+  if (r.i >= r.list.length) { rw.play = null; S.phase = 'play'; flash = .35; hud(); powersHud(); pwHud(); }
+}
+// Encaisseur : le premier coup l'arrête net au lieu de le tuer ; un 2e coup avant d'avoir retracé 80 cases coûte une vie.
 // Renvoie true si le coup est encaissé (1 s de répit juste après, pour que le même ennemi ne frappe pas deux fois).
 function absorb(e) {
   if (P.grace > 0) return true;
   if (P.guard > 0) return false;
-  P.guard = GUARD_T; P.grace = 1;
+  P.guard = GUARD_CELLS; P.grace = 1;
   P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y;
   const pp = playerPos();
   if (e) {
@@ -1420,7 +1502,7 @@ function crash(cause) {
   S.crashCost = frenzyOn() && cause !== 'self' ? 2 : 1;
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
-  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CD; }
+  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CELLS; }
   plan = null; dash = null;
   powersHud(); pwHud();
   sfx.crash();
@@ -1444,6 +1526,7 @@ function updateCrash(dt) {
     clearTrail();
     const [rx, ry] = respawnCell(crashPos.x, crashPos.y);
     P = newPlayer(rx, ry);
+    rw.hist = []; camo.on = 0;
     invuln = 0;
     showReady('restart');
   }
@@ -1686,24 +1769,28 @@ function powersHud() {
   const c = $('tsup'); if (c) c.style.width = (power.sup / POWER_T * 100) + '%';
   const r = $('trage'); if (r) r.style.width = (ab.on / FR_T * 100) + '%';
   // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
-  const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_T) * 100) + '%';
+  const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_CELLS) * 100) + '%';
 }
 // Bouton de pouvoir du HUD : Frénétique (prêt / actif / recharge) ou Encaisseur (bouclier prêt / en recharge)
 let pwSig = '';
 const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
+const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6 L3 12 L11 18 Z M20 6 L12 12 L20 18 Z"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
-  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc');
+  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew');
   if (b.hidden === show) b.hidden = !show;
   if (!show) { pwSig = ''; return; }
   let cls, p, inner, label;
   if (k === 'fre') {
     if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
-    else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CD; inner = Math.ceil(ab.cd); label = 'Frénésie en recharge'; }
+    else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CELLS; inner = BOLT; label = 'Frénésie en recharge : trace dans la zone à conquérir'; }
     else { cls = 'ready'; p = 1; inner = BOLT; label = 'Déclencher la frénésie'; }
+  } else if (k === 'rew') {
+    if (rw.charge >= 1) { cls = 'ready'; p = 1; inner = REWI; label = 'Remonter le temps'; }
+    else { cls = 'cd'; p = rw.charge; inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
   } else {
     const g = P ? P.guard : 0;
-    if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_T; inner = Math.ceil(g); label = 'Bouclier en recharge'; }
+    if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_CELLS; inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
     else { cls = 'guard'; p = 1; inner = SHIELDI; label = 'Bouclier prêt'; }
   }
   b.style.setProperty('--p', p.toFixed(3));
@@ -1745,6 +1832,8 @@ function update(dt) {
     }
   } else if (ph === 'crash') {
     updateCrash(dt);
+  } else if (ph === 'rewind') {
+    updateRewind(dt);
   } else if (ph === 'clearing') {
     for (const e of foes) moveFoe(e, dt * 0.3);
     clearT -= dt; if (clearT <= 0) showClear();
@@ -1836,7 +1925,7 @@ function render() {
   // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
   if (P && S.phase !== 'crash') drawShield();
-  if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
+  if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
 }
 function drawFoe(e) {
@@ -1913,6 +2002,17 @@ function drawFx() {
     ctx.stroke();
   }
   drawChrono('tint');
+  // rembobinage : effet cassette VHS (teinte, lignes de balayage, bande de bruit, ◀◀)
+  if (S.phase === 'rewind') {
+    ctx.fillStyle = T.rainbow ? 'rgba(90,130,255,0.14)' : 'rgba(11,24,56,0.12)'; ctx.fillRect(0, 0, COLS, ROWS);
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    for (let y = (time * 30) % 1.6; y < ROWS; y += 1.6) ctx.fillRect(0, y, COLS, .3);
+    const by = (time * 80) % (ROWS + 12) - 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.fillRect(0, by, COLS, 2.2);
+    ctx.fillStyle = T.rainbow ? '#ffffff' : T.shock;
+    if (Math.floor(time * 4) % 2) for (const x0 of [2, 4.4]) { ctx.beginPath(); ctx.moveTo(x0 + 2.4, 2); ctx.lineTo(x0, 3.4); ctx.lineTo(x0 + 2.4, 4.8); ctx.closePath(); ctx.fill(); }
+    ctx.textAlign = 'left'; ctx.font = '700 2px Silkscreen, "Courier New", monospace'; ctx.fillText('REMBOBINAGE', 8, 3.5); ctx.textAlign = 'center';
+  }
   // frénésie : bords de l'écran teintés de rouge, au rythme du cœur
   if (frenzyOn() && S.phase === 'play') {
     const beat = Math.pow(Math.max(0, Math.sin(time * 9)), 6), g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .32, COLS / 2, ROWS / 2, ROWS * .78);
@@ -2017,7 +2117,7 @@ function drawPlayer(pp) {
     halo(pp.x, pp.y, 2.2 + beat * .8, '#ff1f3d', blink ? .2 : .45 + beat * .25);
     if (!T.glow) { ctx.strokeStyle = T.shock; ctx.lineWidth = .1; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.1 + beat * .2, 0, Math.PI * 2); ctx.stroke(); }
   }
-  // Encaisseur : anneau de bouclier quand il est prêt, arc rouge qui se referme pendant les 10 s de vulnérabilité
+  // Encaisseur : anneau de bouclier quand il est prêt, arc rose qui se referme à mesure qu'il retrace des cases
   if (sh.key === 'enc' && S.phase !== 'crash') {
     ctx.lineCap = 'round';
     if (!(P.guard > 0)) {
@@ -2026,10 +2126,10 @@ function drawPlayer(pp) {
       ctx.setLineDash([.32, .2]); ctx.lineDashOffset = -time * 1.2;
       ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
       glowOff();
-    } else if (!(P.guard < 2 && Math.floor(time * 8) % 2 === 0)) {
+    } else if (!(P.guard < 12 && Math.floor(time * 8) % 2 === 0)) {
       const a0 = -Math.PI / 2;
       ctx.strokeStyle = T.rainbow ? 'rgba(255,92,138,0.8)' : T.shock; ctx.lineWidth = .08;
-      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, a0, a0 + (1 - P.guard / GUARD_T) * Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, a0, a0 + (1 - P.guard / GUARD_CELLS) * Math.PI * 2); ctx.stroke();
     }
   }
   if (sup && !(power.sup < 2 && Math.floor(time * 10) % 2 === 0)) {
@@ -2098,6 +2198,15 @@ function drawPlayer(pp) {
   const bank = Math.min(.22, Math.abs(turn) * .18);
   const moving = !!(P.dir.x || P.dir.y), neon = T.rainbow, hot = sup && neon;
   ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(P.ang); ctx.scale(1, 1 - bank);
+  // Furtif camouflé : silhouette presque transparente qui ondule, comme de l'air chaud, avec un reflet qui glisse
+  if (camoOn()) {
+    const fade = Math.min(1, camo.on / .35), a = .1 + .05 * Math.sin(time * 11) + (1 - fade) * .5;
+    ctx.globalAlpha = a; drawHull(ctx, sh, { neon: T.rainbow, moving, px: scale });
+    ctx.translate(Math.sin(time * 23) * .07, Math.cos(time * 17) * .06);
+    ctx.globalAlpha = a * .7; drawHull(ctx, sh, { neon: false, moving: false, px: scale });
+    if (Math.sin(time * 5) > .7) { ctx.globalAlpha = .35; ctx.fillStyle = '#ffffff'; ctx.fillRect(-.4 + (time * 2 % 1) * .9, -.3, .06, .6); }
+    ctx.globalAlpha = 1; ctx.restore(); return;
+  }
   ctx.lineJoin = 'round';
   if (m < 0.98) {
     // sur le terrain : gemme carrée aux coins arrondis
@@ -2641,9 +2750,11 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
-    if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Un 2ᵉ coup dans les 10 s coûte une vie.</p>`;
+    if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
+    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le bouton ⏪ en haut à droite (ou F au clavier) pour remonter le temps de 3 s, même juste après un crash. Il se recharge en traçant dans la zone à conquérir.</p>`;
+    if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
   if (now.mobile && !comp(Math.max(1, S.level - 1), S.diff).mobile) html += `<p class="keys">À partir de maintenant, les bonus se déplacent.</p>`;
@@ -2731,7 +2842,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau).</li>
+        <li><b>Vaisseaux</b> : Classique, Robuste (une vie de plus, moins de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps de 3 s). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -2771,7 +2882,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = 1; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');

@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -48,7 +48,7 @@ function play(d, L, frames, seed, ship = 0) {
   for (let f = 0; f < frames; f++) {
     if (g.S.phase === 'ready') g.setDir('down');
     if (g.S.phase === 'over') g.newGame(d, L, ship);
-    if (rnd() < 0.01) g.usePower();
+    if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
     if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
     if (rnd() < 0.005) g.setDir('stop');
     step();
@@ -196,17 +196,18 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); g.usePower(); step(2); g.crash('self'); step(60);
   console.log(`frénésie : touché par un ennemi 3 -> ${l2} vies, croise son fil 3 -> ${g.S.lives} vies`);
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
-  const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20 + 10); g.usePower();
-  console.log(`frénésie : finie après 5 s ${cd > 19}, refusée pendant la recharge ${refused}, de nouveau dispo après 20 s ${g.ab.on > 0}`);
+  const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20); g.usePower(); const stillOff = g.ab.on === 0;
+  for (let i = 0; i < 100; i++) g.seaStep(); g.usePower();
+  console.log(`frénésie : finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 100 cases ${g.ab.on > 0}`);
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   const pyB = g.P.y;
   g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
   step(3); const stopped = g.S.phase === 'play' && !g.P.dir.x && !g.P.dir.y; const yS = g.P.y; step(30);
-  console.log(`encaisseur : ${g.SHIPS[3].lives} vies, coup encaissé (phase ${g.S.phase}), arrêté net ${stopped && g.P.y === yS} (y ${pyB} -> ${g.P.y}), bouclier ${g.P.guard.toFixed(1)} s`);
+  console.log(`encaisseur : ${g.SHIPS[3].lives} vies, coup encaissé (phase ${g.S.phase}), arrêté net ${stopped && g.P.y === yS} (y ${pyB} -> ${g.P.y}), bouclier à recharger : ${g.P.guard} cases`);
   g.foes.length = 0; step(60);
   g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
-  step(5); console.log(`encaisseur : 2e coup dans les 10 s -> ${g.S.phase}`);
+  step(5); console.log(`encaisseur : 2e coup avant d'avoir rechargé le bouclier -> ${g.S.phase}`);
   // onde de choc : fil effacé, conquête annulée, le retour ne referme aucune zone
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   g.foes.push({ kind: 'out', x: 40, y: 40, vx: 7.2, vy: 4, hist: [], ph: 0, dead: false });
@@ -276,6 +277,31 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`fulgurant : trajet à travers un ennemi -> ${g.S.phase}`);
 }
 
+
+// 5i) Furtif : fil invisible pour les ennemis, camouflage optique
+{
+  g.newGame(1, 1, 5); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
+  g.onTrailHit({ kind: 'out' }, g.trail[0]);
+  const b = g.makeFoe('out', 1); b.x = g.P.x + 4.5; b.y = 8.5; b.vx = -7.2; b.vy = 0; g.foes.push(b); step(30);
+  console.log(`furtif : onde de choc ${!!g.wave} (attendu false), la boule traverse le fil, phase ${g.S.phase}`);
+  const h = g.makeFoe('hunt', 1); h.x = g.P.x + .5; h.y = g.P.y + 8; h.vx = 0; h.vy = -3.2; h.hd = -Math.PI / 2;
+  g.camo.on = 2; const blind = !g.huntSees(h); g.camo.on = 0; const sees = g.huntSees(h);
+  console.log(`furtif : camouflé, le chasseur ne le voit pas ${blind} ; visible, il le voit ${sees}`);
+}
+// 5j) Rembobineur : remonte le temps de 3 s, même juste après un crash ; se recharge en traçant
+{
+  g.newGame(1, 1, 6); g.go(); g.foes.length = 0;
+  const ball = g.makeFoe('out', 1); ball.x = 40.5; ball.y = 50.5; g.foes.push(ball);
+  g.setDir('down'); step(90);
+  const y1 = g.P.y; g.crash(); step(40);
+  const lost = g.S.lives;
+  g.usePower(); const ph = g.S.phase; step(60);
+  console.log(`rembobineur : crash (vies ${lost}), rembobinage ${ph}, après : phase ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, recharge ${g.rw.charge}`);
+  g.usePower(); const again = g.S.phase;
+  for (let i = 0; i < 120; i++) g.seaStep();
+  console.log(`rembobineur : refusé sans recharge (${again}), rechargé après 120 cases ${g.rw.charge === 1}`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 2], [2, 25, 3], [0, 25, 1]]) {
@@ -285,7 +311,7 @@ for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 5); maxFoes = Math.max(maxFoes, g.foes.length); }
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 7); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');
