@@ -411,7 +411,7 @@ const SHIPS = [
       g.beginPath(); g.arc(-.04, 0, .52, .75, 2.5); g.stroke();
     } },
   // Piégeur (proposé à Fabien, retenu) : refermer une petite zone sur des ennemis les élimine pour de bon
-  { key: 'trap', name: 'PIÉGEUR', tag: 'Le chasseur chassé', lives: 3, bonus: 1, spd: 3, bon: 3, power: 'PIÈGE',
+  { key: 'trap', name: 'PIÉGEUR', tag: 'Le chasseur chassé', lives: 2, bonus: 1, spd: 3, bon: 3, power: 'PIÈGE',
     desc: 'Referme une petite zone (12 % du terrain au plus) sur des ennemis : ils sont éliminés pour de bon et la zone est conquise.',
     hullA: '#e4ff9a', hullB: '#3fae3a', glow: '#b6ff5c', pit: '#ffef5c', land: '#d4ffb0', flame: '170,255,90', tail: -.42, fw: .1, pitXY: [-.04, .12, .1],
     body(g) {
