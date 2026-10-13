@@ -225,9 +225,17 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   let n = 0; for (let f = 0; f < 90 && g.S.phase === 'play'; f++) { step(); n = Math.max(n, g.foes.filter(x => x.kind === 'div').length); }
   console.log(`diviseur : ${n} morceaux après avoir touché le fil (phase ${g.S.phase})`);
   // Chasseur : immobile... puis fonce sur le vaisseau quand il trace
-  e = lone('hunt', e => { e.x = g.P.x + 12.5; e.y = 30; });
+  const face = (e, tx, ty) => { const d = Math.hypot(tx - e.x, ty - e.y); e.vx = (tx - e.x) / d * 3.2; e.vy = (ty - e.y) / d * 3.2; e.hd = Math.atan2(e.vy, e.vx); };
+  e = lone('hunt', e => { e.x = g.P.x + 10.5; e.y = 26; face(e, g.P.x + .5, g.P.y + .5); });
   let seen = {}; for (let f = 0; f < 120 && g.S.phase === 'play'; f++) { step(); seen[e.st] = 1; }
-  console.log(`chasseur : états ${Object.keys(seen).join(' > ')}, fin ${g.S.phase}`);
+  console.log(`chasseur face au vaisseau : états ${Object.keys(seen).join(' > ')}, fin ${g.S.phase}`);
+  e = lone('hunt', e => { e.x = g.P.x + 10.5; e.y = 26; face(e, g.P.x + 20, 60); });
+  seen = {}; for (let f = 0; f < 20; f++) { step(); seen[e.st] = 1; }
+  console.log(`chasseur dos au vaisseau : vise ${!!seen.aim} (attendu false)`);
+  e = lone('hunt', e => { e.x = g.P.x + .5; e.y = 40; face(e, g.P.x + .5, 0); });
+  for (let y = 25; y < 28; y++) for (let x = 0; x < 50; x++) if (g.grid[g.at(x, y)] === 0) g.grid[g.at(x, y)] = 1;
+  seen = {}; for (let f = 0; f < 10; f++) { step(); seen[e.st] = 1; }
+  console.log(`chasseur avec du terrain entre eux : vise ${!!seen.aim} (attendu false)`);
   // Pulsar : son anneau coupe le fil
   e = lone('puls', e => { e.x = g.P.x + 6.5; e.y = 25; e.vx = 0; e.vy = 0; e.pt = .1; });
   let waved = false; for (let f = 0; f < 90; f++) { step(); waved = waved || !!g.wave || g.S.phase !== 'play'; }
@@ -252,6 +260,15 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.planLaunch();
   let frames = 0; while (g.dash && frames < 60) { step(); frames++; }
   console.log(`fulgurant : trajet de ${n} cases (refermé ${closed}) parcouru en ${frames} frames, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, sur son terrain ${!g.P.drawing}`);
+  // en plein vol : le vaisseau s'arrête pour dessiner, puis file vers son terrain
+  g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
+  const b2 = g.makeFoe('out', 1); b2.x = 40.5; b2.y = 50.5; g.foes.push(b2);
+  g.setDir('down'); step(40);
+  const yFly = g.P.y, fly0 = g.S.filled;
+  g.planStart(); step(10); const frozen = g.P.y === yFly && g.P.drawing;
+  g.planTo(g.P.x - 10, g.P.y); g.planTo(g.P.x - 10, 0); g.planLaunch();
+  let fr = 0; while (g.dash && fr < 60) { step(); fr++; }
+  console.log(`fulgurant en plein vol : arrêté pendant le tracé ${frozen}, éclair en ${fr} frames, +${((g.S.filled - fly0) / g.S.interior * 100).toFixed(1)} %, sur son terrain ${!g.P.drawing}`);
   // un ennemi sur le trajet : crash, et une seule vie = fin de partie
   g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
   const e = g.makeFoe('out', 1); e.x = g.P.x + .5; e.y = 12.5; e.vx = 0; e.vy = 0; g.foes.push(e);
