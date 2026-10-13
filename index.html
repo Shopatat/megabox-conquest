@@ -336,8 +336,9 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
 // FR_CELLS cases pour la frénésie, GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
 // Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
-// (RW_STEP par photo, soit demi-vitesse) pour bien voir et s'arrêter pile où on veut ; au crash, RW_WIN s pour décider
-const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 1 / 30, RW_WIN = 3;
+// (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
+// veut ; au crash, RW_WIN s pour décider
+const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 const SHIPS = [
   // Veinard (ex-Classique, nom choisi par Fabien) : le vaisseau d'origine, avec la chance en plus
   { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, itemLife: 1.5, spd: 3, bon: 5, power: 'CHANCE',
@@ -1435,7 +1436,19 @@ function updateRewind(dt) {
     r.t -= RW_STEP;
     if (!rw.hist.length || rw.charge < RW_SNAP - 1e-6) { r.stop = true; break; }
     unsnap(rw.hist.pop()); rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
-    if (!muted && r.n % 6 === 0) tone(1300 - (r.n % 24) * 30, .04, 'square', .02, 400);
+    // positions de départ pour glisser vers la photo suivante (plus ancienne) entre deux pas
+    r.base = { vox: P.vox, voy: P.voy, pp: playerPos(), foes: foes.map(e => [e.x, e.y]) };
+    if (!muted && r.n % 3 === 0) tone(1300 - (r.n % 24) * 30, .04, 'square', .02, 400);
+  }
+  // au ralenti, chaque photo dure plusieurs images : vaisseau et ennemis glissent vers la photo suivante
+  const nx = rw.hist[rw.hist.length - 1], f = Math.min(1, r.t / RW_STEP);
+  if (r.base && nx && !r.stop) {
+    const q = nx.P, qf = (q.dir.x || q.dir.y) ? Math.min(1, q.acc / stepTime()) : 1;
+    const bx = q.px + (q.x - q.px) * qf + .5 + q.vox, by = q.py + (q.y - q.py) * qf + .5 + q.voy;
+    P.vox = r.base.vox + (bx - r.base.pp.x) * f; P.voy = r.base.voy + (by - r.base.pp.y) * f;
+    if (nx.foes.length === foes.length) foes.forEach((e, i) => {
+      const [x0, y0] = r.base.foes[i]; e.x = x0 + (nx.foes[i].x - x0) * f; e.y = y0 + (nx.foes[i].y - y0) * f;
+    });
   }
   hud(); pwHud();
   if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); }

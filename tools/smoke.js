@@ -297,8 +297,13 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   start();
   const y1 = g.P.y; g.crash(); step(150);
   const held = g.S.phase, lost = g.S.lives;
-  g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 600) { step(); n++; }
+  g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 1200) { step(); n++; }
   console.log(`rembobineur : 2,5 s après le crash, toujours en suspens (${held}, vies ${lost}) ; rembobinage ${ph} pendant ${n} frames, puis ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, jauge ${g.rw.charge.toFixed(1)} s`);
+  start();
+  { const ball = g.foes[0]; g.usePower(); let still = 0, maxJump = 0, px = ball.x, py = ball.y;
+    for (let f = 0; f < 60; f++) { step(); const b = g.foes[0], d = Math.hypot(b.x - px, b.y - py); if (d < 1e-6) still++; maxJump = Math.max(maxJump, d); px = b.x; py = b.y; }
+    console.log(`rembobineur au ralenti : boule ${still} image(s) figée(s) sur 60, plus grand pas ${maxJump.toFixed(3)} case (vitesse réelle 0,12 case par image)`);
+    g.usePower(); step(3); }
   start();
   g.usePower(); step(12); g.usePower(); step(3);
   console.log(`rembobineur : arrêté tôt -> phase ${g.S.phase}, jauge économisée ${g.rw.charge.toFixed(1)} s sur 3`);
