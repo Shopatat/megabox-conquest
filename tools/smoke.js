@@ -28,7 +28,7 @@ const winListeners = {};
 Object.assign(globalThis, {
   document: { getElementById: id => els[id] || (els[id] = el()), createElement: () => el(), querySelector: () => el(), querySelectorAll: () => [],
     addEventListener: noop, documentElement: el(), body: el(), hidden: false, fonts: { ready: Promise.resolve() } },
-  window: globalThis, devicePixelRatio: 2, innerWidth: 375, innerHeight: 812,
+  window: globalThis, devicePixelRatio: 2, innerWidth: 375, innerHeight: 812, Path2D: class { constructor() { return anyProxy(); } },
   matchMedia: () => ({ matches: false, addEventListener: noop }),
   ResizeObserver: class { constructor(cb) { this.cb = cb; } observe() { this.cb([]); } },
   requestAnimationFrame: cb => { rafCb = cb; },

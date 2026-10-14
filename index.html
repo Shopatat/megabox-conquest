@@ -809,19 +809,81 @@ function landLoops() {
   }
   return loops;
 }
+// Motif de plaques hexagonales (en pixels du canvas, refait si l'échelle change)
+var hexPat = null, hexScale = 0;
+function hexPattern() {
+  if (hexPat && hexScale === scale) return hexPat;
+  const r = 1.7 * scale, w = Math.round(Math.sqrt(3) * r), h = Math.round(3 * r);
+  const c = document.createElement('canvas'); c.width = Math.max(2, w); c.height = Math.max(2, h);
+  const g = c.getContext('2d');
+  if (!g) return null;
+  const hx = (cx, cy) => { g.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; g[k ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r * .94, cy + Math.sin(a) * r * .94); } g.closePath(); };
+  g.lineWidth = Math.max(1, scale * .07); g.strokeStyle = 'rgba(255,255,255,0.09)';
+  for (const [cx, cy] of [[0, 0], [w, 0], [w / 2, h / 2], [0, h], [w, h]]) { hx(cx, cy); g.stroke(); }
+  // un petit point lumineux au centre de chaque plaque
+  g.fillStyle = 'rgba(255,255,255,0.12)';
+  for (const [cx, cy] of [[w / 2, h / 2], [0, 0], [w, 0], [0, h], [w, h]]) { g.beginPath(); g.arc(cx, cy, Math.max(.8, scale * .08), 0, Math.PI * 2); g.fill(); }
+  hexPat = bctx.createPattern(c, 'repeat'); hexScale = scale;
+  return hexPat;
+}
+// Contour du terrain (en cases), gardé pour le liseré animé dessiné à chaque image
+var boardEdge = null;
 function drawBoardSmooth() {
   const loops = landLoops().map(l => smoothPts(l, 6, true));
-  bctx.beginPath(); bctx.rect(-1, -1, COLS + 2, ROWS + 2);
-  for (const l of loops) curvePts(bctx, l, true);
+  const edge = new Path2D();
+  for (const l of loops) curvePts(edge, l, true);
+  const land = new Path2D(); land.rect(-1, -1, COLS + 2, ROWS + 2); land.addPath(edge);
+  boardEdge = edge;
   const g = bctx.createLinearGradient(0, 0, COLS, ROWS);
   g.addColorStop(0, T.landGrad[0]); g.addColorStop(1, T.landGrad[1]);
-  bctx.fillStyle = g; bctx.fill('evenodd');
-  // liseré lumineux : halo large et doux, puis trait fin
-  bctx.beginPath();
-  for (const l of loops) curvePts(bctx, l, true);
+  bctx.fillStyle = g; bctx.fill(land, 'evenodd');
+  bctx.save();
+  bctx.clip(land, 'evenodd');
+  // reflet doux en haut à gauche, ombre en bas à droite
+  const sh = bctx.createRadialGradient(COLS * .2, ROWS * .1, 0, COLS * .2, ROWS * .1, ROWS * .8);
+  sh.addColorStop(0, 'rgba(255,255,255,0.16)'); sh.addColorStop(.5, 'rgba(255,255,255,0.03)'); sh.addColorStop(1, 'rgba(20,0,60,0.18)');
+  bctx.fillStyle = sh; bctx.fillRect(0, 0, COLS, ROWS);
+  // plaques hexagonales
+  const pat = hexPattern();
+  if (pat) { bctx.save(); bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.fillStyle = pat; bctx.fillRect(0, 0, board.width, board.height); bctx.restore(); }
+  // bord en relief : la lumière s'accroche à l'intérieur du contour
   bctx.lineJoin = 'round';
-  bctx.strokeStyle = 'rgba(190,200,255,0.16)'; bctx.lineWidth = .9; bctx.stroke();
-  bctx.strokeStyle = T.edge; bctx.lineWidth = .2; bctx.stroke();
+  for (const [lw, a] of [[3.2, .05], [1.9, .07], [1, .1]]) { bctx.strokeStyle = `rgba(225,232,255,${a})`; bctx.lineWidth = lw; bctx.stroke(edge); }
+  bctx.restore();
+  // halo côté espace
+  bctx.strokeStyle = 'rgba(150,170,255,0.13)'; bctx.lineWidth = 1.3; bctx.stroke(edge);
+}
+// Liseré néon (thème couleur) : il respire doucement et des traits de lumière y circulent
+// Vague lumineuse de la conquête (thème couleur) : les cases qui viennent d'être prises s'allument en lumière
+// additive (blanc puis cyan, puis violet), le front de la vague est donc le plus brillant. Regroupées par âge.
+const FRESH_T = .6;
+function drawFresh() {
+  if (!fresh.length) return;
+  const NB = 6, paths = Array.from({ length: NB }, () => new Path2D());
+  for (const f of fresh) {
+    const u = Math.max(0, Math.min(.999, f.age / FRESH_T)), b = (u * NB) | 0, r = .55 + u * 1.1;
+    const x = f.i % COLS + .5, y = ((f.i / COLS) | 0) + .5;
+    paths[b].moveTo(x + r, y); paths[b].arc(x, y, r, 0, Math.PI * 2);
+  }
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let b = 0; b < NB; b++) {
+    const u = (b + .5) / NB, a = Math.pow(1 - u, 1.6);
+    ctx.fillStyle = u < .2 ? `rgba(255,255,255,${.5 * a})` : u < .5 ? `rgba(150,225,255,${.4 * a})` : `rgba(185,150,255,${.35 * a})`;
+    ctx.fill(paths[b]);
+  }
+  ctx.restore();
+}
+function drawEdgeGlow() {
+  if (!T.smooth || !boardEdge) return;
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const b = .5 + .5 * Math.sin(time * 2.2);
+  ctx.globalAlpha = .55 + .3 * b; ctx.strokeStyle = T.edge; ctx.lineWidth = .2 + .05 * b; ctx.stroke(boardEdge);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.setLineDash([1.1, 10]); ctx.lineDashOffset = -time * 7;
+  ctx.globalAlpha = .22; ctx.strokeStyle = '#8fd8ff'; ctx.lineWidth = .75; ctx.stroke(boardEdge);
+  ctx.globalAlpha = .85; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = .2; ctx.stroke(boardEdge);
+  ctx.restore();
 }
 function drawBoard() {
   boardDirty = false; boardRev = !!reveal;
@@ -2547,7 +2609,7 @@ function update(dt) {
   }
   if (ph !== 'pause') {
     for (const f of fresh) f.age += dt;
-    fresh = fresh.filter(f => f.age < 0.45);
+    fresh = fresh.filter(f => f.age < FRESH_T);
     for (const p of particles) { p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= 0.96; p.vy = p.vy*0.96 + (p.ng ? 0 : 6*dt); }
     particles = particles.filter(p => p.life < p.max);
     for (const p of popups) p.age += dt;
@@ -2584,11 +2646,12 @@ function render() {
   ctx.drawImage(board, 0, 0, COLS, ROWS);
   drawTwinkle();
   drawChrono('clock');
+  drawEdgeGlow();
 
-  for (const f of fresh) {
-    ctx.fillStyle = `rgba(${T.fresh},${(1 - f.age/0.45) * (T.smooth ? .35 : .6)})`;
-    if (T.smooth) { ctx.beginPath(); ctx.arc(f.i % COLS + .5, ((f.i / COLS) | 0) + .5, .75, 0, Math.PI * 2); ctx.fill(); }
-    else ctx.fillRect(f.i % COLS, (f.i / COLS) | 0, 1, 1);
+  if (T.smooth) drawFresh();
+  else for (const f of fresh) {
+    ctx.fillStyle = `rgba(${T.fresh},${(1 - f.age/FRESH_T) * .6})`;
+    ctx.fillRect(f.i % COLS, (f.i / COLS) | 0, 1, 1);
   }
 
   const pp = P ? playerPos() : null;
