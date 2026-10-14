@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -38,6 +38,8 @@ Object.assign(globalThis, {
 Object.defineProperty(globalThis, 'performance', { value: { now: () => now }, configurable: true, writable: true });
 new Function(src)();
 const g = globalThis.__g;
+// la grille est G fois plus fine que le monde : position du vaisseau dans le monde, en cases d'origine
+const G = g.G || 1, PX = () => (g.P.x + .5) / G, PY = () => (g.P.y + .5) / G;
 const step = (n = 1) => { for (let i = 0; i < n; i++) { now += 16.7; const cb = rafCb; rafCb = null; cb && cb(now); } };
 const DIRS = ['up', 'down', 'left', 'right'];
 
@@ -75,7 +77,7 @@ g.onTrailHit({ kind: 'out' }, g.trail[0]);
 const y0 = g.P.y; step(1);
 console.log('onde: fil', before, '-> le vaisseau avance encore :', g.P.y > y0, '| onde active :', !!g.wave);
 g.setDir('left'); step(1); g.setDir('up'); step(90);
-console.log('après retour au terrain : phase', g.S.phase, '| onde', !!g.wave, '| fil', g.trail.length, '| en', g.P.x, g.P.y);
+console.log('après retour au terrain : phase', g.S.phase, '| onde', !!g.wave, '| fil', g.trail.length, '| en', PX().toFixed(1), PY().toFixed(1));
 
 // onde rattrape le vaisseau s'il reste loin du terrain
 g.newGame(1, 1); g.setDir('down'); step(2); g.foes.length = 0;
@@ -96,7 +98,7 @@ function grabRun(startLeft, turn, frames) {
   if (startLeft) { g.setDir('left'); step(75); }
   g.setDir('down'); step(70);
   const x = g.P.x, len0 = g.trail.length;
-  g.foes.push({ kind: 'amph', x: x + .5, y: 8.5, vx: 0, vy: 0, hist: [], ph: 0, dead: false });
+  g.foes.push({ kind: 'amph', x: (x + .5) / G, y: 8.5, vx: 0, vy: 0, hist: [], ph: 0, dead: false });
   step(1);
   const grabbed = !!g.grab;
   g.setDir(turn);
@@ -116,7 +118,7 @@ console.log(`super bombe : +${((f1 - f0) / g.S.interior * 100).toFixed(1)} % du 
 fresh(); g.setDir('down'); step(10);
 g.collect({ type: 'sspd', x: 25.5, y: 5.5, done: false, age: 0 });
 step(40); g.setDir('right'); step(2); const xs = g.P.x; step(10);
-console.log(`super vitesse : ${g.P.x - xs} cases en 10 frames (normal ~3) | power.hyp ${g.power.hyp.toFixed(1)}`);
+console.log(`super vitesse : ${(g.P.x - xs) / G} cases en 10 frames (normal ~3) | power.hyp ${g.power.hyp.toFixed(1)}`);
 step(700); console.log(`super vitesse terminée : ${g.power.hyp === 0}`);
 fresh(); g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); step(60);
 const l1 = g.S.lives; g.S.lives = 8; g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 }); step(60);
@@ -141,7 +143,7 @@ step(600); console.log(`chrono terminé : le vaisseau est reparti ${g.power.chr 
 g.newGame(1, 1); g.go(); g.foes.length = 0;
 g.foes.push({ kind: 'out', x: 25.5, y: 9, vx: 0.4, vy: -7.2, hist: [], ph: 0, dead: false });
 let minD = 99;
-for (let f = 0; f < 120; f++) { step(); minD = Math.min(minD, Math.hypot(g.foes[0].x - 25.5, g.foes[0].y - .5)); }
+for (let f = 0; f < 120; f++) { step(); minD = Math.min(minD, Math.hypot(g.foes[0].x - PX(), g.foes[0].y - PY())); }
 console.log(`bouclier : la boule ne s'approche pas à moins de ${minD.toFixed(1)} cases, phase ${g.S.phase}, bouclier ${g.P.shield}`);
 g.setDir('down'); step(2);
 console.log(`bouclier levé au premier mouvement : ${!g.P.shield}`);
@@ -149,13 +151,13 @@ g.newGame(1, 1); g.go(); g.foes.length = 0;
 g.setDir('left'); step(80); g.setDir('down'); step(60); g.setDir('right'); step(5);
 g.crash(); const cp = g.crashPos; step(160);
 const onLand = g.grid[g.at(g.P.x, g.P.y)] === 1;
-console.log(`reprise : crash en (${cp.x.toFixed(0)},${cp.y.toFixed(0)}) -> reprise en (${g.P.x},${g.P.y}), sur le terrain ${onLand}, bouclier ${g.P.shield}`);
+console.log(`reprise : crash en (${cp.x.toFixed(0)},${cp.y.toFixed(0)}) -> reprise en (${PX().toFixed(0)},${PY().toFixed(0)}), sur le terrain ${onLand}, bouclier ${g.P.shield}`);
 
 // 5d) Ennemi coincé dans le terrain conquis : libéré, et pas de mort en boucle à la reprise
 g.newGame(1, 1); g.go(); g.foes.length = 0;
 g.foes.push({ kind: 'perf', x: 10.5, y: 1.5, vx: 8.8, vy: 0, hist: [], ph: 0, dead: false });
 step(2);
-const pf = g.foes[0], freed = g.grid[g.at(Math.floor(pf.x), Math.floor(pf.y))] === 0;
+const pf = g.foes[0], freed = g.grid[g.at(Math.floor(pf.x * G), Math.floor(pf.y * G))] === 0;
 console.log(`ennemi coincé dans le terrain : libéré vers la zone à conquérir ${freed} (${pf.x.toFixed(1)}, ${pf.y.toFixed(1)})`);
 g.newGame(1, 1); g.go(); g.foes.length = 0;
 g.setDir('left'); step(60); g.setDir('down'); step(40); g.setDir('right'); step(3);
@@ -193,25 +195,25 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   // Frénétique : +50 % de vitesse et invincible pendant la frénésie, recharge en traçant 300 cases
   const run = fr => { g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
   const dn = run(false), df = run(true);
-  console.log(`frénésie : ${dn} cases sans, ${df} avec (x${(df / dn).toFixed(2)})`);
+  console.log(`frénésie : ${dn / G} cases sans, ${df / G} avec (x${(df / dn).toFixed(2)})`);
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(20); g.usePower();
-  { const e = g.makeFoe('out', 1), pp = g.P; e.x = pp.x + .5; e.y = pp.y + 2.5; e.vx = 0; e.vy = -7; g.foes.push(e);
+  { const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + 2; e.vx = 0; e.vy = -7; g.foes.push(e);
     const h = g.makeFoe('hunt', 1); h.x = 10.5; h.y = 40.5; g.foes.push(h); }
   step(60); const inv = g.S.phase, l2 = g.S.lives, trl = g.trail.length; g.setDir('left'); step(5); g.setDir('up'); step(5); g.setDir('right'); step(5);
   console.log(`frénésie : percuté par une boule ${inv} (play), vies 3 -> ${l2}, fil ${trl > 0 ? 'intact' : 'perdu'} ; croise son fil ${g.S.phase} vies ${g.S.lives}`);
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
   const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20); g.usePower(); const stillOff = g.ab.on === 0;
-  for (let i = 0; i < 299; i++) g.seaStep(); g.usePower(); const early = g.ab.on > 0; g.seaStep(); g.usePower();
+  for (let i = 0; i < 299 * G; i++) g.seaStep(); g.usePower(); const early = g.ab.on > 0; for (let i = 0; i < G; i++) g.seaStep(); g.usePower();
   { g.newGame(1, 5, 2); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`frénésie : bonus tirés ${[...ts].sort().join(' ')} (ni inv, ni sup, ni spd, ni sspd)`); }
   console.log(`frénésie : pas dispo après 299 cases ${!early} ; finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 300 cases ${g.ab.on > 0}`);
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   const pyB = g.P.y;
-  g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
+  g.foes.push({ kind: 'out', x: PX(), y: PY() + .7, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
   step(3); const stopped = g.S.phase === 'play' && !g.P.dir.x && !g.P.dir.y; const yS = g.P.y; step(30);
   console.log(`encaisseur : ${g.SHIPS[3].lives} vies, coup encaissé (phase ${g.S.phase}), arrêté net ${stopped && g.P.y === yS} (y ${pyB} -> ${g.P.y}), bouclier à recharger : ${g.P.guard} cases`);
   g.foes.length = 0; step(60);
-  g.foes.push({ kind: 'out', x: g.P.x + .5, y: g.P.y + 1.2, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
+  g.foes.push({ kind: 'out', x: PX(), y: PY() + .7, vx: 0, vy: -7.2, hist: [], ph: 0, dead: false });
   step(5); console.log(`encaisseur : 2e coup avant d'avoir rechargé le bouclier -> ${g.S.phase}`);
   // onde de choc : fil effacé, conquête annulée, le retour ne referme aucune zone
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
@@ -219,7 +221,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.onTrailHit({ kind: 'perf' }, g.trail[0]); step(20);
   const kept = g.trail.length, f0 = g.S.filled, ph = g.S.phase;
   g.setDir('left'); step(4); g.setDir('up'); step(120);
-  console.log(`encaisseur et onde : phase ${ph}, fil restant ${kept}, au retour +${g.S.filled - f0} cases (que le bout de fil), sur son terrain ${!g.P.drawing}`);
+  console.log(`encaisseur et onde : phase ${ph}, fil restant ${kept}, au retour +${(g.S.filled - f0) / G / G} cases (que le bout de fil), sur son terrain ${!g.P.drawing}`);
 }
 
 
@@ -227,23 +229,23 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 {
   const lone = (kind, setup) => { g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40); const e = g.makeFoe(kind, 1); setup(e); g.foes.push(e); return e; };
   // Diviseur : se coupe en deux au contact du fil, deux fois au plus
-  let e = lone('div', e => { e.x = g.P.x + 4.5; e.y = 20; e.vx = -6; e.vy = 0; });
+  let e = lone('div', e => { e.x = PX() + 4; e.y = 8; e.vx = -6; e.vy = 0; });
   let n = 0; for (let f = 0; f < 90 && g.S.phase === 'play'; f++) { step(); n = Math.max(n, g.foes.filter(x => x.kind === 'div').length); }
   console.log(`diviseur : ${n} morceaux après avoir touché le fil (phase ${g.S.phase})`);
   // Chasseur : immobile... puis fonce sur le vaisseau quand il trace
   const face = (e, tx, ty) => { const d = Math.hypot(tx - e.x, ty - e.y); e.vx = (tx - e.x) / d * 3.2; e.vy = (ty - e.y) / d * 3.2; e.hd = Math.atan2(e.vy, e.vx); };
-  e = lone('hunt', e => { e.x = g.P.x + 10.5; e.y = 26; face(e, g.P.x + .5, g.P.y + .5); });
+  e = lone('hunt', e => { e.x = PX() + 10; e.y = 26; face(e, PX(), PY()); });
   let seen = {}; for (let f = 0; f < 120 && g.S.phase === 'play'; f++) { step(); seen[e.st] = 1; }
   console.log(`chasseur face au vaisseau : états ${Object.keys(seen).join(' > ')}, fin ${g.S.phase}`);
-  e = lone('hunt', e => { e.x = g.P.x + 10.5; e.y = 26; face(e, g.P.x + 20, 60); });
+  e = lone('hunt', e => { e.x = PX() + 10; e.y = 26; face(e, PX() + 20, 60); });
   seen = {}; for (let f = 0; f < 20; f++) { step(); seen[e.st] = 1; }
   console.log(`chasseur dos au vaisseau : vise ${!!seen.aim} (attendu false)`);
-  e = lone('hunt', e => { e.x = g.P.x + .5; e.y = 40; face(e, g.P.x + .5, 0); });
-  for (let y = 25; y < 28; y++) for (let x = 0; x < 50; x++) if (g.grid[g.at(x, y)] === 0) g.grid[g.at(x, y)] = 1;
+  e = lone('hunt', e => { e.x = PX(); e.y = 40; face(e, PX(), 0); });
+  for (let y = 25 * G; y < 28 * G; y++) for (let x = 0; x < 50 * G; x++) if (g.grid[g.at(x, y)] === 0) g.grid[g.at(x, y)] = 1;
   seen = {}; for (let f = 0; f < 10; f++) { step(); seen[e.st] = 1; }
   console.log(`chasseur avec du terrain entre eux : vise ${!!seen.aim} (attendu false)`);
   // Pulsar : son anneau coupe le fil
-  e = lone('puls', e => { e.x = g.P.x + 6.5; e.y = 25; e.vx = 0; e.vy = 0; e.pt = .1; });
+  e = lone('puls', e => { e.x = PX() + 6; e.y = 25; e.vx = 0; e.vy = 0; e.pt = .1; });
   let waved = false; for (let f = 0; f < 90; f++) { step(); waved = waved || !!g.wave || g.S.phase !== 'play'; }
   console.log(`pulsar : l'anneau a coupé le fil ${waved}`);
   // Spectre : invisible une partie du temps
@@ -261,24 +263,24 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
   const ball = g.makeFoe('out', 1); ball.x = 40.5; ball.y = 45.5; g.foes.push(ball);
   const f0 = g.S.filled, x0 = g.P.x;
-  g.planStart(); g.planTo(x0, 20); g.planTo(x0 - 12, 20); g.planTo(x0 - 12, 1);
+  g.planStart(); g.planTo(x0, 20 * G); g.planTo(x0 - 12 * G, 20 * G); g.planTo(x0 - 12 * G, G);
   const n = g.plan.cells.length, closed = g.plan.closed;
   g.planLaunch();
   let frames = 0; while (g.dash && frames < 60) { step(); frames++; }
-  console.log(`fulgurant : trajet de ${n} cases (refermé ${closed}) parcouru en ${frames} frames, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, sur son terrain ${!g.P.drawing}`);
+  console.log(`fulgurant : trajet de ${n / G} cases (refermé ${closed}) parcouru en ${frames} frames, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, sur son terrain ${!g.P.drawing}`);
   // en plein vol : le vaisseau s'arrête pour dessiner, puis file vers son terrain
   g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
   const b2 = g.makeFoe('out', 1); b2.x = 40.5; b2.y = 50.5; g.foes.push(b2);
   g.setDir('down'); step(40);
   const yFly = g.P.y, fly0 = g.S.filled;
   g.planStart(); step(10); const frozen = g.P.y === yFly && g.P.drawing;
-  g.planTo(g.P.x - 10, g.P.y); g.planTo(g.P.x - 10, 0); g.planLaunch();
+  g.planTo(g.P.x - 10 * G, g.P.y); g.planTo(g.P.x - 10 * G, 0); g.planLaunch();
   let fr = 0; while (g.dash && fr < 60) { step(); fr++; }
   console.log(`fulgurant en plein vol : arrêté pendant le tracé ${frozen}, éclair en ${fr} frames, +${((g.S.filled - fly0) / g.S.interior * 100).toFixed(1)} %, sur son terrain ${!g.P.drawing}`);
   // un ennemi sur le trajet : crash, et une seule vie = fin de partie
   g.newGame(1, 1, 4); g.go(); g.foes.length = 0;
-  const e = g.makeFoe('out', 1); e.x = g.P.x + .5; e.y = 12.5; e.vx = 0; e.vy = 0; g.foes.push(e);
-  g.planStart(); g.planTo(g.P.x, 30); g.planLaunch(); step(150);
+  const e = g.makeFoe('out', 1); e.x = PX(); e.y = 12.5; e.vx = 0; e.vy = 0; g.foes.push(e);
+  g.planStart(); g.planTo(g.P.x, 30 * G); g.planLaunch(); step(150);
   console.log(`fulgurant : trajet à travers un ennemi -> ${g.S.phase}`);
 }
 
@@ -287,9 +289,9 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 {
   g.newGame(1, 1, 5); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   g.onTrailHit({ kind: 'out' }, g.trail[0]);
-  const b = g.makeFoe('out', 1); b.x = g.P.x + 4.5; b.y = 8.5; b.vx = -7.2; b.vy = 0; g.foes.push(b); step(30);
+  const b = g.makeFoe('out', 1); b.x = PX() + 4; b.y = 8.5; b.vx = -7.2; b.vy = 0; g.foes.push(b); step(30);
   console.log(`furtif : onde de choc ${!!g.wave} (attendu false), la boule traverse le fil, phase ${g.S.phase}`);
-  const h = g.makeFoe('hunt', 1); h.x = g.P.x + .5; h.y = g.P.y + 8; h.vx = 0; h.vy = -3.2; h.hd = -Math.PI / 2;
+  const h = g.makeFoe('hunt', 1); h.x = PX(); h.y = PY() + 7.5; h.vx = 0; h.vy = -3.2; h.hd = -Math.PI / 2;
   g.camo.on = 2; const blind = !g.huntSees(h); g.camo.on = 0; const sees = g.huntSees(h);
   console.log(`furtif : camouflé, le chasseur ne le voit pas ${blind} ; visible, il le voit ${sees}`);
 }
@@ -300,7 +302,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const y1 = g.P.y; g.crash(); step(150);
   const held = g.S.phase, lost = g.S.lives;
   g.usePower(); const ph = g.S.phase; let n = 0; while (g.S.phase === 'rewind' && n < 1200) { step(); n++; }
-  console.log(`rembobineur : 2,5 s après le crash, toujours en suspens (${held}, vies ${lost}) ; rembobinage ${ph} pendant ${n} frames, puis ${g.S.phase}, vies ${g.S.lives}, y ${y1} -> ${g.P.y}, jauge ${g.rw.charge.toFixed(1)} s`);
+  console.log(`rembobineur : 2,5 s après le crash, toujours en suspens (${held}, vies ${lost}) ; rembobinage ${ph} pendant ${n} frames, puis ${g.S.phase}, vies ${g.S.lives}, y ${((y1 + .5) / G).toFixed(1)} -> ${PY().toFixed(1)}, jauge ${g.rw.charge.toFixed(1)} s`);
   start();
   { const ball = g.foes[0]; g.usePower(); let still = 0, maxJump = 0, px = ball.x, py = ball.y;
     for (let f = 0; f < 60; f++) { step(); const b = g.foes[0], d = Math.hypot(b.x - px, b.y - py); if (d < 1e-6) still++; maxJump = Math.max(maxJump, d); px = b.x; py = b.y; }
@@ -318,8 +320,8 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 {
   const run = ship => { g.newGame(1, 1, ship); g.go(); g.foes.length = 0; g.setDir('down'); step(3); const y = g.P.y; step(60); return g.P.y - y; };
   const vn = run(2), vb = run(1);
-  console.log(`blindé : ${vb} cases en 1 s contre ${vn} (x${(vb / vn).toFixed(2)})`);
-  const ball = () => { const b = g.makeFoe('out', 1); b.x = g.P.x + .5; b.y = g.P.y + 1.2; b.vx = 0; b.vy = -7.2; g.foes.push(b); return b; };
+  console.log(`blindé : ${vb / G} cases en 1 s contre ${vn / G} (x${(vb / vn).toFixed(2)})`);
+  const ball = () => { const b = g.makeFoe('out', 1); b.x = PX(); b.y = PY() + .7; b.vx = 0; b.vy = -7.2; g.foes.push(b); return b; };
   g.newGame(1, 1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   ball(); step(10);
   const afterBall = g.armor.hp, moving = !!(g.P.dir.x || g.P.dir.y);
@@ -327,7 +329,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const preWave = g.armor.hp;
   g.onTrailHit({ kind: 'out' }, g.trail[0]); let n = 0; while (n++ < 120 && g.armor.hp > preWave - .01) step();
   console.log(`blindé : après une boule ${(afterBall * 100).toFixed(0)} % (il continue ${moving}), après une onde de choc ${(g.armor.hp * 100).toFixed(0)} %, phase ${g.S.phase}`);
-  const before = g.armor.hp; for (let k = 0; k < 500; k++) g.seaStep();
+  const before = g.armor.hp; for (let k = 0; k < 500 * G; k++) g.seaStep();
   console.log(`blindé : 500 cases tracées réparent ${((g.armor.hp - before) * 100).toFixed(0)} % (5000 pour 100 %)`);
   g.armor.hp = .08; g.foes.length = 0; ball(); step(10);
   console.log(`blindé : à 8 %, un dernier choc -> ${g.S.phase}`);
@@ -363,7 +365,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 3, gi); g.go(); g.usePower(); step(50); const waiting = g.slot.st; step(30); const auto = g.slot.st;
   for (let k = 0; k < 2000 && g.slot; k++) step();
   const bonusN = (() => { let n = 0; for (let k = 0; k < 400; k++) { g.newGame(1, 2, gi); n += g.S.bonusLeft; } return n / 400; })();
-  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, 4e appui ignoré ${twice === 2}, ${slowMove} case(s) en 1 s pendant la machine, puis ${st}, machine finie ${g.slot === null} ; mise de 1 : ${waiting} après 0,8 s, ${auto} après 1,3 s ; ${odds} ; ${bonusN.toFixed(1)} jetons par niveau`);
+  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, 4e appui ignoré ${twice === 2}, ${slowMove / G} case(s) en 1 s pendant la machine, puis ${st}, machine finie ${g.slot === null} ; mise de 1 : ${waiting} après 0,8 s, ${auto} après 1,3 s ; ${odds} ; ${bonusN.toFixed(1)} jetons par niveau`);
   // chaque gain, imposé depuis le mode test : la machine le donne et l'effet arrive
   const res = [];
   for (const w of g.SLOT) {
@@ -391,7 +393,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   { const e = g.makeFoe('out', 1); e.x = 40.5; e.y = 40.5; g.foes.push(e); g.onTrailHit(e, g.trail[2]); }
   const fragPhase = g.S.phase;
   g.S.test = true; g.S.ship = gi; g.testReset(); g.foes.length = 0; g.gam.force = 'skull'; g.S.lives = 1; g.usePower(); g.usePower(); g.usePower(); g.S.test = false; step(400); const lastLife = g.S.lives; g.gam.force = '';
-  console.log(`flambeur : escargot ${ds} cases contre ${dn} (x${(ds / dn).toFixed(2)}) ; fil fragile touché -> ${fragPhase} ; tête de mort à 1 vie -> ${lastLife}`);
+  console.log(`flambeur : escargot ${ds / G} cases contre ${dn / G} (x${(ds / dn).toFixed(2)}) ; fil fragile touché -> ${fragPhase} ; tête de mort à 1 vie -> ${lastLife}`);
 }
 // 5p) Mode test : réinitialisation instantanée, changement de vaisseau, terrain effacé à 75 %
 {
@@ -412,7 +414,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
     const a = g.makeFoe('out', 1); a.x = 10.5; a.y = 8.5; a.vx = 0; a.vy = 0;
     const b = g.makeFoe('out', 1); b.x = 40.5; b.y = 50.5; g.foes.push(a, b);
     const f0 = g.S.filled;
-    g.setDir('down'); let n = 0; while (g.P.y < 16 && n++ < 200) step();
+    g.setDir('down'); let n = 0; while (g.P.y < 16 * G && n++ < 200) step();
     g.setDir('left'); n = 0; while (g.P.drawing && n++ < 200) step();
     return { dead: a.dead || !g.foes.includes(a), pct: (g.S.filled - f0) / g.S.interior * 100 };
   };

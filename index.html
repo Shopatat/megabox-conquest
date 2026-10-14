@@ -345,7 +345,11 @@ details li b{color:var(--text);font-weight:600}
 <script>
 (() => {
 'use strict';
-const COLS = 50, ROWS = 66, B = 2, N = COLS * ROWS, STEP = 1 / 17, POWER_T = 10, MAX_LEVEL = 25;
+// Le monde (dessin, ennemis, bonus, distances et vitesses) se compte en cases d'origine : COLS × ROWS. La grille du
+// terrain, du fil et du vaisseau est G fois plus fine (GC × GR cases, demande de Fabien : un jeu plus « HD », des tracés
+// plus précis). G = 1 redonne la grille d'origine. Conversions : wx / wy (case de la grille → monde), gc (monde → grille).
+const G = 2;
+const COLS = 50, ROWS = 66, B = 2, GC = COLS * G, GR = ROWS * G, BG = B * G, N = GC * GR, STEP = 1 / 17 / G, POWER_T = 10, MAX_LEVEL = 25;
 const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.2;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -556,13 +560,16 @@ const board = document.createElement('canvas'), bctx = board.getContext('2d');
 let T = THEMES[store.get('theme', 'color')] || THEMES.color;
 const grid = new Uint8Array(N); // 0 à conquérir, 1 conquis, 2 fil
 const trailPos = new Int32Array(N).fill(-1);
-const at = (x, y) => y * COLS + x;
-const inB = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
+const at = (x, y) => y * GC + x;
+const inB = (x, y) => x >= 0 && y >= 0 && x < GC && y < GR;
 const cell = (x, y) => inB(x, y) ? grid[at(x, y)] : 1;
+const wx = i => (i % GC + .5) / G, wy = i => (((i / GC) | 0) + .5) / G;
+const gc = v => Math.floor(v * G);
+const cellW = (x, y) => cell(gc(x), gc(y));
 const pad2 = n => String(n).padStart(2, '0');
 const fmt = n => n.toLocaleString('fr-FR');
 
-const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (COLS-2*B)*(ROWS-2*B),
+const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (GC-2*BG)*(GR-2*BG),
   comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, shipTip: false };
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
@@ -719,7 +726,7 @@ function drawTwinkle() {
   if (!T.space) return;
   ctx.fillStyle = '#ffffff';
   for (const s of TWINKLE) {
-    if (grid[at(Math.floor(s.x), Math.floor(s.y))] !== 0) continue;
+    if (cellW(s.x, s.y) !== 0) continue;
     const a = Math.max(0, Math.sin(time * s.sp + s.ph));
     if (a < .05) continue;
     ctx.globalAlpha = a * .85;
@@ -752,7 +759,7 @@ function paintCell(c, x, y) {
 // plus d'escaliers, un arc tracé reste un arc. Le terrain est redessiné en entier, au plus une fois par image
 // (boardDirty) ; pendant la vague de révélation, les cases pas encore montrées sont masquées (boardHid).
 var boardDirty = false, boardRev = false;
-var boardHid = new Uint8Array(COLS * ROWS);
+var boardHid = new Uint8Array(N);
 // Lissage d'une suite de points (filtre 1-2-1 répété) ; extrémités fixes, sauf pour une boucle
 function smoothPts(p, pass, loop) {
   const n = p.length;
@@ -785,13 +792,13 @@ function curvePts(c, p, loop) {
 }
 // Contours des zones non conquises, en boucles fermées de points (milieux des arêtes entre centres de cases)
 function landLoops() {
-  const W = COLS + 2, hid = reveal ? boardHid : null;
-  const land = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || (grid[y * COLS + x] === 1 && !(hid && hid[y * COLS + x]));
-  const M = W * (ROWS + 2) * 2, n1 = new Int32Array(M).fill(-1), n2 = new Int32Array(M).fill(-1);
+  const W = GC + 2, hid = reveal ? boardHid : null;
+  const land = (x, y) => x < 0 || y < 0 || x >= GC || y >= GR || (grid[y * GC + x] === 1 && !(hid && hid[y * GC + x]));
+  const M = W * (GR + 2) * 2, n1 = new Int32Array(M).fill(-1), n2 = new Int32Array(M).fill(-1);
   const key = (x, y, v) => ((y + 1) * W + x + 1) * 2 + v;
   const link = (a, b) => { if (n1[a] < 0) n1[a] = b; else n2[a] = b; if (n1[b] < 0) n1[b] = a; else n2[b] = a; };
   const c = [0, 0, 0, 0], m = [0, 0, 0, 0], pts = [];
-  for (let gy = -1; gy < ROWS; gy++) for (let gx = -1; gx < COLS; gx++) {
+  for (let gy = -1; gy < GR; gy++) for (let gx = -1; gx < GC; gx++) {
     c[0] = land(gx, gy); c[1] = land(gx + 1, gy); c[2] = land(gx + 1, gy + 1); c[3] = land(gx, gy + 1);
     const t = c[0] + c[1] + c[2] + c[3];
     if (t === 0 || t === 4) continue;
@@ -801,7 +808,7 @@ function landLoops() {
     for (let k = 0; k < 4; k++) { if (c[k]) pts.push(-1); if (c[k] !== c[(k + 1) & 3]) pts.push(m[k]); }
     for (let k = 0; k < pts.length; k++) { const a = pts[k], b = pts[(k + 1) % pts.length]; if (a >= 0 && b >= 0) link(a, b); }
   }
-  const pos = q => { const v = q & 1, cell = q >> 1, x = cell % W - 1, y = ((cell / W) | 0) - 1; return v ? [x + .5, y + 1] : [x + 1, y + .5]; };
+  const pos = q => { const v = q & 1, cell = q >> 1, x = cell % W - 1, y = ((cell / W) | 0) - 1; return v ? [(x + .5) / G, (y + 1) / G] : [(x + 1) / G, (y + .5) / G]; };
   const seen = new Uint8Array(M), loops = [];
   for (let q0 = 0; q0 < M; q0++) {
     if (n1[q0] < 0 || seen[q0]) continue;
@@ -831,7 +838,7 @@ function hexPattern() {
 // Contour du terrain (en cases), gardé pour le liseré animé dessiné à chaque image
 var boardEdge = null;
 function drawBoardSmooth() {
-  const loops = landLoops().map(l => smoothPts(l, 6, true));
+  const loops = landLoops().map(l => smoothPts(l, 6 * G, true));
   const edge = new Path2D();
   for (const l of loops) curvePts(edge, l, true);
   const land = new Path2D(); land.rect(-1, -1, COLS + 2, ROWS + 2); land.addPath(edge);
@@ -863,8 +870,8 @@ function drawFresh() {
   if (!fresh.length) return;
   const NB = 6, paths = Array.from({ length: NB }, () => new Path2D());
   for (const f of fresh) {
-    const u = Math.max(0, Math.min(.999, f.age / FRESH_T)), b = (u * NB) | 0, r = .55 + u * 1.1;
-    const x = f.i % COLS + .5, y = ((f.i / COLS) | 0) + .5;
+    const u = Math.max(0, Math.min(.999, f.age / FRESH_T)), b = (u * NB) | 0, r = (.55 + u * 1.1) / G;
+    const x = wx(f.i), y = wy(f.i);
     paths[b].moveTo(x + r, y); paths[b].arc(x, y, r, 0, Math.PI * 2);
   }
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -892,10 +899,11 @@ function drawBoard() {
   bctx.setTransform(1,0,0,1,0,0); bctx.clearRect(0,0,board.width,board.height);
   bctx.setTransform(scale,0,0,board.height/ROWS,0,0);
   if (T.smooth) { drawBoardSmooth(); return; }
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[at(x,y)] === 1) paintCell(bctx, x, y);
+  bctx.setTransform(scale / G, 0, 0, board.height / GR, 0, 0);
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) if (grid[at(x,y)] === 1) paintCell(bctx, x, y);
   bctx.fillStyle = T.edge;
   const t = 0.16;
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
     if (grid[at(x,y)] !== 1) continue;
     if (inB(x,y-1) && grid[at(x,y-1)] !== 1) bctx.fillRect(x, y, 1, t);
     if (inB(x,y+1) && grid[at(x,y+1)] !== 1) bctx.fillRect(x, y+1-t, 1, t);
@@ -905,13 +913,13 @@ function drawBoard() {
 }
 function paintCellIdx(i) {
   if (T.smooth) { boardHid[i] = 0; boardDirty = true; return; }
-  bctx.setTransform(scale,0,0,board.height/ROWS,0,0);
-  paintCell(bctx, i % COLS, (i / COLS) | 0);
+  bctx.setTransform(scale / G, 0, 0, board.height / GR, 0, 0);
+  paintCell(bctx, i % GC, (i / GC) | 0);
 }
 function resetGrid() {
   grid.fill(0); trailPos.fill(-1);
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++)
-    if (x < B || y < B || x >= COLS - B || y >= ROWS - B) grid[at(x,y)] = 1;
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++)
+    if (x < BG || y < BG || x >= GC - BG || y >= GR - BG) grid[at(x,y)] = 1;
 }
 
 /* ---------- Composition des niveaux ---------- */
@@ -1026,25 +1034,26 @@ function setupLevel(L, instant) {
   if (instant) { hideOverlay(); S.phase = 'play'; last = performance.now(); }
   else showReady('start');
 }
-function newPlayer(x = COLS >> 1, y = 0) {
+function newPlayer(x = GC >> 1, y = 0) {
   return { x, y, px: x, py: y, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0, shield: true, shieldFade: 0, shieldHit: 0, guard: 0, grace: 0, noFill: false };
 }
 // Zone protégée tant qu'on n'a pas bougé (départ et reprise) : les ennemis rebondissent sur le cercle
 const SHIELD_R = 3;
 function dropShield() {
   if (!P.shield) return;
-  P.shield = false; P.shieldFade = 1; P.shieldX = P.x + .5; P.shieldY = P.y + .5; invuln = 1;
+  P.shield = false; P.shieldFade = 1; P.shieldX = (P.x + .5) / G; P.shieldY = (P.y + .5) / G; invuln = 1;
 }
 // Après un crash : la case conquise la plus proche de l'endroit du crash, de préférence loin de tout ennemi
 function respawnCell(px, py) {
   let best = null, bd = 1e9;
-  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
     if (grid[at(x, y)] !== 1) continue;
-    const near = foes.some(e => !e.dead && Math.hypot(e.x - x - .5, e.y - y - .5) < (e.kind === 'amph' ? 5 : 3.5));
-    const d = Math.hypot(x + .5 - px, y + .5 - py) + (near ? 40 : 0);
+    const cx = (x + .5) / G, cy = (y + .5) / G;
+    const near = foes.some(e => !e.dead && Math.hypot(e.x - cx, e.y - cy) < (e.kind === 'amph' ? 5 : 3.5));
+    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0);
     if (d < bd) { bd = d; best = [x, y]; }
   }
-  return best || [COLS >> 1, 0];
+  return best || [GC >> 1, 0];
 }
 
 /* ---------- Fil ---------- */
@@ -1061,7 +1070,7 @@ function eraseK(k) {
   if (grid[i] === 2) grid[i] = 0;
   trailPos[i] = -1;
   if (Math.random() < 0.7) {
-    particles.push({ x: i % COLS + .5, y: ((i / COLS) | 0) + .5, vx: (Math.random()-.5)*4, vy: (Math.random()-.5)*4, life: 0, max: .35 + Math.random()*.35, color: Math.random() < .5 ? T.shock : T.trail, size: .18 + Math.random()*.2 });
+    particles.push({ x: wx(i), y: wy(i), vx: (Math.random()-.5)*4, vy: (Math.random()-.5)*4, life: 0, max: .35 + Math.random()*.35, color: Math.random() < .5 ? T.shock : T.trail, size: .18 + Math.random()*.2 });
   }
 }
 function dissolveTrail() {
@@ -1087,10 +1096,10 @@ function onTrailHit(e, i) {
   if (k < 0) return;
   const fast = e.kind === 'perf';
   // Le vaisseau n'est pas figé : s'il regagne son terrain avant que l'onde le rattrape, il survit (conquête annulée)
-  if (!wave) { wave = { lo: k, hi: k, kills: true, fast, speed: fast ? 65 : 30 }; sfx.shock(); }
+  if (!wave) { wave = { lo: k, hi: k, kills: true, fast, speed: (fast ? 65 : 30) * G }; sfx.shock(); }
   else {
     wave.lo = Math.min(wave.lo, k); wave.hi = Math.max(wave.hi, k);
-    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65; }
+    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65 * G; }
   }
   eraseK(k);
   if (e.kind === 'div') divSplit(e);
@@ -1181,7 +1190,7 @@ function updatePull(dt) {
     let bk = -1, bd = 1e9;
     for (let j = 0; j < trail.length - 1; j++) {
       if (erased[j]) continue;
-      const i = trail[j], d = Math.hypot(e.x - (i % COLS + .5), e.y - (((i / COLS) | 0) + .5));
+      const i = trail[j], d = Math.hypot(e.x - (wx(i)), e.y - (wy(i)));
       if (d < bd) { bd = d; bk = j; }
     }
     grab.k = bk;
@@ -1189,15 +1198,15 @@ function updatePull(dt) {
     P.pull = s;
     if (bk >= 0 && Math.random() < .4 + s * .6) {
       const ci = trail[Math.max(0, Math.min(trail.length - 1, bk + ((Math.random() * 9) | 0) - 4))];
-      const px = ci % COLS + Math.random(), py = ((ci / COLS) | 0) + Math.random();
+      const px = (ci % GC + Math.random()) / G, py = (((ci / GC) | 0) + Math.random()) / G;
       const dx = e.x - px, dy = e.y - py, d = Math.hypot(dx, dy) || 1, pv = 5 + 9 * s;
       particles.push({ x: px, y: py, vx: dx / d * pv, vy: dy / d * pv, life: 0, max: Math.min(.8, d / pv), color: T.trail, size: .12 + Math.random() * .14, ng: 1 });
     }
-    P.pullAcc += dt * v;
+    P.pullAcc += dt * v * G;
     while (P.pullAcc >= 1 && S.phase === 'play') {
       P.pullAcc -= 1;
       // le vaisseau recule sur son fil ; arrivé au point avalé (ou s'il est déjà plus près du trou), il est aspiré directement
-      const dS = Math.hypot(e.x - (P.x + .5), e.y - (P.y + .5));
+      const dS = Math.hypot(e.x - (P.x + .5) / G, e.y - (P.y + .5) / G);
       if (bk < 0 || dS <= bd || !reel(bk)) suckStep(e, 1);
       if (Math.random() < .35) tone(70 + s * 120, .05, 'sawtooth', .02, -20);
     }
@@ -1210,7 +1219,7 @@ function updatePull(dt) {
   if (!best || bd > PULL_R) { P.pull = 0; P.pullAcc = 0; return; }
   const s = 1 - bd / PULL_R;
   P.pull = s;
-  P.pullAcc += dt * (4 + 26 * s * s);
+  P.pullAcc += dt * (4 + 26 * s * s) * G;
   if (P.pullAcc < 1) return;
   P.pullAcc = 0;
   suckStep(best, s);
@@ -1224,7 +1233,7 @@ function suckStep(e, s) {
     if (!ax && !ay) continue;
     const nx = P.x + ax, ny = P.y + ay;
     if (!inB(nx, ny) || grid[at(nx, ny)] === 2) continue;
-    P.vox -= ax; P.voy -= ay; P.px += ax; P.py += ay;
+    P.vox -= ax / G; P.voy -= ay / G; P.px += ax; P.py += ay;
     moveInto(nx, ny);
     tone(120 + s * 200, .06, 'sine', .03, -40);
     break;
@@ -1236,11 +1245,11 @@ function reel(anchorK) {
   if (last <= anchorK || last < 1 || erased[last - 1]) return false;
   const i = trail.pop(); erased.pop(); trailPos[i] = -1;
   if (grid[i] === 2) grid[i] = 0;
-  const j = trail[last - 1], nx = j % COLS, ny = (j / COLS) | 0, dx = nx - P.x, dy = ny - P.y;
-  P.vox -= dx; P.voy -= dy; P.px += dx; P.py += dy; P.x = nx; P.y = ny;
+  const j = trail[last - 1], nx = j % GC, ny = (j / GC) | 0, dx = nx - P.x, dy = ny - P.y;
+  P.vox -= dx / G; P.voy -= dy / G; P.px += dx; P.py += dy; P.x = nx; P.y = ny;
   // si sa direction le renvoie sur son propre fil, il reprend le sens du tracé (vers la case libérée)
   const ax = P.x + P.dir.x, ay = P.y + P.dir.y;
-  if (inB(ax, ay) && grid[at(ax, ay)] === 2) P.dir = { x: i % COLS - nx, y: ((i / COLS) | 0) - ny };
+  if (inB(ax, ay) && grid[at(ax, ay)] === 2) P.dir = { x: i % GC - nx, y: ((i / GC) | 0) - ny };
   return true;
 }
 function updatePlayer(dt) {
@@ -1251,7 +1260,7 @@ function updatePlayer(dt) {
 }
 function playerPos() {
   const f = (P.dir.x || P.dir.y) ? Math.min(1, P.acc / stepTime()) : 1;
-  return { x: P.px + (P.x - P.px) * f + 0.5 + P.vox, y: P.py + (P.y - P.py) * f + 0.5 + P.voy };
+  return { x: (P.px + (P.x - P.px) * f + 0.5) / G + P.vox, y: (P.py + (P.y - P.py) * f + 0.5) / G + P.voy };
 }
 
 /* ---------- Conquête ---------- */
@@ -1266,15 +1275,15 @@ function capture() {
   if (gam.snail > 0 && --gam.snail === 0) { const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 2, text: 'ESCARGOT FINI', age: 0, color: T.items.coin }); }
   const seen = new Uint8Array(N), stack = [];
   for (const e of seaSeeds()) {
-    const i = at(Math.floor(e.x), Math.floor(e.y));
+    const i = at(gc(e.x), gc(e.y));
     if (grid[i] === 0 && !seen[i]) { seen[i] = 1; stack.push(i); }
   }
   while (stack.length) {
-    const i = stack.pop(), x = i % COLS, y = (i / COLS) | 0;
+    const i = stack.pop(), x = i % GC, y = (i / GC) | 0;
     if (x > 0 && !seen[i-1] && grid[i-1] === 0) { seen[i-1] = 1; stack.push(i-1); }
-    if (x < COLS-1 && !seen[i+1] && grid[i+1] === 0) { seen[i+1] = 1; stack.push(i+1); }
-    if (y > 0 && !seen[i-COLS] && grid[i-COLS] === 0) { seen[i-COLS] = 1; stack.push(i-COLS); }
-    if (y < ROWS-1 && !seen[i+COLS] && grid[i+COLS] === 0) { seen[i+COLS] = 1; stack.push(i+COLS); }
+    if (x < GC-1 && !seen[i+1] && grid[i+1] === 0) { seen[i+1] = 1; stack.push(i+1); }
+    if (y > 0 && !seen[i-GC] && grid[i-GC] === 0) { seen[i-GC] = 1; stack.push(i-GC); }
+    if (y < GR-1 && !seen[i+GC] && grid[i+GC] === 0) { seen[i+GC] = 1; stack.push(i+GC); }
   }
   const newSet = new Uint8Array(N), cells = [...tcells];
   for (const i of tcells) newSet[i] = 1;
@@ -1285,12 +1294,12 @@ function capture() {
   const dist = new Int32Array(N).fill(-1), q = [];
   for (const i of tcells) { dist[i] = 0; q.push(i); }
   for (let h = 0; h < q.length; h++) {
-    const i = q[h], x = i % COLS, y = (i / COLS) | 0;
-    const nb = [x>0?i-1:-1, x<COLS-1?i+1:-1, y>0?i-COLS:-1, y<ROWS-1?i+COLS:-1];
+    const i = q[h], x = i % GC, y = (i / GC) | 0;
+    const nb = [x>0?i-1:-1, x<GC-1?i+1:-1, y>0?i-GC:-1, y<GR-1?i+GC:-1];
     for (const j of nb) if (j >= 0 && newSet[j] && dist[j] < 0) { dist[j] = dist[i] + 1; q.push(j); }
   }
   let maxD = 1; for (const i of q) if (dist[i] > maxD) maxD = dist[i];
-  const k = Math.min(0.014, 0.65 / maxD);
+  const k = Math.min(0.014 / G, 0.65 / maxD);
   const list = q.map(i => ({ i, t: dist[i] * k }));
   for (const i of cells) if (dist[i] < 0) list.push({ i, t: maxD * k });
   startReveal(list);
@@ -1298,7 +1307,7 @@ function capture() {
   const n = cells.length;
   awardCells(n, playerPos(), n >= S.interior * 0.15);
   sfx.capture(n);
-  for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(Math.floor(it.x), Math.floor(it.y))] === 1) collect(it);
+  for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
   checkGoal();
 }
@@ -1309,7 +1318,8 @@ function startReveal(list) {
 }
 function awardCells(n, at0, big) {
   S.filled += n;
-  let pts = n * 10 * S.level;
+  // 10 points × niveau par case d'origine (une case d'origine = G × G cases de la grille)
+  let pts = Math.round(n * 10 * S.level / (G * G));
   if (big) pts *= 2;
   S.score += pts;
   popups.push({ x: at0.x, y: at0.y - 1, text: '+' + pts, age: 0, color: T.ball });
@@ -1333,13 +1343,13 @@ function moveSea(e, dt) {
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
   const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || helmet() || SH().key === 'fur');
   for (let s = 0; s < steps; s++) {
-    let nx = e.x + e.vx * h, cx = Math.floor(nx + Math.sign(e.vx) * R), cy = Math.floor(e.y), c = cell(cx, cy);
+    let nx = e.x + e.vx * h, cx = gc(nx + Math.sign(e.vx) * R), cy = gc(e.y), c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.x = nx; else e.vx = -e.vx; }
     else if (c === 1) e.vx = -e.vx; else e.x = nx;
-    let ny = e.y + e.vy * h; cx = Math.floor(e.x); cy = Math.floor(ny + Math.sign(e.vy) * R); c = cell(cx, cy);
+    let ny = e.y + e.vy * h; cx = gc(e.x); cy = gc(ny + Math.sign(e.vy) * R); c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.y = ny; else e.vy = -e.vy; }
     else if (c === 1) e.vy = -e.vy; else e.y = ny;
-    cx = Math.floor(e.x + Math.sign(e.vx) * R); cy = Math.floor(e.y + Math.sign(e.vy) * R); c = cell(cx, cy);
+    cx = gc(e.x + Math.sign(e.vx) * R); cy = gc(e.y + Math.sign(e.vy) * R); c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (!pierce) { e.vx = -e.vx; e.vy = -e.vy; } }
     else if (c === 1) { e.vx = -e.vx; e.vy = -e.vy; }
   }
@@ -1362,7 +1372,7 @@ function huntSees(e) {
   let da = Math.abs(Math.atan2(dy, dx) - e.hd);
   if (da > Math.PI) da = Math.PI * 2 - da;
   if (da > HUNT_FOV) return false;
-  for (let t = .8; t < d - .5; t += .5) if (cell(Math.floor(e.x + dx / d * t), Math.floor(e.y + dy / d * t)) === 1) return false;
+  for (let t = .8; t < d - .5; t += .5 / G) if (cellW(e.x + dx / d * t, e.y + dy / d * t) === 1) return false;
   return true;
 }
 function huntAI(e, dt) {
@@ -1407,7 +1417,7 @@ function pulsarHits(e) {
   for (const w of e.waves) {
     for (let k = 0; k < trail.length; k++) {
       if (erased[k]) continue;
-      const i = trail[k], d = Math.hypot(i % COLS + .5 - e.x, ((i / COLS) | 0) + .5 - e.y);
+      const i = trail[k], d = Math.hypot(wx(i) - e.x, wy(i) - e.y);
       if (Math.abs(d - w.r) < .55) { onTrailHit(e, i); break; }
     }
     const pp = playerPos();
@@ -1441,17 +1451,17 @@ function moveLand(e, dt) {
   const R = R_LAND, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   for (let s = 0; s < steps; s++) {
     const nx = e.x + e.vx * h;
-    if (!isLand(Math.floor(nx + Math.sign(e.vx) * R), Math.floor(e.y))) e.vx = -e.vx; else e.x = nx;
+    if (!isLand(gc(nx + Math.sign(e.vx) * R), gc(e.y))) e.vx = -e.vx; else e.x = nx;
     const ny = e.y + e.vy * h;
-    if (!isLand(Math.floor(e.x), Math.floor(ny + Math.sign(e.vy) * R))) e.vy = -e.vy; else e.y = ny;
-    if (!isLand(Math.floor(e.x + Math.sign(e.vx) * R), Math.floor(e.y + Math.sign(e.vy) * R))) { e.vx = -e.vx; e.vy = -e.vy; }
+    if (!isLand(gc(e.x), gc(ny + Math.sign(e.vy) * R))) e.vy = -e.vy; else e.y = ny;
+    if (!isLand(gc(e.x + Math.sign(e.vx) * R), gc(e.y + Math.sign(e.vy) * R))) { e.vx = -e.vx; e.vy = -e.vy; }
   }
 }
 function moveAmph(e, dt) {
   if (power.sup > 0) {
     const nx = e.x + e.vx * dt, ny = e.y + e.vy * dt;
-    if (cell(Math.floor(nx + Math.sign(e.vx) * R_AMPH), Math.floor(e.y)) === 2) e.vx = -e.vx;
-    if (cell(Math.floor(e.x), Math.floor(ny + Math.sign(e.vy) * R_AMPH)) === 2) e.vy = -e.vy;
+    if (cellW(nx + Math.sign(e.vx) * R_AMPH, e.y) === 2) e.vx = -e.vx;
+    if (cellW(e.x, ny + Math.sign(e.vy) * R_AMPH) === 2) e.vy = -e.vy;
   }
   e.x += e.vx * dt; e.y += e.vy * dt;
   if (e.x < R_AMPH) { e.x = R_AMPH; e.vx = Math.abs(e.vx); }
@@ -1461,24 +1471,24 @@ function moveAmph(e, dt) {
   // dès que son horizon effleure le fil, il l'avale
   if (P && P.drawing && !grab) {
     const r = R_AMPH * .85;
-    for (let y = Math.floor(e.y - r); y <= Math.floor(e.y + r); y++) for (let x = Math.floor(e.x - r); x <= Math.floor(e.x + r); x++) {
-      if (cell(x, y) === 2 && Math.hypot(x + .5 - e.x, y + .5 - e.y) < r) { grabTrail(e); return; }
+    for (let y = gc(e.y - r); y <= gc(e.y + r); y++) for (let x = gc(e.x - r); x <= gc(e.x + r); x++) {
+      if (cell(x, y) === 2 && Math.hypot((x + .5) / G - e.x, (y + .5) / G - e.y) < r) { grabTrail(e); return; }
     }
   }
 }
 // Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, ennemi sous Casque) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
 function unstick(e) {
   if (e.kind === 'amph') return;
-  const c = cell(Math.floor(e.x), Math.floor(e.y)), sea = isSea(e);
+  const c = cellW(e.x, e.y), sea = isSea(e);
   if (sea ? c !== 1 : c === 1) return;
   const want = sea ? 0 : 1;
   let best = -1, bd = 1e9;
   for (let i = 0; i < N; i++) if (grid[i] === want) {
-    const d = Math.hypot(i % COLS + .5 - e.x, ((i / COLS) | 0) + .5 - e.y);
+    const d = Math.hypot(wx(i) - e.x, wy(i) - e.y);
     if (d < bd) { bd = d; best = i; }
   }
   if (best < 0) { e.dead = true; return; }
-  e.x = best % COLS + .5; e.y = ((best / COLS) | 0) + .5; e.hist.length = 0;
+  e.x = wx(best); e.y = wy(best); e.hist.length = 0;
 }
 function moveFoe(e, dt) {
   if (e.stun > 0) {
@@ -1523,7 +1533,7 @@ function hitPlayer(e) {
   crash();
 }
 function shieldBounce(e, ox, oy) {
-  const cx = P.x + .5, cy = P.y + .5, R = SHIELD_R + (e.kind === 'amph' ? R_AMPH : .45);
+  const cx = (P.x + .5) / G, cy = (P.y + .5) / G, R = SHIELD_R + (e.kind === 'amph' ? R_AMPH : .45);
   const d = Math.hypot(e.x - cx, e.y - cy);
   if (d >= R) return;
   const wasIn = Math.hypot(ox - cx, oy - cy) < R;
@@ -1632,14 +1642,14 @@ function updateAbility(dt) {
 // Chaque nouvelle case de fil recharge les pouvoirs (frénésie, bouclier, rembobinage)
 function seaStep() {
   const k = SH().key;
-  if (k === 'rob' && armor.hp < 1) { armor.hp = Math.min(1, armor.hp + 1 / ARMOR_CELLS); pwHud(); }
-  if (k === 'fre' && ab.on === 0 && ab.cd > 0) { ab.cd--; if (!ab.cd) sfx.ready(); pwHud(); }
+  if (k === 'rob' && armor.hp < 1) { armor.hp = Math.min(1, armor.hp + 1 / ARMOR_CELLS / G); pwHud(); }
+  if (k === 'fre' && ab.on === 0 && ab.cd > 0) { ab.cd -= 1 / G; if (ab.cd < 1e-6) { ab.cd = 0; sfx.ready(); } pwHud(); }
   if (k === 'enc' && P.guard > 0) {
-    P.guard--;
+    P.guard -= 1 / G; if (P.guard < 1e-6) P.guard = 0;
     if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
     pwHud();
   }
-  if (k === 'rew' && rw.charge < RW_SPAN) { rw.charge = Math.min(RW_SPAN, rw.charge + RW_SPAN / RW_CELLS); if (rw.charge === RW_SPAN) sfx.ready(); pwHud(); }
+  if (k === 'rew' && rw.charge < RW_SPAN) { rw.charge = Math.min(RW_SPAN, rw.charge + RW_SPAN / RW_CELLS / G); if (rw.charge === RW_SPAN) sfx.ready(); pwHud(); }
 }
 // Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
 const camo = { on: 0, next: 5 };
@@ -1704,7 +1714,7 @@ function updateRewind(dt) {
   const nx = rw.hist[rw.hist.length - 1], f = Math.min(1, r.t / RW_STEP);
   if (r.base && nx && !r.stop) {
     const q = nx.P, qf = (q.dir.x || q.dir.y) ? Math.min(1, q.acc / stepTime()) : 1;
-    const bx = q.px + (q.x - q.px) * qf + .5 + q.vox, by = q.py + (q.y - q.py) * qf + .5 + q.voy;
+    const bx = (q.px + (q.x - q.px) * qf + .5) / G + q.vox, by = (q.py + (q.y - q.py) * qf + .5) / G + q.voy;
     P.vox = r.base.vox + (bx - r.base.pp.x) * f; P.voy = r.base.voy + (by - r.base.pp.y) * f;
     if (nx.foes.length === foes.length) foes.forEach((e, i) => {
       const [x0, y0] = r.base.foes[i]; e.x = x0 + (nx.foes[i].x - x0) * f; e.y = y0 + (nx.foes[i].y - y0) * f;
@@ -1766,20 +1776,20 @@ function planCancel() {
 const planHead = () => plan.cells.length ? plan.cells[plan.cells.length - 1] : at(P.x, P.y);
 // ajoute (ou retire, en revenant en arrière) une case voisine de la tête du trajet
 function planStep(dx, dy) {
-  const h = planHead(), x = h % COLS + dx, y = ((h / COLS) | 0) + dy;
+  const h = planHead(), x = h % GC + dx, y = ((h / GC) | 0) + dy;
   if (!inB(x, y)) return false;
   const i = at(x, y), c = plan.cells;
   const prev = c.length >= 2 ? c[c.length - 2] : at(P.x, P.y);
   if (i === prev) { c.pop(); if (plan.closed) plan.closed = false; plan.sea = c.some(j => grid[j] === 0); return true; }
-  if (plan.closed || c.includes(i) || i === at(P.x, P.y) || grid[i] === 2 || c.length >= 400) return false;
+  if (plan.closed || c.includes(i) || i === at(P.x, P.y) || grid[i] === 2 || c.length >= 400 * G) return false;
   c.push(i);
   if (grid[i] === 0) plan.sea = true; else if (plan.sea) plan.closed = true;
   return true;
 }
 // prolonge le trajet jusqu'à la case (x, y), une case à la fois (axe le plus éloigné d'abord)
 function planTo(x, y) {
-  for (let n = 0; n < 200; n++) {
-    const h = planHead(), dx = x - h % COLS, dy = y - ((h / COLS) | 0);
+  for (let n = 0; n < 200 * G; n++) {
+    const h = planHead(), dx = x - h % GC, dy = y - ((h / GC) | 0);
     if (!dx && !dy) return;
     const ok = Math.abs(dx) >= Math.abs(dy) ? planStep(Math.sign(dx), 0) || (dy && planStep(0, Math.sign(dy))) : planStep(0, Math.sign(dy)) || (dx && planStep(Math.sign(dx), 0));
     if (!ok) return;
@@ -1798,19 +1808,19 @@ function planLaunch() {
 }
 // le vaisseau file le long du trajet ; chaque case est vérifiée (ennemis, bonus), rien n'est sauté
 function updateDash(dt) {
-  dash.acc += dt * DASH_V;
+  dash.acc += dt * DASH_V * G;
   while (dash && dash.acc >= 1 && S.phase === 'play') {
     dash.acc -= 1;
-    const i = dash.cells[dash.k++], nx = i % COLS, ny = (i / COLS) | 0;
+    const i = dash.cells[dash.k++], nx = i % GC, ny = (i / GC) | 0;
     P.dir = { x: nx - P.x, y: ny - P.y }; P.next = null;
     const wasDrawing = P.drawing;
     moveInto(nx, ny);
     P.px = P.x; P.py = P.y; P.acc = 0;
-    if (T.glow) for (let k = 0; k < 2; k++) particles.push({ x: nx + .5 + (Math.random() - .5) * .4, y: ny + .5 + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 0, max: .35, color: Math.random() < .5 ? '#ffffff' : '#9fe8ff', size: .16, ng: 1 });
+    if (T.glow) for (let k = 0; k < 2; k++) particles.push({ x: (nx + .5) / G + (Math.random() - .5) * .4, y: (ny + .5) / G + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 0, max: .35, color: Math.random() < .5 ? '#ffffff' : '#9fe8ff', size: .16, ng: 1 });
     for (const e of foes) {
       if (e.dead) continue;
       const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9;
-      if (Math.hypot(e.x - nx - .5, e.y - ny - .5) < r) { hitPlayer(e); break; }
+      if (Math.hypot(e.x - (nx + .5) / G, e.y - (ny + .5) / G) < r) { hitPlayer(e); break; }
     }
     // arrivé sur son terrain (zone refermée) ou trajet terminé : fin de l'éclair
     if (S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) dash = null;
@@ -1820,9 +1830,9 @@ function updateDash(dt) {
 // trajet prévu : pointillé lumineux qui part du vaisseau
 function drawPlan() {
   if (!plan || !plan.cells.length) return;
-  const pts = [[P.x + .5, P.y + .5], ...plan.cells.map(i => [i % COLS + .5, ((i / COLS) | 0) + .5])];
+  const pts = [[(P.x + .5) / G, (P.y + .5) / G], ...plan.cells.map(i => [wx(i), wy(i)])];
   ctx.beginPath();
-  if (T.smooth) curvePts(ctx, smoothPts(pts, 3, false), false);
+  if (T.smooth) curvePts(ctx, smoothPts(pts, 3 * G, false), false);
   else { ctx.moveTo(pts[0][0], pts[0][1]); for (const q of pts) ctx.lineTo(q[0], q[1]); }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   glowOn('#9fe8ff', 1.2);
@@ -1832,7 +1842,7 @@ function drawPlan() {
   glowOff(); ctx.globalAlpha = 1;
   const h = planHead();
   ctx.fillStyle = T.rainbow ? '#ffffff' : T.shock;
-  ctx.beginPath(); ctx.arc(h % COLS + .5, ((h / COLS) | 0) + .5, plan.closed ? .45 : .28, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(wx(h), wy(h), plan.closed ? .45 : .28, 0, Math.PI * 2); ctx.fill();
 }
 
 // Piégeur : chaque zone fermée par le fil qui contient des ennemis, fait au plus TRAP_MAX du terrain et n'est pas
@@ -1846,8 +1856,8 @@ function trapFoes() {
     const id = sizes.length; let n = 0;
     comp[i0] = id; q.length = 0; q.push(i0);
     while (q.length) {
-      const i = q.pop(), x = i % COLS; n++;
-      for (const j of [x > 0 ? i - 1 : -1, x < COLS - 1 ? i + 1 : -1, i - COLS, i + COLS]) if (j >= 0 && j < N && grid[j] === 0 && comp[j] < 0) { comp[j] = id; q.push(j); }
+      const i = q.pop(), x = i % GC; n++;
+      for (const j of [x > 0 ? i - 1 : -1, x < GC - 1 ? i + 1 : -1, i - GC, i + GC]) if (j >= 0 && j < N && grid[j] === 0 && comp[j] < 0) { comp[j] = id; q.push(j); }
     }
     sizes.push(n);
   }
@@ -1856,7 +1866,7 @@ function trapFoes() {
   let caught = 0;
   for (const e of foes) {
     if (e.dead || !isSea(e)) continue;
-    const c = comp[at(Math.floor(e.x), Math.floor(e.y))];
+    const c = comp[at(gc(e.x), gc(e.y))];
     if (c < 0 || c === big || sizes[c] > S.interior * TRAP_MAX) continue;
     trapFoe(e); caught++;
   }
@@ -2012,12 +2022,13 @@ function updateSlot(dt) {
 // centre du territoire ou de la bombe gagnés : la case à conquérir la plus proche du vaisseau, au milieu d'un coin assez vaste
 function seaNear() {
   const pp = playerPos(); let best = null, bd = 1e9;
-  for (let y = 2; y < ROWS - 2; y++) for (let x = 2; x < COLS - 2; x++) {
+  const r = 2 * G, need = (2 * r + 1) * (2 * r + 1) * .6;
+  for (let y = r; y < GR - r; y++) for (let x = r; x < GC - r; x++) {
     if (grid[at(x, y)] !== 0) continue;
-    const d = Math.hypot(x + .5 - pp.x, y + .5 - pp.y);
+    const d = Math.hypot((x + .5) / G - pp.x, (y + .5) / G - pp.y);
     if (d < 2 || d >= bd) continue;
-    let n = 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (grid[at(x + i, y + j)] === 0) n++;
-    if (n >= 15) { bd = d; best = { x: x + .5, y: y + .5 }; }
+    let n = 0; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (grid[at(x + i, y + j)] === 0) n++;
+    if (n >= need) { bd = d; best = { x: (x + .5) / G, y: (y + .5) / G }; }
   }
   return best;
 }
@@ -2303,12 +2314,13 @@ function pickType() {
 function spawnItem() {
   const type = pickType(), medium = ITEM[type].medium, cands = [];
   const pp = playerPos();
-  for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) {
+  for (let y = G; y < GR - G; y++) for (let x = G; x < GC - G; x++) {
     const v = grid[at(x, y)];
     if (medium === 'sea' ? v !== 0 : v !== 1) continue;
-    if (Math.hypot(x + .5 - pp.x, y + .5 - pp.y) < 7) continue;
-    if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - x - .5, e.y - y - .5) < 4)) continue;
-    cands.push([x, y]);
+    const cx = (x + .5) / G, cy = (y + .5) / G;
+    if (Math.hypot(cx - pp.x, cy - pp.y) < 7) continue;
+    if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
+    cands.push([cx - .5, cy - .5]);
   }
   if (!cands.length) return false;
   const [x, y] = cands[(Math.random() * cands.length) | 0];
@@ -2329,12 +2341,12 @@ function moveItem(it, dt) {
   if (!it.vx && !it.vy) return;
   const ok = ITEM[it.type].medium === 'sea' ? (x, y) => cell(x, y) === 0 : (x, y) => isLand(x, y);
   const nx = it.x + it.vx * dt;
-  if (!ok(Math.floor(nx + Math.sign(it.vx) * .5), Math.floor(it.y))) it.vx = -it.vx; else it.x = nx;
+  if (!ok(gc(nx + Math.sign(it.vx) * .5), gc(it.y))) it.vx = -it.vx; else it.x = nx;
   const ny = it.y + it.vy * dt;
-  if (!ok(Math.floor(it.x), Math.floor(ny + Math.sign(it.vy) * .5))) it.vy = -it.vy; else it.y = ny;
+  if (!ok(gc(it.x), gc(ny + Math.sign(it.vy) * .5))) it.vy = -it.vy; else it.y = ny;
 }
 function pickItems() {
-  for (const it of items) if (Math.hypot(it.x - (P.x + .5), it.y - (P.y + .5)) < 1.35) collect(it);
+  for (const it of items) if (Math.hypot(it.x - (P.x + .5) / G, it.y - (P.y + .5) / G) < 1.35) collect(it);
   items = items.filter(it => !it.done);
 }
 function collect(it) {
@@ -2415,15 +2427,16 @@ function chronoEnd() {
   if (P && P.drawing && !P.dir.x && !P.dir.y) { P.dir = { x: P.face.x, y: P.face.y }; P.acc = 0; }
 }
 function territoryBurst(it, frac = 0.1, big = false) {
-  const cx = Math.floor(it.x), cy = Math.floor(it.y), ox = cx + .5, oy = cy + .5;
-  const R = Math.sqrt(S.interior * frac / Math.PI);
+  // en cases de la grille : centre (ox, oy) et rayon R ; en monde : (wox, woy) et WR
+  const cx = gc(it.x), cy = gc(it.y), ox = cx + .5, oy = cy + .5;
+  const R = Math.sqrt(S.interior * frac / Math.PI), wox = ox / G, woy = oy / G, WR = R / G;
   const seen = new Uint8Array(N), q = [];
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const x = cx + dx, y = cy + dy;
     if (inB(x, y) && grid[at(x, y)] === 0) { seen[at(x, y)] = 1; q.push(at(x, y)); }
   }
   for (let h = 0; h < q.length; h++) {
-    const i = q[h], x = i % COLS, y = (i / COLS) | 0;
+    const i = q[h], x = i % GC, y = (i / GC) | 0;
     for (const [nx, ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]) {
       if (!inB(nx, ny)) continue;
       const j = at(nx, ny);
@@ -2433,43 +2446,43 @@ function territoryBurst(it, frac = 0.1, big = false) {
     }
   }
   for (const i of q) grid[i] = 1;
-  for (const e of seaSeeds()) if (grid[at(Math.floor(e.x), Math.floor(e.y))] !== 0) pushOut(e, ox, oy, R);
-  const list = q.map(i => ({ i, t: Math.hypot(i % COLS + .5 - ox, ((i / COLS) | 0) + .5 - oy) / R * (big ? 1.1 : 0.7) }));
+  for (const e of seaSeeds()) if (grid[at(gc(e.x), gc(e.y))] !== 0) pushOut(e, wox, woy, WR);
+  const list = q.map(i => ({ i, t: Math.hypot(wx(i) - wox, wy(i) - woy) / WR * (big ? 1.1 : 0.7) }));
   list.sort((a, b) => a.t - b.t);
   startReveal(list);
   if (big) {
     // débris projetés depuis le bord de l'explosion
     for (let k = 0; k < 70; k++) {
       const a = Math.random() * Math.PI * 2, v = 6 + Math.random() * 14;
-      particles.push({ x: ox + Math.cos(a) * R * .3, y: oy + Math.sin(a) * R * .3, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .7 + Math.random() * .7, color: Math.random() < .5 ? T.landP : (T.rainbow ? '#ffd23f' : T.ball), size: .3 + Math.random() * .4 });
+      particles.push({ x: wox + Math.cos(a) * WR * .3, y: woy + Math.sin(a) * WR * .3, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .7 + Math.random() * .7, color: Math.random() < .5 ? T.landP : (T.rainbow ? '#ffd23f' : T.ball), size: .3 + Math.random() * .4 });
     }
   } else {
-    rings.push({ x: ox, y: oy, r: 0, max: R, age: 0, color: T.items.terr });
+    rings.push({ x: wox, y: woy, r: 0, max: WR, age: 0, color: T.items.terr });
     sfx.terr();
   }
-  if (q.length) awardCells(q.length, { x: ox, y: oy }, big);
+  if (q.length) awardCells(q.length, { x: wox, y: woy }, big);
   checkGoal();
 }
 function pushOut(e, ox, oy, R) {
   let dx = e.x - ox, dy = e.y - oy, d = Math.hypot(dx, dy);
   if (d < .01) { const a = Math.random() * Math.PI * 2; dx = Math.cos(a); dy = Math.sin(a); d = 1; }
   const ux = dx / d, uy = dy / d;
-  for (let t = d; t < R + 30; t += 0.5) {
+  for (let t = d; t < R + 30; t += 0.5 / G) {
     const x = ox + ux * t, y = oy + uy * t;
-    if (!inB(Math.floor(x), Math.floor(y))) break;
-    if (grid[at(Math.floor(x), Math.floor(y))] === 0) {
-      e.x = Math.floor(x) + .5; e.y = Math.floor(y) + .5;
+    if (!inB(gc(x), gc(y))) break;
+    if (grid[at(gc(x), gc(y))] === 0) {
+      e.x = (gc(x) + .5) / G; e.y = (gc(y) + .5) / G;
       e.vx = Math.abs(e.vx) * (ux >= 0 ? 1 : -1); e.vy = Math.abs(e.vy) * (uy >= 0 ? 1 : -1);
       return;
     }
   }
   let best = -1, bd = 1e9;
   for (let i = 0; i < N; i++) if (grid[i] === 0) {
-    const dd = Math.hypot(i % COLS + .5 - e.x, ((i / COLS) | 0) + .5 - e.y);
+    const dd = Math.hypot(wx(i) - e.x, wy(i) - e.y);
     if (dd < bd) { bd = dd; best = i; }
   }
   if (best < 0) { e.dead = true; return; }
-  e.x = best % COLS + .5; e.y = ((best / COLS) | 0) + .5;
+  e.x = wx(best); e.y = wy(best);
 }
 function updateItems(dt) {
   if (S.bonusLeft > 0 && items.length === 0) {
@@ -2478,7 +2491,7 @@ function updateItems(dt) {
   }
   for (const it of items) {
     it.age += dt; moveItem(it, dt);
-    if (ITEM[it.type].medium === 'sea' && grid[at(Math.floor(it.x), Math.floor(it.y))] === 1) collect(it);
+    if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
   for (const k of ['inv', 'spd', 'sup', 'hyp', 'chr', 'schr', 'frag']) if (power[k] > 0) {
@@ -2600,14 +2613,14 @@ function update(dt) {
       const i = L[reveal.k++].i;
       paintCellIdx(i); fresh.push({ i, age: 0 });
       if (Math.random() < reveal.pChance) {
-        particles.push({ x: i % COLS + 0.5, y: ((i / COLS) | 0) + 0.5, vx: (Math.random()-.5)*3, vy: -2 - Math.random()*4, life: 0, max: .6 + Math.random()*.5, color: T.landP, size: .25 + Math.random()*.3 });
+        particles.push({ x: wx(i), y: wy(i), vx: (Math.random()-.5)*3, vy: -2 - Math.random()*4, life: 0, max: .6 + Math.random()*.5, color: T.landP, size: .25 + Math.random()*.3 });
       }
     }
     if (reveal.k >= L.length) { reveal = null; drawBoard(); }
   }
   if (power.sup > 0 && trail.length && ph === 'play' && Math.random() < .7) {
     const i = trail[(Math.random() * trail.length) | 0];
-    particles.push({ x: i % COLS + Math.random(), y: ((i / COLS) | 0) + Math.random(), vx: (Math.random()-.5), vy: -1.5 - Math.random()*2, life: 0, max: .5, color: T.rainbow ? (Math.random() < .5 ? '#ffffff' : '#ffd23f') : T.ball, size: .18 });
+    particles.push({ x: (i % GC + Math.random()) / G, y: (((i / GC) | 0) + Math.random()) / G, vx: (Math.random()-.5), vy: -1.5 - Math.random()*2, life: 0, max: .5, color: T.rainbow ? (Math.random() < .5 ? '#ffffff' : '#ffd23f') : T.ball, size: .18 });
   }
   if (ph !== 'pause') {
     for (const f of fresh) f.age += dt;
@@ -2653,7 +2666,7 @@ function render() {
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
     ctx.fillStyle = `rgba(${T.fresh},${(1 - f.age/FRESH_T) * .6})`;
-    ctx.fillRect(f.i % COLS, (f.i / COLS) | 0, 1, 1);
+    ctx.fillRect((f.i % GC) / G, ((f.i / GC) | 0) / G, 1 / G, 1 / G);
   }
 
   const pp = P ? playerPos() : null;
@@ -2792,7 +2805,7 @@ function drawShield() {
   if (P.shieldHit > 0) P.shieldHit = Math.max(0, P.shieldHit - .05);
   if (P.shieldFade > 0) P.shieldFade = Math.max(0, P.shieldFade - .045);
   if (!P.shield && !P.shieldFade) return;
-  const cx = P.shield ? P.x + .5 : P.shieldX, cy = P.shield ? P.y + .5 : P.shieldY, TAU = Math.PI * 2;
+  const cx = P.shield ? (P.x + .5) / G : P.shieldX, cy = P.shield ? (P.y + .5) / G : P.shieldY, TAU = Math.PI * 2;
   const pulse = Math.sin(time * 3);
   const R = P.shield ? SHIELD_R + pulse * .08 : SHIELD_R + (1 - P.shieldFade) * 1.6;
   const a = P.shield ? .62 + pulse * .15 + P.shieldHit * .3 : P.shieldFade * .6;
@@ -2833,16 +2846,16 @@ function drawTrail(pp) {
   for (let k = 0; k <= last; k++) {
     if (erased[k]) { run = null; continue; }
     const i = trail[k];
-    let x = i % COLS + .5, y = ((i / COLS) | 0) + .5;
+    let x = wx(i), y = wy(i);
     if (hs.length) [x, y] = bend(x, y, hs);
-    if (!run) { run = []; runs.push(run); if (k === 0 && P.start) run.push([P.start.x + .5, P.start.y + .5, -1]); }
+    if (!run) { run = []; runs.push(run); if (k === 0 && P.start) run.push([(P.start.x + .5) / G, (P.start.y + .5) / G, -1]); }
     if (k === last) { if (!run.length) run.push([x, y, -1]); run.push([pp.x, pp.y, k]); }
     else run.push([x, y, k]);
   }
   trailXY = [];
   ctx.beginPath();
   for (const r of runs) {
-    const sm = T.smooth ? smoothPts(r, 3, false) : r;
+    const sm = T.smooth ? smoothPts(r, 3 * G, false) : r;
     r.forEach((q, j) => { if (q[2] >= 0) trailXY[q[2]] = sm[j]; });
     if (T.smooth) curvePts(ctx, sm, false);
     else { ctx.moveTo(sm[0][0], sm[0][1]); for (let j = 1; j < sm.length; j++) ctx.lineTo(sm[j][0], sm[j][1]); }
@@ -2863,7 +2876,7 @@ function drawTrail(pp) {
       const k = Math.round(Math.max(0, Math.min(last, f)));
       if (f < 0 && f === wave.lo) continue;
       const i = trail[k]; if (i == null) continue;
-      const q = trailXY[k], x = q ? q[0] : i % COLS + .5, y = q ? q[1] : ((i / COLS) | 0) + .5, r = .55 + Math.sin(time * 40) * .15;
+      const q = trailXY[k], x = q ? q[0] : wx(i), y = q ? q[1] : wy(i), r = .55 + Math.sin(time * 40) * .15;
       glowOn(T.shock, 1.4);
       ctx.strokeStyle = T.shock; ctx.lineWidth = .14;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke();
@@ -3319,7 +3332,7 @@ function drawSuck(pp) {
   for (let k = grab.k; k < last; k++) {
     if (erased[k]) break;
     const i = trail[k];
-    const [x, y] = trailXY[k] || bend(i % COLS + .5, ((i / COLS) | 0) + .5, hs);
+    const [x, y] = trailXY[k] || bend(wx(i), wy(i), hs);
     ctx.lineTo(x, y);
   }
   ctx.lineTo(pp.x, pp.y);
@@ -3456,7 +3469,7 @@ function itemIcon(type, color) {
 
 let last = performance.now();
 function frame(now) {
-  let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  let dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
   if (!titleEl.hidden) drawTitle(dt);
   if (slot && S.phase !== 'pause' && S.phase !== 'title') updateSlot(dt);
   if (slow > 0) { slow -= dt; dt *= 0.3; }
@@ -3842,8 +3855,8 @@ function drawPreview() {
 }
 function startDemo() {
   resetGrid();
-  for (let y = 40; y < ROWS - B; y++) for (let x = B; x < 22; x++) grid[at(x,y)] = 1;
-  for (let y = B; y < 14; y++) for (let x = 34; x < COLS - B; x++) grid[at(x,y)] = 1;
+  for (let y = 40 * G; y < GR - BG; y++) for (let x = BG; x < 22 * G; x++) grid[at(x,y)] = 1;
+  for (let y = BG; y < 14 * G; y++) for (let x = 34 * G; x < GC - BG; x++) grid[at(x,y)] = 1;
   foes = [makeFoe('out', .8), makeFoe('perf', .8), makeFoe('amph', .8)];
   foes[2].y = 30;
   items = []; trail = []; erased = []; wave = null; P = null; plan = null; dash = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
@@ -3882,7 +3895,7 @@ function testReset(keep) {
   setupLevel(1, true);
   if (kinds) foes = kinds.map(k => makeFoe(k, DIFFS[S.diff].sp));
   else testRefill();
-  rings.push({ x: P.x + .5, y: P.y + .5, r: 0, max: 30, age: 0, color: T.shock, big: true });
+  rings.push({ x: (P.x + .5) / G, y: (P.y + .5) / G, r: 0, max: 30, age: 0, color: T.shock, big: true });
   sfx.start();
 }
 function testShip(d) {
@@ -3893,12 +3906,12 @@ function testShip(d) {
 function testItem(type) {
   if (!S.test || !P || (S.phase !== 'play' && S.phase !== 'ready' && S.phase !== 'pause')) return;
   const medium = ITEM[type].medium, pp = playerPos(), cands = [];
-  for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) {
+  for (let y = 1; y < GR - 1; y++) for (let x = 1; x < GC - 1; x++) {
     const v = grid[at(x, y)];
     if (medium === 'sea' ? v !== 0 : v !== 1) continue;
-    const d = Math.hypot(x + .5 - pp.x, y + .5 - pp.y);
+    const d = Math.hypot((x + .5) / G - pp.x, (y + .5) / G - pp.y);
     if (d < 3) continue;
-    cands.push([d, x, y]);
+    cands.push([d, (x + .5) / G - .5, (y + .5) / G - .5]);
   }
   if (!cands.length) return;
   cands.sort((a, b) => a[0] - b[0]);
@@ -3912,10 +3925,10 @@ function testFoe(kind) {
   const want = kind === 'inn' ? 1 : kind === 'amph' ? -1 : 0;
   if (want >= 0) {
     const pp = playerPos(), cands = [];
-    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
       if (grid[at(x, y)] !== want) continue;
-      if (Math.hypot(x + .5 - pp.x, y + .5 - pp.y) < 10) continue;
-      cands.push([x, y]);
+      if (Math.hypot((x + .5) / G - pp.x, (y + .5) / G - pp.y) < 10) continue;
+      cands.push([(x + .5) / G - .5, (y + .5) / G - .5]);
     }
     if (!cands.length) return;
     const [x, y] = cands[(Math.random() * cands.length) | 0];
@@ -3948,7 +3961,7 @@ addEventListener('keydown', e => {
   if (shipPick && !ov.hidden && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); shipPick.step(menuShip + (k === 'ArrowRight' ? 1 : -1)); return; }
   if (plan) {
     const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], z: [0, -1], w: [0, -1], s: [0, 1], q: [-1, 0], a: [-1, 0], d: [1, 0] }[k];
-    if (d) { e.preventDefault(); planStep(d[0], d[1]); return; }
+    if (d) { e.preventDefault(); for (let n = 0; n < G; n++) planStep(d[0], d[1]); return; }
     if (k === 'Shift' || k === 'Enter') { e.preventDefault(); planLaunch(); return; }
     if (k === 'Escape' || k === ' ') { e.preventDefault(); planCancel(); return; }
   }
@@ -3969,12 +3982,12 @@ cv.addEventListener('pointerdown', e => {
   // Fulgurant : poser le doigt sur (ou tout près de) son vaisseau commence un tracé éclair
   if (SH().key === 'ful' && S.phase === 'play' && P && !dash) {
     const c = cellAt(e);
-    if (Math.hypot(c.x - P.x - .5, c.y - P.y - .5) * c.px < Math.max(36, 2.5 * c.px) && planStart()) touch.plan = true;
+    if (Math.hypot(c.x - (P.x + .5) / G, c.y - (P.y + .5) / G) * c.px < Math.max(36, 2.5 * c.px) && planStart()) touch.plan = true;
   }
 });
 cv.addEventListener('pointermove', e => {
   if (!touch) return;
-  if (touch.plan) { if (plan) { const c = cellAt(e); planTo(Math.floor(c.x), Math.floor(c.y)); } return; }
+  if (touch.plan) { if (plan) { const c = cellAt(e); planTo(gc(c.x), gc(c.y)); } return; }
   const dx = e.clientX - touch.x, dy = e.clientY - touch.y;
   if (Math.hypot(dx, dy) > 18) {
     setDir(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
