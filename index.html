@@ -285,7 +285,7 @@ details li b{color:var(--text);font-weight:600}
 
   <div class="testbar" id="testbar" hidden>
     <div class="trow"><span class="k">VAISSEAU</span>
-      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><select class="mini" id="tforce" aria-label="Case de la roue" hidden></select><button class="mini" id="tquit">QUITTER</button>
+      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><select class="mini" id="tforce" aria-label="Gain de la machine à sous" hidden></select><button class="mini" id="tquit">QUITTER</button>
     </div>
     <div class="trow"><span class="k">BONUS</span>
       <button class="mini gold" data-item="coin" id="tcoin" hidden>+JETON</button><button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
@@ -469,9 +469,9 @@ const SHIPS = [
       g.beginPath(); g.moveTo(-.02, -.15); g.lineTo(-.02, .15); g.lineTo(-.18, .15); g.lineTo(-.32, .21); g.lineTo(-.25, .07); g.lineTo(-.36, 0);
       g.lineTo(-.25, -.07); g.lineTo(-.32, -.21); g.lineTo(-.18, -.15); g.closePath(); g.fill(); g.stroke();
     } },
-  // Flambeur (idée de Fabien) : pas d'objets mais des jetons de casino ; chaque jeton lance la roue de la fortune
-  { key: 'gam', name: 'FLAMBEUR', tag: 'Faites vos jeux', lives: 2, bonus: 1, spd: 3, bon: 4, power: 'ROUE DE LA FORTUNE',
-    desc: 'Pas d\'objets mais des jetons de casino (5 au plus). Touche le jeton en haut à droite pour lancer la roue : casque, vitesse, combos, jackpot… et parfois un coup dur.',
+  // Flambeur (idée de Fabien) : pas d'objets mais des jetons de casino ; chaque jeton lance la machine à sous
+  { key: 'gam', name: 'FLAMBEUR', tag: 'Faites vos jeux', lives: 2, bonus: 1, spd: 3, bon: 4, power: 'MACHINE À SOUS',
+    desc: 'Pas d\'objets mais des jetons de casino (5 au plus). Touche le jeton en haut à droite pour lancer la machine à sous : casque, vitesse, combos, jackpot… et parfois un coup dur.',
     hullA: '#a8ffcb', hullB: '#0e6b3a', glow: '#ffd23f', pit: '#ff3b5c', land: '#c4f5d8', flame: '255,210,63', tail: -.42, fw: .12, pitXY: [.12, .17, .17],
     body(g) {
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.08, s * .3); g.lineTo(-.6, s * .58); g.lineTo(-.4, s * .12); g.closePath(); g.fill(); }
@@ -526,7 +526,7 @@ let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab 
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
 const power = { inv: 0, spd: 0, sup: 0, hyp: 0, chr: 0, schr: 0, frag: 0 };
-// durée de départ de chaque pouvoir en cours (les barres du HUD ; la roue du Flambeur donne des durées variables)
+// durée de départ de chaque pouvoir en cours (les barres du HUD ; la machine du Flambeur donne des durées variables)
 const powMax = {};
 const pm = k => powMax[k] || POWER_T;
 function setPow(k, t) { power[k] = t; powMax[k] = t; }
@@ -828,8 +828,8 @@ function setupLevel(L, instant) {
   ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
-  if (wheel && wheel.st === 'spin') gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
-  wheel = null; gam.free = 0; gam.snail = 0;
+  if (slot && slot.st === 'spin') gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
+  slot = null; gam.free = 0; gam.snail = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -896,7 +896,7 @@ function cancelConquest() {
 function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
   if (helmet() || power.sup > 0 || SH().key === 'fur') return;
-  // Flambeur, case « fil fragile » de la roue : un ennemi qui touche le fil tue sur le coup
+  // Flambeur, « fil fragile » de la machine à sous : un ennemi qui touche le fil tue sur le coup
   if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
   if (k < 0) return;
@@ -1077,7 +1077,7 @@ function capture() {
   const tcells = [];
   for (let k = 0; k < trail.length; k++) if (!erased[k]) { grid[trail[k]] = 1; tcells.push(trail[k]); }
   if (SH().key === 'trap' && !P.noFill) trapFoes();
-  // Flambeur, case « escargot » : il dure un nombre de traversées
+  // Flambeur, « escargot » de la machine à sous : il dure un nombre de traversées
   if (gam.snail > 0 && --gam.snail === 0) { const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 2, text: 'ESCARGOT FINI', age: 0, color: T.items.coin }); }
   const seen = new Uint8Array(N), stack = [];
   for (const e of seaSeeds()) {
@@ -1414,7 +1414,7 @@ const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
   if (SH().key === 'rew') { rewind(); return; }
-  if (SH().key === 'gam') { spinWheel(); return; }
+  if (SH().key === 'gam') { spinSlot(); return; }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
   ab.on = FR_T; ab.beat = 0;
   const pp = playerPos();
@@ -1720,75 +1720,71 @@ function armorHit(src) {
 }
 
 // Flambeur (idée de Fabien) : à la place des objets, des jetons de casino (CHIPS_MAX au plus, gardés d'un niveau à
-// l'autre). Le bouton du HUD en dépense un et lance la roue de la fortune : surtout des objets améliorés (plus longs,
-// combinés), quelques gros lots, et environ 17 % de coups durs. Pendant que la roue tourne, le jeu passe au ralenti.
+// l'autre). Le bouton du HUD en dépense un et lance la machine à sous : surtout des objets améliorés (plus longs,
+// combinés), quelques gros lots, et environ 17 % de coups durs. La machine tourne dans un coin du terrain, en fond :
+// le jeu continue à vitesse normale (une première version, une roue de la fortune, cachait le terrain et ralentissait tout).
 const CHIPS_MAX = 5;
-// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : case imposée (mode test)
+// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test)
 const gam = { chips: 1, snail: 0, free: 0, force: '' };
-let wheel = null;
-// Cases de la roue : poids (en %), icônes (de l'intérieur vers l'extérieur), étiquette (durée ou « + »), texte du gain.
-// bad : coup dur ; gold : gros lot. Une case est d'autant plus large que sa chance est grande (à moitié seulement,
-// pour que les petites restent lisibles).
-const WHEEL = [
-  { k: 'inv', w: 11, ic: ['inv'], tag: '20', clock: 1, txt: 'CASQUE 20 S' },
-  { k: 'snail', w: 8, ic: ['snail'], tag: 'X3', bad: 1, txt: 'ESCARGOT !' },
-  { k: 'spd', w: 11, ic: ['spd'], tag: '20', clock: 1, txt: 'VITESSE 20 S' },
-  { k: 'invspd', w: 7, ic: ['inv', 'spd'], tag: '10', clock: 1, txt: 'CASQUE + VITESSE' },
-  { k: 'chr', w: 10, ic: ['chr'], tag: '15', clock: 1, txt: 'CHRONO 15 S' },
-  { k: 'frag', w: 6, ic: ['frag'], tag: '15', clock: 1, bad: 1, txt: 'FIL FRAGILE !' },
-  { k: 'terr', w: 10, ic: ['terr'], tag: '+', txt: 'TERRITOIRE +' },
-  { k: 'jack', w: 1, ic: ['777'], gold: 1, txt: 'JACKPOT !' },
-  { k: 'life', w: 7, ic: ['life'], tag: '+1', txt: '+1 VIE' },
-  { k: 'holdup', w: 4, ic: ['holdup'], txt: 'HOLD-UP !' },
-  { k: 'chrinv', w: 6, ic: ['chr', 'inv'], tag: '10', clock: 1, txt: 'CHRONO + CASQUE' },
-  { k: 'skull', w: 3, ic: ['skull'], bad: 1, txt: 'PERDU !' },
-  { k: 'sup', w: 5, ic: ['sup'], tag: '15', clock: 1, gold: 1, txt: 'SUPER CASQUE 15 S' },
-  { k: 'again', w: 4, ic: ['coin', 'coin'], tag: 'X2', txt: 'REJOUE X2 !' },
-  { k: 'bomb', w: 4, ic: ['bomb'], gold: 1, txt: 'SUPER BOMBE !' },
-  { k: 'life2', w: 3, ic: ['life'], tag: '++', txt: '+2 VIES' }
+let slot = null;
+// Gains : poids (en %), les 3 rouleaux (deux icônes et une étiquette : durée avec un chrono, « + », X2… ; ou trois fois
+// le même symbole pour les gros lots et les coups durs), texte du gain. bad : coup dur ; gold : gros lot.
+const SLOT = [
+  { k: 'inv', w: 11, r: ['inv', 'inv', 't20'], txt: 'CASQUE 20 S' },
+  { k: 'spd', w: 11, r: ['spd', 'spd', 't20'], txt: 'VITESSE 20 S' },
+  { k: 'chr', w: 10, r: ['chr', 'chr', 't15'], txt: 'CHRONO 15 S' },
+  { k: 'terr', w: 10, r: ['terr', 'terr', '+'], txt: 'TERRITOIRE +' },
+  { k: 'life', w: 7, r: ['life', 'life', '+1'], txt: '+1 VIE' },
+  { k: 'life2', w: 3, r: ['life', 'life', '++'], txt: '+2 VIES' },
+  { k: 'invspd', w: 7, r: ['inv', 'spd', 't10'], txt: 'CASQUE + VITESSE' },
+  { k: 'chrinv', w: 6, r: ['chr', 'inv', 't10'], txt: 'CHRONO + CASQUE' },
+  { k: 'sup', w: 5, r: ['sup', 'sup', 't15'], gold: 1, txt: 'SUPER CASQUE 15 S' },
+  { k: 'bomb', w: 4, r: ['bomb', 'bomb', 'bomb'], gold: 1, txt: 'SUPER BOMBE !' },
+  { k: 'again', w: 4, r: ['coin', 'coin', 'X2'], txt: 'REJOUE X2 !' },
+  { k: 'holdup', w: 4, r: ['holdup', 'holdup', 'holdup'], txt: 'HOLD-UP !' },
+  { k: 'jack', w: 1, r: ['777', '777', '777'], gold: 1, txt: 'JACKPOT !' },
+  { k: 'snail', w: 8, r: ['snail', 'snail', 'X3'], bad: 1, txt: 'ESCARGOT !' },
+  { k: 'frag', w: 6, r: ['frag', 'frag', 't15'], bad: 1, txt: 'FIL FRAGILE !' },
+  { k: 'skull', w: 3, r: ['skull', 'skull', 'skull'], bad: 1, txt: 'PERDU !' }
 ];
-{ let a = 0; for (const s of WHEEL) { s.a0 = a; a += (1 / WHEEL.length + s.w / 100) / 2 * Math.PI * 2; s.a1 = a; } }
-const WHEEL_SPIN = 2.2, WHEEL_SHOW = 1.1, WHEEL_OUT = .35;
+// symboles qui défilent sur les rouleaux pendant qu'ils tournent
+const SLOT_POOL = ['inv', 'spd', 'chr', 'terr', 'life', 'sup', 'bomb', 'coin', '777', 'holdup', 'snail', 'frag', 'skull'];
+// arrêt de chaque rouleau (s), puis affichage du gain et disparition
+const SLOT_STOP = [.9, 1.35, 1.8], SLOT_SHOW = 1.4, SLOT_OUT = .35;
 function gainChip(it) {
   const full = gam.chips >= CHIPS_MAX;
   gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
   if (full) popups.push({ x: it.x, y: it.y - 2.6, text: 'MAX', age: 0, color: T.items.coin });
   sfx.coin(); pwHud();
 }
-function spinWheel() {
-  if (wheel || S.phase !== 'play') return;
+function spinSlot() {
+  if (slot || S.phase !== 'play') return;
   if (gam.chips <= 0) { sfx.warn(); return; }
   gam.chips--; startSpin(true);
 }
-// forced : tirage payé avec un jeton, la seule case que le mode test peut imposer (pas les tours gratuits)
+// forced : tirage payé avec un jeton, le seul que le mode test peut imposer (pas les tours gratuits)
 function startSpin(forced) {
-  let idx = S.test && forced ? WHEEL.findIndex(s => s.k === gam.force) : -1;
-  if (idx < 0) { let r = Math.random() * 100; idx = WHEEL.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
-  const s = WHEEL[idx], a = s.a0 + (s.a1 - s.a0) * (.2 + Math.random() * .6), T2 = Math.PI * 2;
-  const rot0 = wheel ? wheel.rot % T2 : Math.random() * T2;
-  // la case tirée finit sous le pointeur, en haut (angle + rotation = 0 modulo un tour), après 4 tours complets
-  const rot1 = rot0 + 4 * T2 + (((-a - rot0) % T2) + T2) % T2;
-  wheel = { st: 'spin', t: 0, age: wheel ? wheel.age : 0, rot0, rot1, rot: rot0, idx, last: -1 };
+  let idx = S.test && forced ? SLOT.findIndex(s => s.k === gam.force) : -1;
+  if (idx < 0) { let r = Math.random() * 100; idx = SLOT.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
+  // la machine se met dans le coin du haut le plus éloigné du vaisseau
+  const left = slot ? slot.left : playerPos().x > COLS / 2;
+  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, left, stopped: 0, free: !forced, ph: [Math.random() * 13, Math.random() * 13, Math.random() * 13] };
   sfx.spin(); pwHud();
 }
-// case sous le pointeur
-function wheelAt(rot) {
-  const T2 = Math.PI * 2, a = ((-rot % T2) + T2) % T2, i = WHEEL.findIndex(s => a >= s.a0 && a < s.a1);
-  return i < 0 ? WHEEL.length - 1 : i;
-}
-// la roue avance en temps réel (appelée par frame(), avant le ralenti qu'elle impose au jeu)
-function updateWheel(dt) {
-  const w = wheel;
-  w.t += dt; w.age += dt;
-  if (w.st === 'spin') {
-    const u = Math.min(1, w.t / WHEEL_SPIN);
-    w.rot = w.rot0 + (w.rot1 - w.rot0) * (1 - Math.pow(1 - u, 3));
-    const i = wheelAt(w.rot);
-    if (i !== w.last) { w.last = i; if (!muted) tone(1700 + Math.random() * 200, .018, 'square', .018); }
-    if (u >= 1) { w.st = 'win'; w.t = 0; wheelWin(WHEEL[w.idx]); pwHud(); }
-  } else if (w.st === 'win') {
-    if (w.t >= WHEEL_SHOW) { if (gam.free > 0) { gam.free--; startSpin(); } else { w.st = 'out'; w.t = 0; } }
-  } else if (w.t >= WHEEL_OUT) { wheel = null; pwHud(); }
+// la machine avance en temps réel, en fond (appelée par frame(), sauf en pause)
+function updateSlot(dt) {
+  const m = slot;
+  m.t += dt; m.age += dt;
+  if (m.st === 'spin') {
+    while (m.stopped < 3 && m.t >= SLOT_STOP[m.stopped]) {
+      m.stopped++;
+      if (!muted) { tone(180, .08, 'square', .05); tone(1200 + m.stopped * 200, .05, 'triangle', .03, 0, .02); }
+    }
+    if (m.stopped === 3) { m.st = 'win'; m.t = 0; slotWin(SLOT[m.idx]); pwHud(); }
+    else if (!muted && Math.floor(m.age * 16) !== Math.floor((m.age - dt) * 16)) tone(1500 + Math.random() * 400, .015, 'square', .012);
+  } else if (m.st === 'win') {
+    if (m.t >= SLOT_SHOW) { if (gam.free > 0) { gam.free--; startSpin(); } else { m.st = 'out'; m.t = 0; } }
+  } else if (m.t >= SLOT_OUT) { slot = null; pwHud(); }
 }
 // centre du territoire ou de la bombe gagnés : la case à conquérir la plus proche du vaisseau, au milieu d'un coin assez vaste
 function seaNear() {
@@ -1802,7 +1798,7 @@ function seaNear() {
   }
   return best;
 }
-function wheelWin(s) {
+function slotWin(s) {
   const pp = playerPos(), gold = T.rainbow ? '#ffd23f' : T.shock;
   rings.push({ x: pp.x, y: pp.y, r: 0, max: s.bad ? 6 : 10, age: 0, color: s.bad ? T.danger : gold, big: !s.bad });
   if (s.bad) { sfx.lose(); flash = Math.max(flash, .3); shake = REDUCED ? 0 : .6; }
@@ -1845,7 +1841,7 @@ function wheelWin(s) {
     case 'snail': gam.snail = 3; break;
     case 'frag': setPow('frag', 15); break;
     case 'skull':
-      // la roue ne prend jamais la dernière vie
+      // la machine ne prend jamais la dernière vie
       if (S.lives > 1 && !S.test) { S.lives--; hud(); burst(pp.x, pp.y, T.danger, 30, 10); }
       else popups.push({ x: pp.x, y: pp.y - 2, text: 'OUF, ÉPARGNÉ', age: 0, color: T.items.coin });
       break;
@@ -1879,9 +1875,23 @@ function drawCoinItem(it) {
   }
   ctx.restore();
 }
-// Icônes de la roue, centrées sur l'origine (taille de base : environ une case)
-function wheelIcon(type, sz) {
+// Icônes de la machine à sous, centrées sur l'origine (taille de base : environ une case)
+function slotIcon(type, sz, bad) {
   const ink = c => T.rainbow ? c : T.ball;
+  if (/^(t\d+|\+.*|X\d)$/.test(type)) {
+    const c = bad ? (T.rainbow ? '#ff5c6e' : T.ball) : ink('#ffd23f'), tm = type[0] === 't';
+    ctx.save(); ctx.scale(sz / 2.3, sz / 2.3);
+    ctx.fillStyle = c; ctx.strokeStyle = c; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `700 ${tm ? 1.35 : 1.8}px Silkscreen, "Courier New", monospace`;
+    if (!tm) ctx.fillText(type, 0, .08);
+    else {
+      ctx.fillText(type.slice(1), .55, .08);
+      ctx.lineWidth = .15; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(-1.05, .02, .55, 0, Math.PI * 2);
+      ctx.moveTo(-1.05, .02); ctx.lineTo(-1.05, -.3); ctx.moveTo(-1.05, .02); ctx.lineTo(-.8, .02); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
   ctx.save(); ctx.scale(sz, sz);
   if (type === 'coin') drawChipIcon(.48);
   else if (type === 'sup') {
@@ -1918,68 +1928,74 @@ function wheelIcon(type, sz) {
   } else itemIcon(type, ink(T.items[type]));
   ctx.restore();
 }
-function drawWheel() {
-  const w = wheel, T2 = Math.PI * 2, gold = T.rainbow ? '#ffd23f' : T.ball;
-  const a = w.st === 'out' ? Math.max(0, 1 - w.t / WHEEL_OUT) : Math.min(1, w.age / .2);
-  const R = 18.5 * (w.st === 'out' ? 1 - (1 - a) * .25 : Math.min(1, .75 + w.age * 1.25)), top = -Math.PI / 2;
-  ctx.save();
-  ctx.globalAlpha = a * .5; ctx.fillStyle = T.rainbow ? '#05030c' : T.empty; ctx.fillRect(0, 0, COLS, ROWS);
-  ctx.globalAlpha = a; ctx.translate(COLS / 2, ROWS / 2 - 2);
-  // jante dorée et ampoules qui clignotent
-  glowOn(gold, 2.5); ctx.fillStyle = T.rainbow ? '#2a1a08' : T.ball; ctx.beginPath(); ctx.arc(0, 0, R + 1.1, 0, T2); ctx.fill(); glowOff();
-  ctx.strokeStyle = gold; ctx.lineWidth = .25; ctx.stroke();
-  for (let k = 0; k < 24; k++) {
-    const b = k * T2 / 24;
-    ctx.fillStyle = (k + Math.floor(time * 8)) % 2 ? (T.rainbow ? '#8a6a20' : T.landA) : (T.rainbow ? '#fff6c8' : T.empty);
-    ctx.beginPath(); ctx.arc(Math.cos(b) * (R + .55), Math.sin(b) * (R + .55), .2, 0, T2); ctx.fill();
+// Machine à sous du Flambeur, dans un coin du haut du terrain ; elle s'efface quand le vaisseau passe dessous
+const SLOT_RW = 5, SLOT_RH = 5, SLOT_W = 3 * SLOT_RW + 2 * .45 + 2 * .7, SLOT_H = SLOT_RH + 1.4 + .7;
+function drawSlot() {
+  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m.idx], won = m.st !== 'spin';
+  const x0 = m.left ? 2.6 : COLS - 3.9 - SLOT_W, y0 = 2.6, pp = P ? playerPos() : null;
+  let a = m.st === 'out' ? Math.max(0, 1 - m.t / SLOT_OUT) : Math.min(1, m.age / .2);
+  if (pp && pp.x > x0 - 2 && pp.x < x0 + SLOT_W + 3.3 && pp.y > y0 - 2 && pp.y < y0 + SLOT_H + 4) a *= .3;
+  const pop = m.st === 'out' ? 1 : Math.min(1, .8 + m.age * 1.5);
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.translate(x0 + SLOT_W / 2, y0 + SLOT_H / 2); ctx.scale(pop, pop); ctx.translate(-SLOT_W / 2, -SLOT_H / 2);
+  // levier, abaissé au lancement puis qui remonte
+  const pull = m.st === 'spin' ? Math.max(0, 1 - m.t / .5) : 0, lx = SLOT_W + .55, ly = 2.4 + pull * 2.6;
+  ctx.strokeStyle = T.rainbow ? '#c9cdf2' : T.ball; ctx.lineWidth = .28; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(SLOT_W, SLOT_H * .62); ctx.lineTo(lx, SLOT_H * .62); ctx.lineTo(lx, ly); ctx.stroke();
+  ctx.fillStyle = T.rainbow ? '#ff3b5c' : T.ball; ctx.beginPath(); ctx.arc(lx, ly - .35, .55, 0, Math.PI * 2); ctx.fill();
+  // caisse : jante dorée qui clignote au gain (rouge pour un coup dur)
+  const flashOn = won && Math.floor(m.t * 8) % 2 === 0 && m.st === 'win';
+  const rim = flashOn ? (s.bad ? T.danger : s.k === 'jack' && T.rainbow ? `hsl(${(time * 400) % 360},100%,60%)` : '#ffffff') : gold;
+  glowOn(rim, flashOn ? 3 : 1.6);
+  ctx.fillStyle = T.rainbow ? '#2a0f24' : T.ball; rrect(0, 0, SLOT_W, SLOT_H, 1); ctx.fill(); glowOff();
+  ctx.strokeStyle = rim; ctx.lineWidth = .22; rrect(0, 0, SLOT_W, SLOT_H, 1); ctx.stroke();
+  // ampoules du fronton
+  for (let k = 0; k < 9; k++) {
+    ctx.fillStyle = (k + Math.floor(time * 7)) % 2 ? (T.rainbow ? '#7a5a18' : T.landA) : (T.rainbow ? '#fff3b0' : T.empty);
+    ctx.beginPath(); ctx.arc(1.1 + k * (SLOT_W - 2.2) / 8, .75, .2, 0, Math.PI * 2); ctx.fill();
   }
-  const winI = w.st === 'spin' ? -1 : w.idx, blink = Math.floor(w.t * 8) % 2 === 0;
-  WHEEL.forEach((s, i) => {
-    const a0 = s.a0 + w.rot + top, a1 = s.a1 + w.rot + top;
-    ctx.fillStyle = T.rainbow ? (s.bad ? '#2b0b19' : s.gold ? '#7a5208' : i % 2 ? '#0e5c34' : '#8a1228') : (s.bad ? T.landA : i % 2 ? T.empty : T.dot);
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath(); ctx.fill();
-    if (i === winI && blink) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill(); }
-    if (winI >= 0 && i !== winI) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill(); }
-  });
-  ctx.strokeStyle = gold; ctx.lineWidth = .12; ctx.beginPath();
-  for (const s of WHEEL) { const b = s.a0 + w.rot + top; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(b) * R, Math.sin(b) * R); }
-  ctx.stroke();
-  // icônes (toujours droites) et étiquettes : durée avec un petit chrono, ou « + »
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  WHEEL.forEach(s => {
-    const m = (s.a0 + s.a1) / 2 + w.rot + top, span = s.a1 - s.a0, cs = Math.cos(m), sn = Math.sin(m), n = s.ic.length;
-    s.ic.forEach((ic, j) => {
-      const r = n === 1 ? R * (s.tag ? .56 : .66) : R * (.4 + j * .25);
-      ctx.save(); ctx.translate(cs * r, sn * r); wheelIcon(ic, Math.min(2.7, span * r / 1.3)); ctx.restore();
-    });
-    if (!s.tag) return;
-    const r = R * .86, x = cs * r, y = sn * r, tc = s.bad ? (T.rainbow ? '#ff7a8a' : T.ball) : gold;
-    ctx.font = '700 1.6px Silkscreen, "Courier New", monospace';
-    const tw = ctx.measureText(s.tag).width, ox = s.clock ? .7 : 0;
-    ctx.fillStyle = tc; ctx.fillText(s.tag, x + ox, y + .05);
-    if (s.clock) {
-      const cx0 = x + ox - tw / 2 - .7;
-      ctx.strokeStyle = tc; ctx.lineWidth = .14; ctx.beginPath(); ctx.arc(cx0, y + .05, .5, 0, T2);
-      ctx.moveTo(cx0, y + .05); ctx.lineTo(cx0, y - .25); ctx.moveTo(cx0, y + .05); ctx.lineTo(cx0 + .25, y + .05); ctx.stroke();
+  // rouleaux
+  const ry = 1.4;
+  for (let k = 0; k < 3; k++) {
+    const rx = .7 + k * (SLOT_RW + .45);
+    ctx.save();
+    ctx.fillStyle = T.rainbow ? '#120a1c' : T.empty; rrect(rx, ry, SLOT_RW, SLOT_RH, .45); ctx.fill(); ctx.clip();
+    const cx = rx + SLOT_RW / 2, cy = ry + SLOT_RH / 2, step = SLOT_RH * .85;
+    if (won || k < m.stopped) {
+      // rouleau arrêté : le symbole final arrive d'en haut avec un petit rebond
+      const ts = won ? 1 : m.t - SLOT_STOP[k], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
+      ctx.save(); ctx.translate(cx, cy + off); slotIcon(s.r[k], 2.7, s.bad); ctx.restore();
+    } else {
+      // rouleau qui tourne : les symboles défilent vers le bas, un peu flous
+      const p = m.ph[k] + m.age * 14, i = Math.floor(p), f = p - i;
+      ctx.globalAlpha = a * .75;
+      for (const [j, dy] of [[i, f * step], [i + 1, (f - 1) * step], [i - 1, (f + 1) * step]]) {
+        ctx.save(); ctx.translate(cx, cy + dy); ctx.scale(1, 1.25); slotIcon(SLOT_POOL[((j % SLOT_POOL.length) + SLOT_POOL.length) % SLOT_POOL.length], 2.5); ctx.restore();
+      }
+      ctx.globalAlpha = a;
     }
-  });
-  // moyeu : un jeton qui tourne avec la roue
-  ctx.fillStyle = T.rainbow ? '#2a1a08' : T.ball; ctx.beginPath(); ctx.arc(0, 0, 2.1, 0, T2); ctx.fill();
-  ctx.strokeStyle = gold; ctx.lineWidth = .2; ctx.stroke();
-  ctx.save(); ctx.rotate(w.rot); drawChipIcon(1.6); ctx.restore();
-  // pointeur doré en haut
-  glowOn(gold, 1.5); ctx.fillStyle = gold;
-  ctx.beginPath(); ctx.moveTo(-1, -R - 2); ctx.lineTo(1, -R - 2); ctx.lineTo(0, -R + .7); ctx.closePath(); ctx.fill(); glowOff();
-  ctx.strokeStyle = T.rainbow ? '#5a3a00' : T.empty; ctx.lineWidth = .12; ctx.stroke();
-  // textes : en haut pendant le tirage, le gain en dessous
-  const say = (t, y, sz, c, hue) => {
-    ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`;
-    const tw = ctx.measureText(t).width; if (tw > COLS - 4) { sz *= (COLS - 4) / tw; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`; }
-    ctx.fillStyle = T.textShadow; ctx.fillText(t, .15, y + .15);
-    ctx.fillStyle = hue && T.rainbow ? `hsl(${(time * 360) % 360},100%,65%)` : c; ctx.fillText(t, 0, y);
+    // ombre en haut et en bas du rouleau (effet cylindre)
+    if (T.rainbow) {
+      const g = ctx.createLinearGradient(0, ry, 0, ry + SLOT_RH);
+      g.addColorStop(0, 'rgba(0,0,0,0.6)'); g.addColorStop(.25, 'rgba(0,0,0,0)'); g.addColorStop(.75, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = g; ctx.fillRect(rx, ry, SLOT_RW, SLOT_RH);
+    }
+    ctx.restore();
+  }
+  // ligne de gain
+  ctx.strokeStyle = won ? (s.bad ? T.danger : gold) : 'rgba(255,210,63,0.35)'; ctx.lineWidth = .1;
+  ctx.beginPath(); ctx.moveTo(.35, ry + SLOT_RH / 2); ctx.lineTo(SLOT_W - .35, ry + SLOT_RH / 2); ctx.stroke();
+  // texte sous la machine : le gain, ou les tours gratuits restants
+  const say = (t, c, hue) => {
+    let sz = 1.5; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`;
+    const tw = ctx.measureText(t).width; if (tw > 30) { sz *= 30 / tw; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`; }
+    // aligné sur le bord de la machine, pour ne pas sortir du terrain
+    const tx = m.left ? 0 : SLOT_W; ctx.textAlign = m.left ? 'left' : 'right'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = T.textShadow; ctx.fillText(t, tx + .12, SLOT_H + 1.3 + .12);
+    ctx.fillStyle = hue && T.rainbow ? `hsl(${(time * 360) % 360},100%,65%)` : c; ctx.fillText(t, tx, SLOT_H + 1.3);
   };
-  say(gam.free > 0 ? 'TOURS GRATUITS : ' + gam.free : 'FAITES VOS JEUX', -R - 3.4, 1.5, gold);
-  if (winI >= 0) { const s = WHEEL[winI]; say(s.txt, R + 3.4, 2.6, s.bad ? T.danger : gold, s.gold); }
+  if (won) say(s.txt, s.bad ? T.danger : gold, s.gold);
+  else if (m.free) say('TOUR GRATUIT', gold);
   ctx.restore();
 }
 
@@ -2035,7 +2051,7 @@ function bonusDelay(first) {
   return (first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14);
 }
 function pickType() {
-  // Flambeur : des jetons de casino à la place des objets
+  // Flambeur : des jetons de casino à la place des objets (machine à sous)
   if (SH().key === 'gam') return 'coin';
   // Monarque : rien que des super bonus, dès le niveau 1 (la Super Vie seulement s'il n'a pas atteint son maximum)
   if (SH().onlySuper) {
@@ -2291,8 +2307,8 @@ function pwHud() {
     b.style.setProperty('--ac', hp > .6 ? '#5dffb0' : hp > .3 ? '#ffb347' : '#ff4d5e');
   } else if (k === 'gam') {
     const n = gam.chips;
-    cls = wheel ? 'chip on' : n > 0 ? 'chip ready' : 'chip'; p = n / CHIPS_MAX; inner = String(n);
-    label = wheel ? 'La roue tourne' : n > 0 ? `Lancer la roue (${n} jeton${n > 1 ? 's' : ''})` : 'Pas de jeton : ramasse-en dans la zone à conquérir';
+    cls = slot ? 'chip on' : n > 0 ? 'chip ready' : 'chip'; p = n / CHIPS_MAX; inner = String(n);
+    label = slot ? 'La machine tourne' : n > 0 ? `Lancer la machine à sous (${n} jeton${n > 1 ? 's' : ''})` : 'Pas de jeton : ramasse-en dans la zone à conquérir';
   } else if (k === 'rew') {
     if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
     else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
@@ -2437,7 +2453,7 @@ function render() {
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
-  if (wheel) drawWheel();
+  if (slot) drawSlot();
 }
 function drawFoe(e) {
   {
@@ -3208,7 +3224,7 @@ function itemIcon(type, color) {
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (wheel && S.phase !== 'pause' && S.phase !== 'title') { updateWheel(dt); if (wheel && wheel.st === 'spin') dt *= .25; }
+  if (slot && S.phase !== 'pause' && S.phase !== 'title') updateSlot(dt);
   if (slow > 0) { slow -= dt; dt *= 0.3; }
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
   if (scale > 0 && cv.width) { update(dt); render(); }
@@ -3276,7 +3292,7 @@ function newcomers() {
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
-    if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour lancer la roue : surtout du bon, mais parfois un coup dur !</p>';
+    if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour lancer la machine à sous, elle tourne dans un coin pendant que tu joues : surtout du bon, mais parfois un coup dur !</p>';
     if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
@@ -3337,7 +3353,7 @@ function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); 
 function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', `Tu as conquis les 25 niveaux en mode ${DIFFS[S.diff].name}.`); }
 
 function titleScreen() {
-  S.phase = 'title'; cv.style.filter = ''; wheel = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
+  S.phase = 'title'; cv.style.filter = ''; slot = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
   startDemo();
   const maxL = Math.max(1, store.get('max' + menuDiff, 1));
   menuLevel = Math.min(menuLevel, maxL);
@@ -3371,7 +3387,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une roue de la fortune). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une machine à sous). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -3473,7 +3489,7 @@ function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }
 
 /* ---------- Mode test ---------- */
 const TEST_GOAL = .75;
-// barre du mode test : nom du vaisseau, jeton et roue seulement pour le Flambeur
+// barre du mode test : nom du vaisseau, jeton et machine à sous seulement pour le Flambeur
 function testSync() {
   $('tship').textContent = SH().name;
   $('tcoin').hidden = $('tforce').hidden = SH().key !== 'gam';
@@ -3546,7 +3562,7 @@ $('tnext').addEventListener('click', () => testShip(1));
 $('tship').addEventListener('click', () => testShip(1));
 $('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
 const tforce = $('tforce');
-tforce.innerHTML = '<option value="">ROUE : AU HASARD</option>' + WHEEL.map(w => `<option value="${w.k}">ROUE : ${w.txt}</option>`).join('');
+tforce.innerHTML = '<option value="">MACHINE : AU HASARD</option>' + SLOT.map(w => `<option value="${w.k}">MACHINE : ${w.txt}</option>`).join('');
 tforce.addEventListener('change', () => { gam.force = tforce.value; tforce.blur(); });
 $('tquit').addEventListener('click', () => { if (S.test) titleScreen(); });
 

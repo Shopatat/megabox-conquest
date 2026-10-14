@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get wheel() { return wheel; }, WHEEL, wheelAt, testReset, testShip, testRefill, checkGoal };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, testReset, testShip, testRefill, checkGoal };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -343,7 +343,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.collect({ type: 'slife', x: 25.5, y: 33.5, done: false, age: 0 });
   console.log(`monarque : bonus tirés au niveau 1 : ${[...types].sort().join(' ')} ; ${(n / 600).toFixed(2)} bonus par niveau ; vies 2 -> ${l1} -> ${g.S.lives} (max 4)`);
 }
-// 5o) Flambeur : des jetons à la place des objets, la roue de la fortune
+// 5o) Flambeur : des jetons à la place des objets, la machine à sous (en fond, sans ralentir le jeu)
 {
   const gi = g.SHIPS.findIndex(s => s.key === 'gam');
   g.newGame(1, 3, gi); g.go();
@@ -351,22 +351,22 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const coin = () => g.collect({ type: 'coin', x: 25.5, y: 33.5, done: false, age: 0 });
   const c0 = g.gam.chips; coin(); const c1 = g.gam.chips; for (let k = 0; k < 8; k++) coin();
   const cMax = g.gam.chips;
-  g.foes.length = 0; g.usePower(); const spinning = g.wheel && g.wheel.st, cAfter = g.gam.chips;
+  g.foes.length = 0; g.usePower(); const spinning = g.slot && g.slot.st, cAfter = g.gam.chips;
   g.usePower(); const twice = g.gam.chips === cAfter;
-  // le jeu est au ralenti pendant que la roue tourne
+  // le jeu continue à vitesse normale pendant que la machine tourne
   g.setDir('right'); step(10); const x0 = g.P.x; step(60); const slowMove = g.P.x - x0;
-  step(150); const st = g.wheel && g.wheel.st; step(120);
-  const sum = g.WHEEL.reduce((a, w) => a + w.w, 0), bad = g.WHEEL.filter(w => w.bad).reduce((a, w) => a + w.w, 0);
-  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, pas de 2e lancer pendant ${twice}, ${slowMove} case(s) en 1 s pendant la roue, puis ${st}, roue finie ${g.wheel === null} ; roue : ${g.WHEEL.length} cases, ${sum} %, coups durs ${bad} %`);
-  // chaque case, imposée depuis le mode test : la roue s'arrête dessus et l'effet arrive
+  step(150); const st = g.slot && g.slot.st; for (let k = 0; k < 900 && g.slot; k++) step();
+  const sum = g.SLOT.reduce((a, w) => a + w.w, 0), bad = g.SLOT.filter(w => w.bad).reduce((a, w) => a + w.w, 0);
+  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, pas de 2e lancer pendant ${twice}, ${slowMove} case(s) en 1 s pendant la machine, puis ${st}, machine finie ${g.slot === null} ; machine : ${g.SLOT.length} gains, ${sum} %, coups durs ${bad} %`);
+  // chaque gain, imposé depuis le mode test : la machine le donne et l'effet arrive
   const res = [];
-  for (const w of g.WHEEL) {
+  for (const w of g.SLOT) {
     g.S.test = true; g.S.ship = gi; g.testReset(); g.foes.length = 0;
     if (w.k === 'holdup') { const e = g.makeFoe('out', 1); e.x = 30.5; e.y = 40.5; g.foes.push(e); }
     g.gam.force = w.k; g.gam.chips = 5;
     const f0 = g.S.filled, l0 = g.S.lives; g.usePower(); if (w.k === 'skull') g.S.test = false;
     let landed = -1;
-    for (let k = 0; k < 900 && g.wheel; k++) { step(); if (g.wheel && g.wheel.st === 'win' && landed < 0) landed = g.wheelAt(g.wheel.rot); }
+    for (let k = 0; k < 900 && g.slot; k++) { step(); if (g.slot && g.slot.st === 'win' && landed < 0) landed = g.slot.idx; }
     const fx = [];
     for (const p of ['inv', 'spd', 'chr', 'sup', 'hyp', 'frag']) if (g.power[p] > 0) fx.push(p + ' ' + Math.round(g.power[p]));
     if (g.gam.snail) fx.push('escargot ' + g.gam.snail);
@@ -374,7 +374,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
     if (g.S.lives !== l0) fx.push('vies ' + l0 + ' -> ' + g.S.lives);
     if (w.k === 'holdup') fx.push('ennemis ' + g.foes.length);
     if (w.k === 'again' || w.k === 'jack') fx.push('jetons ' + g.gam.chips);
-    res.push(`${w.k}${g.WHEEL[landed] && g.WHEEL[landed].k === w.k ? '' : ' (MAUVAISE CASE ' + (g.WHEEL[landed] || {}).k + ')'} [${fx.join(', ')}]`);
+    res.push(`${w.k}${g.SLOT[landed] && g.SLOT[landed].k === w.k ? '' : ' (MAUVAIS GAIN ' + (g.SLOT[landed] || {}).k + ')'} [${fx.join(', ')}]`);
   }
   g.gam.force = ''; g.S.test = false;
   console.log('flambeur, cases : ' + res.join(' ; '));
