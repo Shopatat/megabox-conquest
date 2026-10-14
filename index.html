@@ -96,6 +96,17 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 /* rangée de pouvoirs à hauteur fixe, toujours réservée : la faire apparaître ou disparaître changeait
    la hauteur du HUD, donc la taille et la position du terrain (saccade à la fin d'un bonus) */
 .powers{display:flex;gap:6px;flex-wrap:nowrap;height:22px;overflow:hidden}
+/* Prédateur : jauge SANG !, son carburant (goutte qui palpite, plus vite pendant le carnage ; grise et clignotante à sec) */
+.blood{flex:1 1 130px;min-width:100px;display:flex;align-items:center;gap:6px;height:22px;padding:0 8px 0 5px;box-sizing:border-box;border:1px solid rgba(255,42,58,.5);border-radius:99px;background:rgba(120,0,20,.28);font-family:var(--title);font-weight:800;font-size:9px;letter-spacing:.08em;color:#ff5a6a;white-space:nowrap}
+.blood .drop{width:13px;height:13px;flex:none;fill:#ff2a3a;filter:drop-shadow(0 0 4px rgba(255,42,58,.85));animation:dropbeat var(--bt,1s) ease-in-out infinite}
+.blood .bm{position:relative;flex:1;min-width:30px;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.blood .bm i{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:99px;background:linear-gradient(90deg,#6a000e,#ff2a3a);box-shadow:0 0 10px rgba(255,42,58,.7)}
+.blood.low{border-color:rgba(160,165,190,.5);background:rgba(60,64,90,.3);color:#b8bcd0;animation:bloodlow .6s steps(2) infinite}
+.blood.low .drop{fill:#8a8fa8;filter:none}
+.blood.low .bm i{background:linear-gradient(90deg,#4a4e66,#a0a4bc);box-shadow:none}
+@keyframes dropbeat{0%,100%{transform:scale(1)}12%{transform:scale(1.32)}24%{transform:scale(1)}36%{transform:scale(1.18)}50%{transform:scale(1)}}
+@keyframes bloodlow{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.blood .drop,.blood.low{animation:none}}
 .powers .chip{flex:0 1 auto;min-width:0;box-sizing:border-box;height:22px;gap:5px;padding:4px 8px 4px 5px;letter-spacing:.04em}
 .powers .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .powers .chip b{flex:none}
@@ -534,7 +545,7 @@ const SHIPS = [
   // le terrain autour d'elle ; le combo (jusqu'à ×5) l'accélère, rend ses bonds plus brutaux et multiplie le score
   { key: 'pred', name: 'PRÉDATEUR', tag: 'Rien ne lui échappe', lives: 2, bonus: 1, spd: 4, bon: 3, power: 'MORSURE',
     noItems: ['terr', 'sterr'], noPit: true,
-    desc: 'Pas de fil : il chasse. Tap (ou F) pour bondir : ce qu\'il touche pendant le bond est dévoré et le terrain autour est conquis. Hors du bond, un contact le tue. Chaque proie enchaînée l\'accélère et multiplie le score, jusqu\'à ×5.',
+    desc: 'Pas de fil : il chasse. Tap (ou F) pour bondir : ce qu\'il touche pendant le bond est dévoré et le terrain autour est conquis. Hors du bond, un contact le tue. Chaque proie enchaînée l\'accélère, élargit sa morsure et multiplie le score, jusqu\'à ×5. Sa jauge SANG ! se vide sans arrêt : chaque proie la remplit, à sec il perd une vie.',
     hullA: '#e04460', hullB: '#2a1420', glow: '#ff2a3a', pit: '#ff2a3a', land: '#ff8a9a', flame: '255,60,50', tail: -.5, fw: .12, pitXY: [.1, .1, .1],
     body(g) {
       // épines arrière
@@ -617,8 +628,11 @@ const ab = { on: 0, cd: 0, beat: 0 };
 // Prédateur : bond en cours (bite, s), recharge (cd, s), combo (jusqu'à PRED_MAX) et temps restant pour l'entretenir (ct) ;
 // again : une proie vient d'être dévorée, on peut rebondir aussitôt
 const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 6, PRED_MAX = 5, PRED_FEAR = 8;
+// jauge SANG ! (en secondes) : pleine à BLOOD_MAX, BLOOD_START au début du niveau, à moitié après une mort ; elle se vide
+// en continu (plus vite avec le niveau) et chaque proie la remplit de 4 s + 2 s × combo, +4 s par proie en plus dans le même bond
+const BLOOD_MAX = 30, BLOOD_START = 20, BLOOD_LOW = .25;
 // heat : intensité du carnage (0 à 1, suit le combo en douceur) ; hb : phase du battement de cœur ; beat : battement en cours
-const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false, heat: 0, hb: 0, beat: 0 };
+const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false, heat: 0, hb: 0, beat: 0, blood: BLOOD_START, kills: 0, lowHb: 0 };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
@@ -679,6 +693,7 @@ const sfx = {
   win(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.1,'triangle',.045,0,i*.07)); tone(2093,.2,'sine',.03,0,.3); },
   lose(){ [392,370,349,311].forEach((f,i)=>tone(f,i === 3 ? .5 : .22,'sawtooth',.035,i === 3 ? -60 : -15,i*.22)); },
   jackpot(){ for(let i=0;i<16;i++) tone(1047+(i%4)*262,.07,'square',.035,0,i*.06); [523,659,784,1047,1319].forEach((f,i)=>tone(f,.45,'triangle',.05,0,1+i*.05)); },
+  heavyHeart(){ tone(46,.16,'sine',.1); tone(40,.14,'sine',.08,0,.2); },
   lunge(c){ tone(110+c*25,.2,'sawtooth',.05,300+c*80); tone(1600+c*200,.07,'square',.02,-1200,.02); },
   crunch(c){ tone(55,.28,'square',.08,-25); tone(160+c*30,.14,'sawtooth',.06,-120,.01); for(let i=0;i<3;i++) tone(1100-i*250+c*80,.035,'square',.03,-500,.04+i*.035); if(c>=5) tone(90,.6,'sawtooth',.06,140,.1); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
@@ -1077,7 +1092,7 @@ function setupLevel(L, instant) {
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
-  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; stains = []; drops = [];
+  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; pred.blood = BLOOD_START; pred.kills = 0; stains = []; drops = [];
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -1721,12 +1736,21 @@ function predBite() {
   if (S.phase !== 'play' || !P || pred.cd > 0 || (pred.bite > 0 && !pred.again)) return;
   dropShield();
   if (!P.dir.x && !P.dir.y) { P.dir = { x: P.face.x, y: P.face.y }; P.acc = 0; }
-  pred.again = false;
+  pred.again = false; pred.kills = 0;
   pred.bite = PRED_BITE / (1 + .25 * pred.combo);
   shake = REDUCED ? 0 : Math.max(shake, .2 + pred.combo * .12);
   sfx.lunge(pred.combo); pwHud();
 }
 function updatePred(dt) {
+  // SANG ! : la jauge se vide (une fois le vaisseau parti), plus vite avec le niveau ; à sec, il meurt (EXSANGUE !)
+  if (S.phase === 'play' && P && !P.shield) {
+    pred.blood = Math.max(0, pred.blood - dt * (1 + .5 * (S.level - 1) / (MAX_LEVEL - 1)));
+    if (pred.blood <= 0) { exsangue(); if (S.phase !== 'play') return; }
+  }
+  // presque à sec : cœur lent et lourd
+  const low = bloodLow();
+  if (low > 0 && !pred.combo) { const prev = pred.lowHb; pred.lowHb += dt * (48 + 30 * low) / 60; if (Math.floor(pred.lowHb) !== Math.floor(prev)) sfx.heavyHeart(); }
+  if (pred.bite > 0) predCheck();
   if (pred.bite > 0) {
     // une proie dévorée pendant ce bond : pas de recharge, on peut rebondir aussitôt
     pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.cd = pred.again ? 0 : PRED_CD; pred.again = false; } pwHud();
@@ -1739,14 +1763,28 @@ function updatePred(dt) {
     for (let k = 0; k < (pred.bite > 0 ? 3 : 1); k++) particles.push({ x: pp.x - P.dir.x * .5 + (Math.random() - .5) * .3, y: pp.y - P.dir.y * .5 + (Math.random() - .5) * .3, vx: -P.dir.x * 2 + (Math.random() - .5) * 1.5, vy: -P.dir.y * 2 + (Math.random() - .5) * 1.5, life: 0, max: .35 + Math.random() * .4, color: Math.random() < .45 ? '#ff2a3a' : Math.random() < .6 ? '#ff8a3d' : '#7a0010', size: .1 + Math.random() * .12, ng: 1 });
   }
 }
-// pendant le bond (ou sous Casque), chaque case parcourue vérifie les ennemis à portée de mâchoires
+// portée de la morsure (en plus du contact) : large de base, elle s'étend avec le carnage
+const biteReach = () => .7 + .3 * pred.combo;
+const biteable = e => !e.dead && e.kind !== 'amph' && !(e.kind === 'ghost' && ghostAlpha(e) < .35) && !(e.kind === 'div' && e.cd > 0);
+// 0 tant qu'il reste du sang, jusqu'à 1 quand la jauge est vide
+const bloodLow = () => SH().key === 'pred' && S.phase !== 'title' ? Math.max(0, 1 - pred.blood / (BLOOD_MAX * BLOOD_LOW)) : 0;
+function exsangue() {
+  if (helmet() || power.sup > 0) return;
+  const pp = playerPos();
+  popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'EXSANGUE !', age: 0, color: '#c8ccdc', big: true });
+  burst(pp.x, pp.y, '#8a8fa8', 20, 6);
+  crash();
+}
+// pendant le bond (ou sous Casque), chaque case parcourue dévore les proies à portée de mâchoires
+// (le trou noir et le spectre invisible ne comptent qu'au contact, comme pour les autres vaisseaux)
 function predCheck() {
   if (S.phase !== 'play' || !(pred.bite > 0 || helmet())) return;
-  const x = (P.x + .5) / G, y = (P.y + .5) / G;
+  const pp = playerPos(), reach = biteReach();
   for (const e of foes) {
-    if (e.dead || S.phase !== 'play') continue;
-    const r = (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .3;
-    if (Math.hypot(e.x - x, e.y - y) < r) hitPlayer(e);
+    if (S.phase !== 'play') return;
+    if (!biteable(e)) continue;
+    const r = (e.r ? e.r + .45 : .9) + reach;
+    if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) hitPlayer(e);
   }
 }
 // Dévore un ennemi ; renvoie false s'il ne se mange pas (le contact compte alors comme un coup)
@@ -1756,6 +1794,11 @@ function devour(e) {
   if (e.kind === 'div' && e.cd > 0) return true;
   pred.combo = Math.min(PRED_MAX, pred.combo + 1); pred.ct = PRED_WIN; pred.cd = 0; pred.again = true;
   const c = pred.combo, x = e.x, y = e.y, split = e.kind === 'div' && e.gen < 2;
+  // SANG ! : chaque proie remplit la jauge, d'autant plus que le carnage est fort ; plusieurs proies d'un même bond rapportent plus
+  if (pred.bite > 0) pred.kills++;
+  const multi = pred.bite > 0 && pred.kills >= 2, gain = 4 + 2 * c + (multi ? 4 : 0);
+  pred.blood = Math.min(BLOOD_MAX, pred.blood + gain);
+  popups.push({ x, y: y - 2.8, text: (multi ? (pred.kills === 2 ? 'DOUBLÉ ! ' : pred.kills === 3 ? 'TRIPLÉ ! ' : 'RAFLE ! ') : '') + '+' + gain + ' S DE SANG', age: 0, color: '#ff2a3a' });
   if (split) divSplit(e); else e.dead = true;
   gore(x, y, foeColor(e), c);
   const pts = 300 * S.level * c; S.score += pts;
@@ -2506,6 +2549,8 @@ function updateCrash(dt) {
     // le bouclier de l'Encaisseur ne se recharge pas en mourant : il faut toujours retracer pour le récupérer
     const guard = P.guard;
     P = newPlayer(rx, ry); P.guard = guard;
+    // Prédateur : il repart avec la jauge de sang au moins à moitié
+    pred.blood = Math.max(pred.blood, BLOOD_MAX / 2);
     if (S.test && armor.hp <= 0) armor.hp = 1;
     rw.hist = []; camo.on = 0;
     invuln = 0;
@@ -2741,14 +2786,16 @@ function updateItems(dt) {
     if (power[k] === 0) { powersHud(); if (k === 'sup') { stage.classList.remove('super'); combo = 0; } if ((k === 'chr' || k === 'schr') && !chronoOn()) chronoEnd(); }
   }
 }
-let powersSig = '';
+let powersSig = '', bloodBt = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo;
+  const bl = SH().key === 'pred' && S.phase !== 'title';
+  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo;
   const el = $('powers');
   if (sig !== powersSig) {
-    powersSig = sig;
-    el.innerHTML = (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
+    powersSig = sig; bloodBt = '';
+    el.innerHTML = (bl ? `<div class="blood" id="blood" role="meter" aria-label="Sang"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 C12 2 4.5 10.5 4.5 15.2 A7.5 7.5 0 0 0 19.5 15.2 C19.5 10.5 12 2 12 2 Z"/></svg>SANG !<div class="bm"><i id="bfill"></i></div></div>` : '')
+      + (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
       + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
       + (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
@@ -2763,6 +2810,13 @@ function powersHud() {
   for (const k of ['hyp', 'chr', 'schr', 'inv', 'spd', 'sup', 'frag']) { const el = $('t' + k); if (el) el.style.width = (power[k] / pm(k) * 100) + '%'; }
   const r = $('trage'); if (r) r.style.width = (ab.on / FR_T * 100) + '%';
   const tc = $('tcarn'); if (tc) tc.style.width = (pred.ct / PRED_WIN * 100) + '%';
+  const bf = $('bfill');
+  if (bf) {
+    bf.style.width = (pred.blood / BLOOD_MAX * 100).toFixed(1) + '%';
+    const bd = $('blood'), low = bloodLow() > 0, bt = low ? '1.4s' : pred.combo ? (1 - pred.combo * .14).toFixed(2) + 's' : '1s';
+    if (bd.classList.contains('low') !== low) bd.classList.toggle('low', low);
+    if (bloodBt !== bt) { bloodBt = bt; bd.style.setProperty('--bt', bt); }
+  }
   // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
   const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_CELLS) * 100) + '%';
 }
@@ -2770,7 +2824,7 @@ function powersHud() {
 let pwSig = '';
 const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
 const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H17.5 C17.5 7.5 15.5 9.6 13.3 12 C15.5 14.4 17.5 16.5 17.5 20 H19 V22 H5 V20 H6.5 C6.5 16.5 8.5 14.4 10.7 12 C8.5 9.6 6.5 7.5 6.5 4 H5 Z M8.6 4 C8.8 6.6 10.2 8.2 12 10 C13.8 8.2 15.2 6.6 15.4 4 Z M9 19.5 H15 C14.6 17.6 13.4 16.4 12 15.2 C10.6 16.4 9.4 17.6 9 19.5 Z" fill-rule="evenodd"/></svg>';
-const FANG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5 C6 5 9 7 10.5 9.5 L9 21 L13 11 C13.5 10 14.5 9.6 15.5 9.8 L20 8.5 L16 7.6 C14.5 4.5 9 3.5 2 5 Z"/></svg>';
+const FANG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3.5 H21 V7 C19.4 7 18.3 8 17.8 10 L15.6 20.5 L13.6 10.2 C13.2 8.7 12.7 8 12 8 C11.3 8 10.8 8.7 10.4 10.2 L8.4 20.5 L6.2 10 C5.7 8 4.6 7 3 7 Z"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
   const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam' || k === 'pred');
@@ -2836,7 +2890,7 @@ function update(dt) {
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred') powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
@@ -3049,6 +3103,17 @@ function drawFx() {
     const beat = Math.pow(Math.max(0, Math.sin(time * 9)), 6), g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .32, COLS / 2, ROWS / 2, ROWS * .78);
     g.addColorStop(0, 'rgba(255,31,61,0)'); g.addColorStop(1, `rgba(${T.rainbow ? '255,31,61' : '11,24,56'},${(.16 + beat * .14) * Math.min(1, ab.on / .4)})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+  }
+  // Prédateur presque à sec : l'image se ternit et se refroidit, au rythme d'un cœur lent
+  const lowB = bloodLow();
+  if (lowB > 0 && T.rainbow && S.phase === 'play') {
+    const lb = Math.pow(Math.max(0, Math.sin((pred.lowHb % 1) * Math.PI)), 8);
+    ctx.save(); ctx.globalCompositeOperation = 'saturation';
+    ctx.fillStyle = `rgba(128,128,128,${Math.min(.9, lowB * (.55 + .3 * lb))})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4);
+    ctx.restore();
+    const cg = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .35, COLS / 2, ROWS / 2, ROWS * .8);
+    cg.addColorStop(0, 'rgba(20,24,40,0)'); cg.addColorStop(1, `rgba(14,18,34,${lowB * (.45 + .2 * lb)})`);
+    ctx.fillStyle = cg; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4);
   }
   // carnage : l'image vire au rouge (vert et bleu étouffés), de plus en plus fort avec le combo, et pulse à chaque battement
   if (pred.heat > 0 && SH().key === 'pred' && T.rainbow) {
@@ -3296,8 +3361,13 @@ function drawPlayer(pp) {
       ctx.beginPath(); ctx.moveTo(pp.x + ox - P.dir.x * .7, pp.y + oy - P.dir.y * .7); ctx.lineTo(pp.x + ox - P.dir.x * (.7 + L), pp.y + oy - P.dir.y * (.7 + L)); ctx.stroke();
     }
   }
-  // Prédateur : aura rouge qui grossit avec le combo ; pendant le bond, traits de vitesse
+  // Prédateur : aura rouge qui grossit avec le combo ; pendant le bond, traits de vitesse ; arc de morsure (sa portée)
   if (SH().key === 'pred' && S.phase !== 'crash' && T.glow) {
+    const R = .9 + biteReach(), fa = Math.atan2(P.face.y, P.face.x), on = pred.bite > 0;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = on ? 'rgba(255,60,70,0.7)' : `rgba(255,42,58,${.16 + .05 * pred.combo})`; ctx.lineWidth = on ? .12 : .07;
+    ctx.beginPath(); ctx.arc(pp.x, pp.y, R, fa - .9, fa + .9); ctx.stroke();
+    if (on) { ctx.strokeStyle = 'rgba(255,42,58,0.18)'; ctx.lineWidth = .05; ctx.beginPath(); ctx.arc(pp.x, pp.y, R, 0, Math.PI * 2); ctx.stroke(); }
     if (pred.combo > 0) halo(pp.x, pp.y, 1.3 + pred.combo * .25, '#ff1f3d', .12 + pred.combo * .06);
     if (pred.bite > 0 && (P.dir.x || P.dir.y)) {
       ctx.lineWidth = .07; ctx.lineCap = 'round';
@@ -3936,7 +4006,7 @@ function newcomers() {
     S.shipTip = false;
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce ! En échange, pas de Casque ni de Vitesse pour toi, même en super.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
-    if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
+    if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Attention à ta jauge SANG ! : elle se vide sans arrêt et chaque proie la remplit, d'autant plus que tu enchaînes. À sec, tu perds une vie. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
     if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour miser : retouche la machine dans la seconde pour miser 2 ou 3 jetons. 1 jeton : 30 % de chances de gagner, 2 : 60 %, 3 : 90 %. Perdre ne donne rien… ou parfois un coup dur !</p>';
@@ -4280,7 +4350,7 @@ function testSync() {
 // pouvoirs à plein : frénésie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0;
+  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }

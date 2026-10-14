@@ -457,6 +457,18 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   start(); g.foes.length = 0; const last = g.makeFoe('out', 1); last.x = PX(); last.y = PY() + 4; last.vx = 0; last.vy = 0; g.foes.push(last);
   g.usePower(); step(30);
   console.log(`prédateur : dernière proie dévorée -> ${(g.S.filled / g.S.interior * 100).toFixed(0)} % conquis, phase ${g.S.phase}`);
+  // jauge SANG ! : elle se vide, chaque proie la remplit (plus pour un doublé), à sec il meurt ; morsure plus large
+  start(); const b0 = g.pred.blood; step(60); const drain = b0 - g.pred.blood;
+  const p1 = g.makeFoe('out', 1); p1.x = PX(); p1.y = PY() + 6; p1.vx = 0; p1.vy = 0; g.foes.push(p1);
+  const bb = g.pred.blood; g.usePower(); step(20); const gain = g.pred.blood - bb;
+  start(); g.pred.blood = 10;
+  const d1 = g.makeFoe('out', 1); d1.x = PX(); d1.y = PY() + 4; d1.vx = 0; d1.vy = 0;
+  const d2 = g.makeFoe('out', 1); d2.x = PX(); d2.y = PY() + 8; d2.vx = 0; d2.vy = 0; g.foes.push(d1, d2);
+  g.usePower(); step(25); const dbl = g.pred.blood;
+  start(); const side = g.makeFoe('out', 1); side.x = PX() + 1.4; side.y = PY() + 6; side.vx = 0; side.vy = 0; g.foes.push(side); g.usePower(); step(20);
+  console.log(`prédateur, SANG ! : ${drain.toFixed(2)} s perdues en 1 s ; une proie à ×1 rend ${gain.toFixed(1)} s ; doublé dans un bond (${d1.dead && d2.dead}) : 10 -> ${dbl.toFixed(1)} s ; proie à 1,4 case du trajet mordue ${side.dead}`);
+  start(); g.pred.blood = .05; step(5); const ph = g.S.phase, lv = g.S.lives; step(200);
+  console.log(`prédateur, SANG ! à sec -> ${ph}, ${lv} vie(s) ; il repart avec ${g.pred.blood.toFixed(0)} s de sang`);
 }
 
 // 6) Parties aléatoires
