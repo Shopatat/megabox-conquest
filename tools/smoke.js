@@ -190,18 +190,19 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`blindé : ${g.S.lives} vie, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
   const superShare = ship => { g.newGame(1, 5, ship); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
   console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(2).toFixed(0)} %`);
-  // Frénétique : +50 % de vitesse, 2 vies si un ennemi le touche pendant, 1 s'il croise son fil, recharge de 20 s
+  // Frénétique : +50 % de vitesse et invincible pendant la frénésie, recharge en traçant 300 cases
   const run = fr => { g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
   const dn = run(false), df = run(true);
   console.log(`frénésie : ${dn} cases sans, ${df} avec (x${(df / dn).toFixed(2)})`);
-  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); g.usePower(); step(2); g.crash(); step(60);
-  const l2 = g.S.lives;
-  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); g.usePower(); step(2); g.crash('self'); step(60);
-  console.log(`frénésie : touché par un ennemi 3 -> ${l2} vies, croise son fil 3 -> ${g.S.lives} vies`);
+  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(20); g.usePower();
+  { const e = g.makeFoe('out', 1), pp = g.P; e.x = pp.x + .5; e.y = pp.y + 2.5; e.vx = 0; e.vy = -7; g.foes.push(e);
+    const h = g.makeFoe('hunt', 1); h.x = 10.5; h.y = 40.5; g.foes.push(h); }
+  step(60); const inv = g.S.phase, l2 = g.S.lives, trl = g.trail.length; g.setDir('left'); step(5); g.setDir('up'); step(5); g.setDir('right'); step(5);
+  console.log(`frénésie : percuté par une boule ${inv} (play), vies 3 -> ${l2}, fil ${trl > 0 ? 'intact' : 'perdu'} ; croise son fil ${g.S.phase} vies ${g.S.lives}`);
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
   const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20); g.usePower(); const stillOff = g.ab.on === 0;
-  for (let i = 0; i < 100; i++) g.seaStep(); g.usePower();
-  console.log(`frénésie : finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 100 cases ${g.ab.on > 0}`);
+  for (let i = 0; i < 299; i++) g.seaStep(); g.usePower(); const early = g.ab.on > 0; g.seaStep(); g.usePower();
+  console.log(`frénésie : pas dispo après 299 cases ${!early} ; finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 300 cases ${g.ab.on > 0}`);
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   const pyB = g.P.y;

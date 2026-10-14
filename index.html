@@ -338,7 +338,7 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
-const FR_T = 5, FR_CELLS = 100, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+const FR_T = 5, FR_CELLS = 300, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 const SHIPS = [
   // Veinard (ex-Classique, nom choisi par Fabien) : le vaisseau d'origine, avec la chance en plus
   { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, itemLife: 1.5, spd: 3, bon: 5, power: 'CHANCE',
@@ -377,7 +377,7 @@ const SHIPS = [
       g.fillStyle = f;
     } },
   { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FRÉNÉSIE',
-    desc: 'Frénésie : +50 % de vitesse pendant 5 s. Pour la recharger, trace 100 cases dans la zone à conquérir. Touché pendant la frénésie, tu perds 2 vies.',
+    desc: 'Frénésie : 5 s d\'invincibilité à +50 % de vitesse, les ennemis ne te font rien. Pour la recharger, trace 300 cases dans la zone à conquérir.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -488,7 +488,7 @@ const pad2 = n => String(n).padStart(2, '0');
 const fmt = n => n.toLocaleString('fr-FR');
 
 const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, interior: (COLS-2*B)*(ROWS-2*B),
-  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, crashCost: 1, shipTip: false };
+  comp: null, test: false, bonusLeft: 0, bonusWait: 0, crashT: 0, readyMode: 'start', pausedFrom: null, exploded: false, ship: 0, shipTip: false };
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
@@ -849,7 +849,7 @@ function cancelConquest() {
 }
 function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
-  if (power.inv > 0 || power.sup > 0 || SH().key === 'fur') return;
+  if (helmet() || power.sup > 0 || SH().key === 'fur') return;
   const k = trailPos[i];
   if (k < 0) return;
   const fast = e.kind === 'perf';
@@ -911,7 +911,7 @@ function moveInto(nx, ny) {
   const c = grid[at(nx, ny)];
   if (c === 2) {
     P.x = nx; P.y = ny;
-    if (power.inv > 0 || power.sup > 0) { dissolveTrail(); pickItems(); return; }
+    if (helmet() || power.sup > 0) { dissolveTrail(); pickItems(); return; }
     if (SH().key === 'rob' && S.phase === 'play') { dissolveTrail(); pickItems(); if (!(armor.cd > 0)) armorHit('self'); return; }
     crash('self'); return;
   }
@@ -929,9 +929,9 @@ function moveInto(nx, ny) {
 // Amphibie = trou noir. De près, il aspire le vaisseau. S'il croise le fil, il l'avale (pas d'onde de choc) :
 // le vaisseau est ramené vers lui le long de son tracé, de plus en plus fort, jusqu'à ce qu'il regagne son terrain.
 const PULL_R = 7.5, GRAB_V0 = 4, GRAB_ACC = 10;
-function holes() { return power.inv > 0 ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
+function holes() { return helmet() ? [] : foes.filter(e => e.kind === 'amph' && !e.dead && !(e.stun > 0)); }
 function grabTrail(e) {
-  if (S.phase !== 'play' || !P.drawing || power.inv > 0 || power.sup > 0 || grab || SH().key === 'fur') return;
+  if (S.phase !== 'play' || !P.drawing || helmet() || power.sup > 0 || grab || SH().key === 'fur') return;
   grab = { e, t: 0, k: -1 };
   burst(e.x, e.y, T.amphHi, 18, 6);
   sfx.grab();
@@ -1089,7 +1089,7 @@ function checkGoal() {
 function moveSea(e, dt) {
   const R = e.r || R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
-  const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || power.inv > 0 || SH().key === 'fur');
+  const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || helmet() || SH().key === 'fur');
   for (let s = 0; s < steps; s++) {
     let nx = e.x + e.vx * h, cx = Math.floor(nx + Math.sign(e.vx) * R), cy = Math.floor(e.y), c = cell(cx, cy);
     if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.x = nx; else e.vx = -e.vx; }
@@ -1274,7 +1274,7 @@ function updateFoes(dt) {
 function hitPlayer(e) {
   if (S.phase !== 'play') return;
   if (power.sup > 0) { if (e) smash(e); return; }
-  if (power.inv > 0 || P.shield) return;
+  if (helmet() || P.shield) return;
   if (invuln > 0 && !P.drawing) return;
   if (SH().key === 'enc' && absorb(e)) return;
   if (SH().key === 'rob') { armorHit(e ? e : 'ring'); return; }
@@ -1350,6 +1350,8 @@ function drawStun(e) {
 
 /* ---------- Pouvoirs des vaisseaux ---------- */
 const frenzyOn = () => ab.on > 0;
+// Casque ou frénésie (invincible) : les ennemis n'ont aucun effet, ni sur le vaisseau ni sur le fil
+const helmet = () => power.inv > 0 || ab.on > 0;
 // état des pouvoirs gardé d'un niveau à l'autre (carry) et dans la sauvegarde
 let carry = null;
 const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp });
@@ -1661,15 +1663,12 @@ function armorHit(src) {
 }
 
 /* ---------- Crash ---------- */
-// cause 'self' : le vaisseau a croisé son propre fil (pas un ennemi : la frénésie ne coûte pas 2 vies)
-function crash(cause) {
+function crash() {
   if (S.phase !== 'play') return;
-  if (power.inv > 0 || power.sup > 0) return;
+  if (helmet() || power.sup > 0) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
-  S.crashCost = frenzyOn() && cause !== 'self' ? 2 : 1;
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
-  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CELLS; }
   plan = null; dash = null;
   powersHud(); pwHud();
   sfx.crash();
@@ -1681,7 +1680,7 @@ function updateCrash(dt) {
   else cv.style.filter = '';
   if (t >= 0.48 && !S.exploded) {
     S.exploded = true;
-    if (!S.test) S.lives = Math.max(0, S.lives - S.crashCost);
+    if (!S.test) S.lives = Math.max(0, S.lives - 1);
     hud();
     burst(crashPos.x, crashPos.y, T.danger, 60, 16); burst(crashPos.x, crashPos.y, T.shock, 24, 9);
     rings.push({ x: crashPos.x, y: crashPos.y, r: 0, max: 9, age: 0, color: T.danger });
@@ -2169,11 +2168,6 @@ function drawFx() {
       ctx.beginPath(); ctx.moveTo(-.7, -1); ctx.lineTo(.7, -1); ctx.lineTo(-.7, 1); ctx.lineTo(.7, 1); ctx.closePath(); ctx.fill();
       ctx.restore();
       ctx.globalAlpha = 1;
-    }
-    if (S.crashCost > 1 && !S.test) {
-      ctx.font = `700 ${2 + s * 1.5}px Silkscreen, "Courier New", monospace`;
-      ctx.fillStyle = T.textShadow; ctx.fillText('−2 VIES', COLS/2 + .2, ROWS/2 + 5.2);
-      ctx.fillStyle = T.danger; ctx.fillText('−2 VIES', COLS/2, ROWS/2 + 5);
     }
     ctx.globalAlpha = 1;
   }
@@ -2949,7 +2943,7 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Attention, touché pendant la frénésie, tu perds 2 vies.</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce !</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
@@ -3047,7 +3041,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
