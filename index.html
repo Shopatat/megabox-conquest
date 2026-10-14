@@ -436,10 +436,10 @@ const SHIPS = [
       }
       g.beginPath(); g.ellipse(-.06, 0, .38, .28, 0, 0, Math.PI * 2); g.fill();
     } },
-  // Monarque (idée de Fabien) : rien que des super bonus, dès le niveau 1 ; mais bien moins de bonus, qui disparaissent
-  // deux fois plus vite, et 2 vies (4 au maximum)
-  { key: 'mon', name: 'MONARQUE', tag: 'Rien que le meilleur', lives: 2, maxLives: 4, bonus: .4, itemLife: .5, onlySuper: true, spd: 3, bon: 1, power: 'SUPER BONUS',
-    desc: 'Rien que des super bonus, dès le niveau 1 ! Mais il y en a bien moins, ils disparaissent deux fois plus vite, et il n\'a que 2 vies (4 au maximum).',
+  // Monarque (idée de Fabien) : rien que des super bonus, dès le niveau 1, autant de bonus que la normale ; mais ils
+  // disparaissent deux fois plus vite, et 2 vies (4 au maximum)
+  { key: 'mon', name: 'MONARQUE', tag: 'Rien que le meilleur', lives: 2, maxLives: 4, bonus: 1, itemLife: .5, onlySuper: true, spd: 3, bon: 4, power: 'SUPER BONUS',
+    desc: 'Rien que des super bonus, dès le niveau 1 ! Mais ils disparaissent deux fois plus vite, et il n\'a que 2 vies (4 au maximum).',
     hullA: '#ffd86b', hullB: '#6a3ad0', glow: '#ffd23f', pit: '#ff5dd2', land: '#e8d2ff', tail: -.44, fw: .12, pitXY: [.24, .15, .08],
     body(g) {
       g.beginPath(); g.moveTo(.82, 0); g.quadraticCurveTo(.3, -.3, -.1, -.34); g.lineTo(-.46, -.52); g.lineTo(-.3, -.2); g.lineTo(-.42, 0);
@@ -2953,7 +2953,7 @@ function newcomers() {
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
-    if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils sont rares et disparaissent vite : fonce dessus.</p>';
+    if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
@@ -3047,7 +3047,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais rares et éphémères). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie +50 % de vitesse, mais 2 vies perdues si on te touche pendant), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));

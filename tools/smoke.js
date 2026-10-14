@@ -332,7 +332,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 1); g.go(); g.armor.hp = .6; g.showClear(); g.setupLevel(2);
   console.log(`blindé : blindage conservé entre deux niveaux ${g.armor.hp} (0.6)`);
 }
-// 5n) Monarque : rien que des super bonus dès le niveau 1, mais 0,6 par niveau, éphémères, 2 vies (4 max)
+// 5n) Monarque : rien que des super bonus dès le niveau 1, autant que la normale, éphémères, 2 vies (4 max)
 {
   g.newGame(1, 1, 8);
   const types = new Set(); for (let k = 0; k < 3000; k++) types.add(g.pickType());
