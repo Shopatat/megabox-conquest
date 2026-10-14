@@ -80,7 +80,7 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw.chip.on .in{background:radial-gradient(circle,#ffd23f 0 50%,transparent 51%),repeating-conic-gradient(#ff3b5c 0 22.5deg,#fff 22.5deg 45deg);color:#5a0010;animation:chipspin .5s linear infinite}
 @keyframes chipspin{to{transform:rotate(1turn)}}
 @keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
-/* machine à sous du Flambeur, à gauche du jeton */
+/* machine à sous du Flambeur, à la place du jeton pendant un tirage */
 .slotcv{flex:none;width:96px;height:40px;margin-right:-2px}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
   background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
@@ -1728,11 +1728,10 @@ function armorHit(src) {
 // l'autre). Le bouton du HUD en dépense un et lance la machine à sous : surtout des objets améliorés (plus longs,
 // combinés), quelques gros lots, et environ 17 % de coups durs. La machine tourne dans un coin du terrain, en fond :
 // le jeu continue à vitesse normale (une première version, une roue de la fortune, cachait le terrain et ralentissait tout).
-// Elle est dans le HUD, juste à gauche du jeton.
+// Elle prend la place du jeton dans le HUD le temps du tirage.
 const CHIPS_MAX = 5;
-// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test) ;
-// last : dernier gain, affiché par la machine au repos
-const gam = { chips: 1, snail: 0, free: 0, force: '', last: 0 };
+// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test)
+const gam = { chips: 1, snail: 0, free: 0, force: '' };
 let slot = null;
 // Gains : poids (en %), les 3 rouleaux (deux icônes et une étiquette : durée avec un chrono, « + », X2… ; ou trois fois
 // le même symbole pour les gros lots et les coups durs), texte du gain. bad : coup dur ; gold : gros lot.
@@ -1755,10 +1754,10 @@ const SLOT = [
   { k: 'skull', w: 3, r: ['skull', 'skull', 'skull'], bad: 1, txt: 'PERDU !' }
 ];
 // symboles qui défilent sur les rouleaux pendant qu'ils tournent
-gam.last = SLOT.findIndex(s => s.k === 'jack');
 const SLOT_POOL = ['inv', 'spd', 'chr', 'terr', 'life', 'sup', 'bomb', 'coin', '777', 'holdup', 'snail', 'frag', 'skull'];
-// arrêt de chaque rouleau (s), puis affichage du gain et disparition
-const SLOT_STOP = [.9, 1.35, 1.8], SLOT_SHOW = 1.4, SLOT_OUT = .35;
+// arrêt de chaque rouleau (s) : la révélation se fait attendre (demande de Fabien), surtout le dernier rouleau ;
+// chaque rouleau ralentit pendant SLOT_SLOW s avant de s'arrêter
+const SLOT_STOP = [1.3, 2.4, 3.9], SLOT_SLOW = 1.1, SLOT_SHOW = 1.4, SLOT_OUT = .35;
 function gainChip(it) {
   const full = gam.chips >= CHIPS_MAX;
   gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
@@ -1774,7 +1773,7 @@ function spinSlot() {
 function startSpin(forced) {
   let idx = S.test && forced ? SLOT.findIndex(s => s.k === gam.force) : -1;
   if (idx < 0) { let r = Math.random() * 100; idx = SLOT.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
-  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, stopped: 0, free: !forced, ph: [Math.random() * 13, Math.random() * 13, Math.random() * 13] };
+  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, stopped: 0, free: !forced, pos: [Math.random() * 13, Math.random() * 13, Math.random() * 13], tick: 0 };
   sfx.spin(); pwHud();
 }
 // la machine avance en temps réel, en fond (appelée par frame(), sauf en pause)
@@ -1786,8 +1785,14 @@ function updateSlot(dt) {
       m.stopped++;
       if (!muted) { tone(180, .08, 'square', .05); tone(1200 + m.stopped * 200, .05, 'triangle', .03, 0, .02); }
     }
-    if (m.stopped === 3) { m.st = 'win'; m.t = 0; gam.last = m.idx; slotWin(SLOT[m.idx]); pwHud(); }
-    else if (!muted && Math.floor(m.age * 16) !== Math.floor((m.age - dt) * 16)) tone(1500 + Math.random() * 400, .015, 'square', .012);
+    if (m.stopped === 3) { m.st = 'win'; m.t = 0; slotWin(SLOT[m.idx]); pwHud(); }
+    else {
+      // les rouleaux qui tournent défilent de moins en moins vite à l'approche de leur arrêt ; un clic à chaque symbole
+      // du premier rouleau encore en mouvement (le cliquetis ralentit donc aussi)
+      for (let r = m.stopped; r < 3; r++) m.pos[r] += dt * 14 * Math.max(.12, Math.min(1, (SLOT_STOP[r] - m.t) / SLOT_SLOW));
+      const tk = Math.floor(m.pos[m.stopped]);
+      if (tk !== m.tick) { m.tick = tk; if (!muted) tone(1500 + Math.random() * 400, .015, 'square', .012); }
+    }
   } else if (m.st === 'win') {
     if (m.t >= SLOT_SHOW) { if (gam.free > 0) { gam.free--; startSpin(); } else { m.st = 'out'; m.t = 0; } }
   } else if (m.t >= SLOT_OUT) { slot = null; pwHud(); }
@@ -1935,29 +1940,29 @@ function slotIcon(type, sz, bad) {
   } else itemIcon(type, ink(T.items[type]));
   ctx.restore();
 }
-// Machine à sous du Flambeur, dans le HUD à gauche du jeton (demande de Fabien) : elle tourne en fond pendant qu'on joue.
-// Au repos, elle montre le dernier tirage, en sourdine. Dessinée dans son propre canvas, avec les mêmes icônes (on
+// Machine à sous du Flambeur, dans le HUD, à la place du jeton (demande de Fabien) : elle tourne en fond pendant qu'on joue.
+// Elle prend la place du jeton le temps d'un tirage. Dessinée dans son propre canvas, avec les mêmes icônes (on
 // prête le canvas à ctx le temps du dessin).
 const SLOT_RW = 5, SLOT_RH = 5, SLOT_W = 3 * SLOT_RW + 2 * .45 + 2 * .7, SLOT_H = SLOT_RH + 1.4 + .7;
 const slotCv = $('slotcv'), slotCtx = slotCv.getContext('2d');
 function drawSlot() {
   const c = slotCv;
-  if (!c.clientWidth) return;
+  if (!slot || !c.clientWidth) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 3), w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
   if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
   const main = ctx; ctx = slotCtx;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
   const k = Math.min(w / SLOT_W, h / SLOT_H); ctx.setTransform(k, 0, 0, k, (w - SLOT_W * k) / 2, (h - SLOT_H * k) / 2);
-  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m ? m.idx : gam.last], won = m && m.st !== 'spin', idle = !m;
+  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m.idx], won = m.st !== 'spin';
   // caisse : jante dorée qui clignote au gain (rouge pour un coup dur, arc-en-ciel au jackpot)
   const flashOn = won && m.st === 'win' && Math.floor(m.t * 8) % 2 === 0;
   const rim = flashOn ? (s.bad ? T.danger : s.k === 'jack' && T.rainbow ? `hsl(${(time * 400) % 360},100%,60%)` : '#ffffff') : gold;
-  ctx.globalAlpha = idle ? .55 : 1;
+  ctx.globalAlpha = m.st === 'out' ? Math.max(0, 1 - m.t / SLOT_OUT) : 1;
   ctx.fillStyle = T.rainbow ? '#2a0f24' : T.ball; rrect(.15, .15, SLOT_W - .3, SLOT_H - .3, 1); ctx.fill();
   ctx.strokeStyle = rim; ctx.lineWidth = flashOn ? .4 : .25; ctx.stroke();
   // ampoules du fronton (elles défilent quand la machine tourne)
   for (let b = 0; b < 9; b++) {
-    const lit = idle ? b % 2 === 0 : (b + Math.floor(time * 9)) % 2;
+    const lit = (b + Math.floor(time * 9)) % 2;
     ctx.fillStyle = lit ? (T.rainbow ? '#fff3b0' : T.empty) : (T.rainbow ? '#7a5a18' : T.landA);
     ctx.beginPath(); ctx.arc(1.1 + b * (SLOT_W - 2.2) / 8, .78, .24, 0, Math.PI * 2); ctx.fill();
   }
@@ -1968,13 +1973,13 @@ function drawSlot() {
     ctx.save();
     ctx.fillStyle = T.rainbow ? '#120a1c' : T.empty; rrect(rx, ry, SLOT_RW, SLOT_RH, .45); ctx.fill(); ctx.clip();
     const cx = rx + SLOT_RW / 2, cy = ry + SLOT_RH / 2, step = SLOT_RH * .85;
-    if (idle || won || r < m.stopped) {
+    if (won || r < m.stopped) {
       // rouleau arrêté : le symbole final arrive d'en haut avec un petit rebond
-      const ts = idle || won ? 1 : m.t - SLOT_STOP[r], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
+      const ts = won ? 1 : m.t - SLOT_STOP[r], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
       ctx.save(); ctx.translate(cx, cy + off); slotIcon(s.r[r], 2.7, s.bad); ctx.restore();
     } else {
       // rouleau qui tourne : les symboles défilent vers le bas, un peu flous
-      const p = m.ph[r] + m.age * 14, i = Math.floor(p), f = p - i;
+      const p = m.pos[r], i = Math.floor(p), f = p - i;
       ctx.globalAlpha = .75;
       for (const [j, dy] of [[i, f * step], [i + 1, (f - 1) * step], [i - 1, (f + 1) * step]]) {
         ctx.save(); ctx.translate(cx, cy + dy); ctx.scale(1, 1.25); slotIcon(SLOT_POOL[((j % SLOT_POOL.length) + SLOT_POOL.length) % SLOT_POOL.length], 2.5); ctx.restore();
@@ -2291,8 +2296,11 @@ const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
   const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam');
-  if (b.hidden === show) b.hidden = !show;
-  if (!show) { pwSig = ''; slotCv.hidden = true; return; }
+  // Flambeur : pendant un tirage, la machine à sous prend la place du jeton
+  const sl = show && k === 'gam' && !!slot;
+  if (slotCv.hidden === sl) slotCv.hidden = !sl;
+  if (b.hidden === (show && !sl)) b.hidden = !(show && !sl);
+  if (!show) { pwSig = ''; return; }
   let cls, p, inner, label;
   if (k === 'fre') {
     if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
@@ -2315,7 +2323,6 @@ function pwHud() {
     if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_CELLS; inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
     else { cls = 'guard'; p = 1; inner = SHIELDI; label = 'Bouclier prêt'; }
   }
-  const sl = k === 'gam'; if (slotCv.hidden === sl) slotCv.hidden = !sl;
   b.style.setProperty('--p', p.toFixed(3));
   const sig = cls + inner;
   if (sig === pwSig) return;
