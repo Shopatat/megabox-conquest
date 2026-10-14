@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, testReset, testShip, testRefill, checkGoal };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -351,22 +351,28 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const coin = () => g.collect({ type: 'coin', x: 25.5, y: 33.5, done: false, age: 0 });
   const c0 = g.gam.chips; coin(); const c1 = g.gam.chips; for (let k = 0; k < 8; k++) coin();
   const cMax = g.gam.chips;
-  g.foes.length = 0; g.usePower(); const spinning = g.slot && g.slot.st, cAfter = g.gam.chips;
-  g.usePower(); const twice = g.gam.chips === cAfter;
+  // mise : 1er appui un jeton, chaque appui suivant (dans la seconde) un de plus, les rouleaux partent à 3
+  g.foes.length = 0; g.usePower(); const b1 = g.slot.st + ' ' + g.slot.bet + ' (jetons ' + g.gam.chips + ')';
+  g.usePower(); g.usePower(); const b3 = g.slot.st + ' ' + g.slot.bet + ' (jetons ' + g.gam.chips + ')';
+  g.usePower(); const twice = g.gam.chips;
+  const spinning = b1 + ', ' + b3, cAfter = twice;
   // le jeu continue à vitesse normale pendant que la machine tourne
   g.setDir('right'); step(10); const x0 = g.P.x; step(60); const slowMove = g.P.x - x0;
   step(150); const st = g.slot && g.slot.st; for (let k = 0; k < 900 && g.slot; k++) step();
-  const sum = g.SLOT.reduce((a, w) => a + w.w, 0), bad = g.SLOT.filter(w => w.bad).reduce((a, w) => a + w.w, 0);
-  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, pas de 2e lancer pendant ${twice}, ${slowMove} case(s) en 1 s pendant la machine, puis ${st}, machine finie ${g.slot === null} ; machine : ${g.SLOT.length} gains, ${sum} %, coups durs ${bad} %`);
+  const odds = [1, 2, 3].map(b => { let w = 0, bad = 0; for (let k = 0; k < 20000; k++) { const i = g.slotDraw(b); if (i >= 0) { if (g.SLOT[i].bad) bad++; else w++; } } return `mise ${b} : gagne ${Math.round(w / 200)} %, coup dur ${Math.round(bad / 200)} %`; }).join(', ');
+  g.newGame(1, 3, gi); g.go(); g.usePower(); step(50); const waiting = g.slot.st; step(30); const auto = g.slot.st;
+  for (let k = 0; k < 2000 && g.slot; k++) step();
+  const bonusN = (() => { let n = 0; for (let k = 0; k < 400; k++) { g.newGame(1, 2, gi); n += g.S.bonusLeft; } return n / 400; })();
+  console.log(`flambeur : bonus tirés ${[...types].join(' ')} ; jetons ${c0} -> ${c1} -> ${cMax} (max 5) ; lancer : ${spinning}, jetons ${cAfter}, 4e appui ignoré ${twice === 2}, ${slowMove} case(s) en 1 s pendant la machine, puis ${st}, machine finie ${g.slot === null} ; mise de 1 : ${waiting} après 0,8 s, ${auto} après 1,3 s ; ${odds} ; ${bonusN.toFixed(1)} jetons par niveau`);
   // chaque gain, imposé depuis le mode test : la machine le donne et l'effet arrive
   const res = [];
   for (const w of g.SLOT) {
     g.S.test = true; g.S.ship = gi; g.testReset(); g.foes.length = 0;
     if (w.k === 'holdup') { const e = g.makeFoe('out', 1); e.x = 30.5; e.y = 40.5; g.foes.push(e); }
     g.gam.force = w.k; g.gam.chips = 5;
-    const f0 = g.S.filled, l0 = g.S.lives; g.usePower(); if (w.k === 'skull') g.S.test = false;
+    const f0 = g.S.filled, l0 = g.S.lives; g.usePower(); g.usePower(); g.usePower(); if (w.k === 'skull') g.S.test = false;
     let landed = -1;
-    for (let k = 0; k < 900 && g.slot; k++) { step(); if (g.slot && g.slot.st === 'win' && landed < 0) landed = g.slot.idx; }
+    for (let k = 0; k < 2000 && g.slot; k++) { step(); if (g.slot && g.slot.st === 'win' && landed < 0) landed = g.slot.idx; }
     const fx = [];
     for (const p of ['inv', 'spd', 'chr', 'sup', 'hyp', 'frag']) if (g.power[p] > 0) fx.push(p + ' ' + Math.round(g.power[p]));
     if (g.gam.snail) fx.push('escargot ' + g.gam.snail);
@@ -384,7 +390,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, gi); g.go(); g.foes.length = 0; g.setDir('down'); step(25); g.power.frag = 15;
   { const e = g.makeFoe('out', 1); e.x = 40.5; e.y = 40.5; g.foes.push(e); g.onTrailHit(e, g.trail[2]); }
   const fragPhase = g.S.phase;
-  g.S.test = true; g.S.ship = gi; g.testReset(); g.foes.length = 0; g.gam.force = 'skull'; g.S.lives = 1; g.usePower(); g.S.test = false; step(300); const lastLife = g.S.lives; g.gam.force = '';
+  g.S.test = true; g.S.ship = gi; g.testReset(); g.foes.length = 0; g.gam.force = 'skull'; g.S.lives = 1; g.usePower(); g.usePower(); g.usePower(); g.S.test = false; step(400); const lastLife = g.S.lives; g.gam.force = '';
   console.log(`flambeur : escargot ${ds} cases contre ${dn} (x${(ds / dn).toFixed(2)}) ; fil fragile touché -> ${fragPhase} ; tête de mort à 1 vie -> ${lastLife}`);
 }
 // 5p) Mode test : réinitialisation instantanée, changement de vaisseau, terrain effacé à 75 %

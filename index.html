@@ -81,7 +81,7 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 @keyframes chipspin{to{transform:rotate(1turn)}}
 @keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
 /* machine à sous du Flambeur, à la place du jeton pendant un tirage */
-.slotcv{flex:none;width:96px;height:40px;margin-right:-2px}
+.slotcv{flex:none;width:96px;height:40px;margin-right:-2px;cursor:pointer}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
   background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
 .pbtn i{width:4px;height:13px;background:var(--text);border-radius:2px}
@@ -473,8 +473,8 @@ const SHIPS = [
       g.lineTo(-.25, -.07); g.lineTo(-.32, -.21); g.lineTo(-.18, -.15); g.closePath(); g.fill(); g.stroke();
     } },
   // Flambeur (idée de Fabien) : pas d'objets mais des jetons de casino ; chaque jeton lance la machine à sous
-  { key: 'gam', name: 'FLAMBEUR', tag: 'Faites vos jeux', lives: 2, bonus: 1, spd: 3, bon: 4, power: 'MACHINE À SOUS',
-    desc: 'Pas d\'objets mais des jetons de casino (5 au plus). Touche le jeton en haut à droite pour lancer la machine à sous : casque, vitesse, combos, jackpot… et parfois un coup dur.',
+  { key: 'gam', name: 'FLAMBEUR', tag: 'Faites vos jeux', lives: 2, bonus: 2, spd: 3, bon: 5, power: 'MACHINE À SOUS',
+    desc: 'Pas d\'objets mais des jetons de casino (5 au plus). Mise 1, 2 ou 3 jetons dans la machine à sous (30, 60 ou 90 % de chances de gagner) : casque, vitesse, combos, jackpot… et parfois un coup dur.',
     hullA: '#a8ffcb', hullB: '#0e6b3a', glow: '#ffd23f', pit: '#ff3b5c', land: '#c4f5d8', flame: '255,210,63', tail: -.42, fw: .12, pitXY: [.12, .17, .17],
     body(g) {
       for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.08, s * .3); g.lineTo(-.6, s * .58); g.lineTo(-.4, s * .12); g.closePath(); g.fill(); }
@@ -833,7 +833,7 @@ function setupLevel(L, instant) {
   ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
-  if (slot && slot.st === 'spin') gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
+  if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
@@ -1725,16 +1725,18 @@ function armorHit(src) {
 }
 
 // Flambeur (idée de Fabien) : à la place des objets, des jetons de casino (CHIPS_MAX au plus, gardés d'un niveau à
-// l'autre). Le bouton du HUD en dépense un et lance la machine à sous : surtout des objets améliorés (plus longs,
-// combinés), quelques gros lots, et environ 17 % de coups durs. La machine tourne dans un coin du terrain, en fond :
-// le jeu continue à vitesse normale (une première version, une roue de la fortune, cachait le terrain et ralentissait tout).
-// Elle prend la place du jeton dans le HUD le temps du tirage.
+// l'autre, et nombreux). Le bouton du HUD lance la machine à sous ; comme une vraie machine, on gagne rarement avec un
+// seul jeton : on mise 1, 2 ou 3 jetons (30, 60 ou 90 % de chances de gagner, SLOT_WIN). Un gain est surtout un objet
+// amélioré (plus long, combiné), parfois un gros lot ; une perte ne donne rien, ou un coup dur une fois sur trois.
+// La machine tourne en fond, à la place du jeton dans le HUD : le jeu continue à vitesse normale (une première version,
+// une roue de la fortune au milieu de l'écran, cachait le terrain et ralentissait tout).
 const CHIPS_MAX = 5;
 // chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test)
 const gam = { chips: 1, snail: 0, free: 0, force: '' };
 let slot = null;
-// Gains : poids (en %), les 3 rouleaux (deux icônes et une étiquette : durée avec un chrono, « + », X2… ; ou trois fois
-// le même symbole pour les gros lots et les coups durs), texte du gain. bad : coup dur ; gold : gros lot.
+// Gains : poids (tirés parmi les gains, ou parmi les coups durs pour bad), les 3 rouleaux (deux icônes et une étiquette :
+// durée avec un chrono, « + », X2… ; ou trois fois le même symbole pour les gros lots et les coups durs), texte du gain.
+// bad : coup dur ; gold : gros lot.
 const SLOT = [
   { k: 'inv', w: 11, r: ['inv', 'inv', 't20'], txt: 'CASQUE 20 S' },
   { k: 'spd', w: 11, r: ['spd', 'spd', 't20'], txt: 'VITESSE 20 S' },
@@ -1751,41 +1753,68 @@ const SLOT = [
   { k: 'jack', w: 1, r: ['777', '777', '777'], gold: 1, txt: 'JACKPOT !' },
   { k: 'snail', w: 8, r: ['snail', 'snail', 'X3'], bad: 1, txt: 'ESCARGOT !' },
   { k: 'frag', w: 6, r: ['frag', 'frag', 't15'], bad: 1, txt: 'FIL FRAGILE !' },
-  { k: 'skull', w: 3, r: ['skull', 'skull', 'skull'], bad: 1, txt: 'PERDU !' }
+  { k: 'skull', w: 3, r: ['skull', 'skull', 'skull'], bad: 1, txt: 'TÊTE DE MORT !' }
 ];
+// chances de gagner selon la mise (1, 2 ou 3 jetons) ; part des pertes qui tournent au coup dur
+const SLOT_WIN = [.3, .6, .9], SLOT_BAD = 1 / 3;
 // symboles qui défilent sur les rouleaux pendant qu'ils tournent
 const SLOT_POOL = ['inv', 'spd', 'chr', 'terr', 'life', 'sup', 'bomb', 'coin', '777', 'holdup', 'snail', 'frag', 'skull'];
-// arrêt de chaque rouleau (s) : la révélation se fait attendre (demande de Fabien), surtout le dernier rouleau ;
-// chaque rouleau ralentit pendant SLOT_SLOW s avant de s'arrêter
-const SLOT_STOP = [1.3, 2.4, 3.9], SLOT_SLOW = 1.1, SLOT_SHOW = 1.4, SLOT_OUT = .35;
+// mise : SLOT_BET s pour ajouter un jeton (en retouchant la machine) ; arrêt de chaque rouleau (s) : la révélation se
+// fait attendre (demande de Fabien), surtout le dernier rouleau ; chaque rouleau ralentit pendant SLOT_SLOW s avant
+// de s'arrêter
+const SLOT_BET = 1.1, SLOT_STOP = [1.3, 2.4, 3.9], SLOT_SLOW = 1.1, SLOT_SHOW = 1.4, SLOT_OUT = .35;
 function gainChip(it) {
   const full = gam.chips >= CHIPS_MAX;
   gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
   if (full) popups.push({ x: it.x, y: it.y - 2.6, text: 'MAX', age: 0, color: T.items.coin });
   sfx.coin(); pwHud();
 }
+// Bouton du jeton (ou F), puis la machine elle-même : 1er appui, on mise un jeton ; chaque appui dans la seconde qui
+// suit en ajoute un (3 au plus) ; les rouleaux partent tout seuls, ou dès 3 jetons misés
 function spinSlot() {
-  if (slot || S.phase !== 'play') return;
+  if (S.phase !== 'play') return;
+  if (slot && slot.st === 'bet') {
+    if (slot.bet >= 3 || gam.chips <= 0) { sfx.warn(); return; }
+    gam.chips--; slot.bet++; slot.t = 0; betSound(slot.bet); pwHud();
+    if (slot.bet === 3) startSpin(true);
+    return;
+  }
+  if (slot) return;
   if (gam.chips <= 0) { sfx.warn(); return; }
-  gam.chips--; startSpin(true);
+  gam.chips--; slot = { st: 'bet', t: 0, age: 0, bet: 1 }; betSound(1); pwHud();
 }
-// forced : tirage payé avec un jeton, le seul que le mode test peut imposer (pas les tours gratuits)
+function betSound(n) { if (!muted) { tone(1046 * Math.pow(1.26, n - 1), .07, 'square', .035); tone(1568 * Math.pow(1.26, n - 1), .1, 'square', .03, 0, .05); } }
+// tirage selon la mise : l'indice du gain dans SLOT, ou -1 si rien
+function slotDraw(bet) {
+  const pick = list => { let r = Math.random() * list.reduce((a, s) => a + s.w, 0); for (const s of list) if ((r -= s.w) < 0) return SLOT.indexOf(s); return SLOT.indexOf(list[0]); };
+  if (Math.random() < SLOT_WIN[bet - 1]) return pick(SLOT.filter(s => !s.bad));
+  return Math.random() < SLOT_BAD ? pick(SLOT.filter(s => s.bad)) : -1;
+}
+// perte sèche : trois symboles différents, qui ne forment aucun gain (sans ceux des coups durs, pour ne pas les confondre)
+function loseReels() {
+  const p = SLOT_POOL.filter(x => !['777', 'snail', 'frag', 'skull'].includes(x)), take = () => p.splice((Math.random() * p.length) | 0, 1)[0];
+  return [take(), take(), take()];
+}
+// forced : tirage payé, le seul que le mode test peut imposer (pas les tours gratuits, qui gardent la même mise)
 function startSpin(forced) {
-  let idx = S.test && forced ? SLOT.findIndex(s => s.k === gam.force) : -1;
-  if (idx < 0) { let r = Math.random() * 100; idx = SLOT.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
-  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, stopped: 0, free: !forced, pos: [Math.random() * 13, Math.random() * 13, Math.random() * 13], tick: 0 };
+  const bet = slot ? slot.bet : 1;
+  let idx = S.test && forced && gam.force ? SLOT.findIndex(s => s.k === gam.force) : slotDraw(bet);
+  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, bet, reels: idx >= 0 ? SLOT[idx].r : loseReels(), stopped: 0, free: !forced,
+    pos: [Math.random() * 13, Math.random() * 13, Math.random() * 13], tick: 0 };
   sfx.spin(); pwHud();
 }
 // la machine avance en temps réel, en fond (appelée par frame(), sauf en pause)
 function updateSlot(dt) {
   const m = slot;
   m.t += dt; m.age += dt;
-  if (m.st === 'spin') {
+  if (m.st === 'bet') {
+    if (m.t >= SLOT_BET) startSpin(true);
+  } else if (m.st === 'spin') {
     while (m.stopped < 3 && m.t >= SLOT_STOP[m.stopped]) {
       m.stopped++;
       if (!muted) { tone(180, .08, 'square', .05); tone(1200 + m.stopped * 200, .05, 'triangle', .03, 0, .02); }
     }
-    if (m.stopped === 3) { m.st = 'win'; m.t = 0; slotWin(SLOT[m.idx]); pwHud(); }
+    if (m.stopped === 3) { m.st = 'win'; m.t = 0; slotWin(m.idx >= 0 ? SLOT[m.idx] : null); pwHud(); }
     else {
       // les rouleaux qui tournent défilent de moins en moins vite à l'approche de leur arrêt ; un clic à chaque symbole
       // du premier rouleau encore en mouvement (le cliquetis ralentit donc aussi)
@@ -1811,6 +1840,11 @@ function seaNear() {
 }
 function slotWin(s) {
   const pp = playerPos(), gold = T.rainbow ? '#ffd23f' : T.shock;
+  if (!s) {
+    popups.push({ x: pp.x, y: pp.y - 2.2, text: 'PERDU', age: 0, color: T.rainbow ? '#8f95c6' : T.ball });
+    if (!muted) { tone(330, .18, 'triangle', .03, -60); tone(247, .3, 'triangle', .03, -50, .16); }
+    return;
+  }
   popups.push({ x: pp.x, y: pp.y - 2.2, text: s.txt, age: 0, color: s.bad ? T.danger : (T.rainbow ? '#ffd23f' : T.ball), hue: !!s.gold });
   rings.push({ x: pp.x, y: pp.y, r: 0, max: s.bad ? 6 : 10, age: 0, color: s.bad ? T.danger : gold, big: !s.bad });
   if (s.bad) { sfx.lose(); flash = Math.max(flash, .3); shake = REDUCED ? 0 : .6; }
@@ -1953,16 +1987,17 @@ function drawSlot() {
   const main = ctx; ctx = slotCtx;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
   const k = Math.min(w / SLOT_W, h / SLOT_H); ctx.setTransform(k, 0, 0, k, (w - SLOT_W * k) / 2, (h - SLOT_H * k) / 2);
-  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m.idx], won = m.st !== 'spin';
+  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, bet = m.st === 'bet', won = m.st === 'win' || m.st === 'out';
+  const s = m.idx >= 0 ? SLOT[m.idx] : { k: 'none' }, lost = s.k === 'none';
   // caisse : jante dorée qui clignote au gain (rouge pour un coup dur, arc-en-ciel au jackpot)
-  const flashOn = won && m.st === 'win' && Math.floor(m.t * 8) % 2 === 0;
+  const flashOn = won && !lost && m.st === 'win' && Math.floor(m.t * 8) % 2 === 0;
   const rim = flashOn ? (s.bad ? T.danger : s.k === 'jack' && T.rainbow ? `hsl(${(time * 400) % 360},100%,60%)` : '#ffffff') : gold;
   ctx.globalAlpha = m.st === 'out' ? Math.max(0, 1 - m.t / SLOT_OUT) : 1;
   ctx.fillStyle = T.rainbow ? '#2a0f24' : T.ball; rrect(.15, .15, SLOT_W - .3, SLOT_H - .3, 1); ctx.fill();
   ctx.strokeStyle = rim; ctx.lineWidth = flashOn ? .4 : .25; ctx.stroke();
   // ampoules du fronton (elles défilent quand la machine tourne)
   for (let b = 0; b < 9; b++) {
-    const lit = (b + Math.floor(time * 9)) % 2;
+    const lit = bet ? b < 9 * (1 - m.t / SLOT_BET) : lost && won ? 0 : (b + Math.floor(time * 9)) % 2;
     ctx.fillStyle = lit ? (T.rainbow ? '#fff3b0' : T.empty) : (T.rainbow ? '#7a5a18' : T.landA);
     ctx.beginPath(); ctx.arc(1.1 + b * (SLOT_W - 2.2) / 8, .78, .24, 0, Math.PI * 2); ctx.fill();
   }
@@ -1973,10 +2008,13 @@ function drawSlot() {
     ctx.save();
     ctx.fillStyle = T.rainbow ? '#120a1c' : T.empty; rrect(rx, ry, SLOT_RW, SLOT_RH, .45); ctx.fill(); ctx.clip();
     const cx = rx + SLOT_RW / 2, cy = ry + SLOT_RH / 2, step = SLOT_RH * .85;
-    if (won || r < m.stopped) {
+    if (bet) {
+      // mise : un jeton par rouleau misé
+      ctx.save(); ctx.translate(cx, cy); ctx.globalAlpha = r < m.bet ? 1 : .15; slotIcon('coin', 2.4); ctx.restore();
+    } else if (won || r < m.stopped) {
       // rouleau arrêté : le symbole final arrive d'en haut avec un petit rebond
       const ts = won ? 1 : m.t - SLOT_STOP[r], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
-      ctx.save(); ctx.translate(cx, cy + off); slotIcon(s.r[r], 2.7, s.bad); ctx.restore();
+      ctx.save(); ctx.translate(cx, cy + off); if (lost && won) ctx.globalAlpha = .45; slotIcon(m.reels[r], 2.7, s.bad); ctx.restore();
     } else {
       // rouleau qui tourne : les symboles défilent vers le bas, un peu flous
       const p = m.pos[r], i = Math.floor(p), f = p - i;
@@ -1995,7 +2033,7 @@ function drawSlot() {
     ctx.restore();
   }
   // ligne de gain
-  ctx.strokeStyle = won ? (s.bad ? T.danger : gold) : 'rgba(255,210,63,0.35)'; ctx.lineWidth = .12;
+  ctx.strokeStyle = won && !lost ? (s.bad ? T.danger : gold) : 'rgba(255,210,63,0.35)'; ctx.lineWidth = .12;
   ctx.beginPath(); ctx.moveTo(.4, ry + SLOT_RH / 2); ctx.lineTo(SLOT_W - .4, ry + SLOT_RH / 2); ctx.stroke();
   ctx.globalAlpha = 1;
   ctx = main;
@@ -2050,7 +2088,8 @@ function bonusCount() {
 }
 // délai avant le prochain bonus : souvent quelques secondes, parfois très long (loi exponentielle)
 function bonusDelay(first) {
-  return (first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14);
+  // Flambeur : des jetons à ramasser régulièrement (deux fois plus, et plus vite)
+  return ((first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14)) * (SH().key === 'gam' ? .6 : 1);
 }
 function pickType() {
   // Flambeur : des jetons de casino à la place des objets (machine à sous)
@@ -3297,7 +3336,7 @@ function newcomers() {
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
-    if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour lancer la machine à sous, elle tourne dans un coin pendant que tu joues : surtout du bon, mais parfois un coup dur !</p>';
+    if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour miser : retouche la machine dans la seconde pour miser 2 ou 3 jetons. 1 jeton : 30 % de chances de gagner, 2 : 60 %, 3 : 90 %. Perdre ne donne rien… ou parfois un coup dur !</p>';
     if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
@@ -3567,7 +3606,7 @@ $('tnext').addEventListener('click', () => testShip(1));
 $('tship').addEventListener('click', () => testShip(1));
 $('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
 const tforce = $('tforce');
-tforce.innerHTML = '<option value="">MACHINE : AU HASARD</option>' + SLOT.map(w => `<option value="${w.k}">MACHINE : ${w.txt}</option>`).join('');
+tforce.innerHTML = '<option value="">MACHINE : AU HASARD</option><option value="none">MACHINE : PERDU (RIEN)</option>' + SLOT.map(w => `<option value="${w.k}">MACHINE : ${w.txt}</option>`).join('');
 tforce.addEventListener('change', () => { gam.force = tforce.value; tforce.blur(); });
 $('tquit').addEventListener('click', () => { if (S.test) titleScreen(); });
 
@@ -3623,6 +3662,7 @@ ov.addEventListener('pointerup', e => {
 });
 $('pz').addEventListener('click', togglePause);
 $('pw').addEventListener('click', e => { ensureAudio(); usePower(); e.currentTarget.blur(); });
+slotCv.addEventListener('click', () => { ensureAudio(); usePower(); });
 const snd = $('snd');
 const sndLabel = () => snd.textContent = 'SON : ' + (muted ? 'NON' : 'OUI');
 sndLabel();
