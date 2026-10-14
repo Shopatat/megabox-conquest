@@ -377,7 +377,8 @@ const SHIPS = [
       g.fillStyle = f;
     } },
   { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FRÉNÉSIE',
-    desc: 'Frénésie : 5 s d\'invincibilité à +50 % de vitesse, les ennemis ne te font rien. Pour la recharger, trace 300 cases dans la zone à conquérir.',
+    noItems: ['inv', 'spd', 'sspd'],
+    desc: 'Frénésie : 5 s d\'invincibilité à +50 % de vitesse, les ennemis ne te font rien. Pour la recharger, trace 300 cases dans la zone à conquérir. Ni Casque ni Vitesse pour lui.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -1730,12 +1731,12 @@ function pickType() {
     pool.push(['sup', 0.45 * k], ['sterr', 0.35 * k], ['sspd', 0.35 * k], ['schr', 0.35 * k]);
     if (S.lives < maxLives()) pool.push(['slife', 0.3 * k]);
   }
-  // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse)
+  // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse ; Frénétique : ni casque ni vitesse)
   const no = SH().noItems;
   if (no) pool = pool.filter(([t]) => !no.includes(t));
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;
   for (const [t, w] of pool) { if ((r -= w) <= 0) return t; }
-  return 'inv';
+  return pool[pool.length - 1][0];
 }
 function spawnItem() {
   const type = pickType(), medium = ITEM[type].medium, cands = [];
@@ -2943,7 +2944,7 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce !</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce ! En échange, pas de Casque ni de Vitesse pour toi.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
