@@ -1,6 +1,6 @@
-# Megabox Conquest — remake web
+# Space Conquest (ex-Megabox Conquest) — remake web
 
-Remake jouable dans le navigateur de **Megabox Conquest**, le jeu préinstallé sur les Sagem myX (MyX-1, MyX-3, MyX-5…) au début des années 2000. Projet perso de Fabien, joué surtout sur iPhone (tactile), aussi au clavier.
+**Space Conquest** (nom choisi par Fabien en octobre 2026 ; le jeu s’appelait d’abord comme l’original) : remake jouable dans le navigateur de **Megabox Conquest**, le jeu préinstallé sur les Sagem myX (MyX-1, MyX-3, MyX-5…) au début des années 2000. Projet perso de Fabien, joué surtout sur iPhone (tactile), aussi au clavier.
 
 Tout le jeu tient dans **un seul fichier `index.html`** (HTML + CSS + JS vanilla, aucune dépendance, aucune étape de build). Seule ressource externe : les polices Google Fonts (Silkscreen pour les titres et les chiffres, Rubik pour le reste), avec des polices de secours.
 
@@ -167,7 +167,7 @@ On choisit son vaisseau après « Nouveau jeu » (et avant le mode test), sur l'
 Arrêté dans la zone à conquérir (coup encaissé, Chrono), le vaisseau ne peut pas repartir en arrière sur son fil (on compare avec `P.face`).
 
 **Interface** (atelier de 4 styles, Fabien a choisi « A · Néon Arcade » : https://claude.ai/artifact/2p9dD2ytaPYR6Lw8ughAx6) :
-- **HUD** : à gauche, niveau et difficulté en petit (ou « MEGABOX CONQUEST » au menu, « MODE TEST · vaisseau »), **gros score**, vies en pilules roses horizontales ; à droite, **bouton de pouvoir rond** (`#pw`, `pwHud`, pour Frénétique, Encaisseur, Rembobineur, Blindé et Flambeur, remplacé par la machine à sous pendant un tirage du Flambeur) puis pause. Bouton de pouvoir : anneau en `conic-gradient` (variable `--p`). Frénétique : prêt (dégradé rose → orange, éclair, pulse), actif (rouge, anneau qui se vide), recharge (sombre, l'anneau se remplit en traçant). Encaisseur : bouclier vert, puis rose pendant la recharge. Blindé : jauge de blindage en %, non cliquable. Rembobineur : sablier utilisable dès qu'il reste du temps dans la jauge (l'anneau montre la jauge), rouge pendant le rembobinage (appuyer l'arrête).
+- **HUD** : à gauche, niveau et difficulté en petit (ou « SPACE CONQUEST » au menu, « MODE TEST · vaisseau »), **gros score**, vies en pilules roses horizontales ; à droite, **bouton de pouvoir rond** (`#pw`, `pwHud`, pour Frénétique, Encaisseur, Rembobineur, Blindé et Flambeur, remplacé par la machine à sous pendant un tirage du Flambeur) puis pause. Bouton de pouvoir : anneau en `conic-gradient` (variable `--p`). Frénétique : prêt (dégradé rose → orange, éclair, pulse), actif (rouge, anneau qui se vide), recharge (sombre, l'anneau se remplit en traçant). Encaisseur : bouclier vert, puis rose pendant la recharge. Blindé : jauge de blindage en %, non cliquable. Rembobineur : sablier utilisable dès qu'il reste du temps dans la jauge (l'anneau montre la jauge), rouge pendant le rembobinage (appuyer l'arrête).
 - **Écran VAISSEAU** : bouton retour, aperçu animé dans un canvas (`drawPreview`, appelée par `frame()` tant que `shipPick` existe : le vaisseau file vers le haut parmi des étoiles qui défilent), flèches ‹ ›, glisser sur l'aperçu ou ← → au clavier, nom dans la couleur du vaisseau, devise, jauges Vies / Vitesse / Bonus / Pouvoir, description, pagination, bouton « C'EST PARTI ».
 - La coque est dessinée par `drawHull(g, sh, o)`, commune au jeu et à l'aperçu. Sur le terrain, la gemme carrée prend la teinte du vaisseau (`land`).
 - L'écran d'info du premier niveau rappelle le pouvoir du vaisseau (`S.shipTip`) et affiche le vaisseau dans le récapitulatif.
@@ -176,7 +176,7 @@ Arrêté dans la zone à conquérir (coup encaissé, Chrono), le vaisseau ne peu
 
 ## Écrans et interface
 
-- **Écran titre plein écran** (demande de Fabien, `titleScreen`, `showTitle`, `hideTitle`, élément `#title` en `position: fixed` au-dessus de tout) : fond animé dans son propre canvas (`drawTitle`, appelé par `frame()` tant qu'il est affiché) avec ciel de nuit, halos, étoiles qui défilent et scintillent, **grille néon en perspective** qui avance sous un horizon lumineux, et **les vaisseaux du jeu qui passent** (`drawHull`, de loin en près, avec une traînée). Logo MEGABOX (dégradé or → rose) / CONQUEST (dégradé cyan → violet) en Silkscreen, lettres qui tombent une à une à la première apparition (classe `intro`) puis flottent doucement. Menu en verre dépoli en bas (difficulté, niveau de départ, gros bouton **JOUER** qui pulse, Continuer et Mode test côte à côte, record, « Comment jouer » (`HOWTO`), boutons écran et son recopiés du pied de page). Entrée lance JOUER. Le choix du vaisseau et le jeu reprennent ensuite la mise en page habituelle.
+- **Écran titre plein écran** (demande de Fabien, `titleScreen`, `showTitle`, `hideTitle`, élément `#title` en `position: fixed` au-dessus de tout) : fond animé dans son propre canvas (`drawTitle`, appelé par `frame()` tant qu'il est affiché) avec ciel de nuit, halos, étoiles qui défilent et scintillent, **grille néon en perspective** qui avance sous un horizon lumineux, et **les vaisseaux du jeu qui passent** (`drawHull`, de loin en près, avec une traînée). Logo SPACE (dégradé or → rose) / CONQUEST (dégradé cyan → violet) en Silkscreen, lettres qui tombent une à une à la première apparition (classe `intro`) puis flottent doucement. Menu en verre dépoli en bas (difficulté, niveau de départ, gros bouton **JOUER** qui pulse, Continuer et Mode test côte à côte, record, « Comment jouer » (`HOWTO`), boutons écran et son recopiés du pied de page). Entrée lance JOUER. Le choix du vaisseau et le jeu reprennent ensuite la mise en page habituelle.
 - **Menu** : choix de la difficulté, niveau de départ (jusqu'au plus haut atteint), Nouveau jeu (puis choix du vaisseau), **Continuer** (sauvegarde), **Mode test** (puis choix du vaisseau), record par difficulté, « Comment jouer ».
 - **Écran d'info** avant chaque niveau et après un crash : niveau, difficulté, vies, objectif ou réalisé, score, présentation des nouveaux ennemis. **Pas de compte à rebours** (retiré à la demande de Fabien) : bouton PARTIR (toujours visible en bas de la carte) ou tap n'importe où.
 - **Pause** uniquement via le bouton ⏸ en haut à droite du HUD (ou P/Échap au clavier), plus une pause automatique si l'onglet est masqué. Boutons REPRENDRE et QUITTER LA PARTIE (retour au menu ; la partie reste sauvegardée au début du niveau). Pas de chrono : jeu « tranquillou », sans limite de temps.
@@ -257,7 +257,7 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 
 ## Publication
 
-- Dépôt public : https://github.com/Shopatat/megabox-conquest (branche `main`)
+- Dépôt public : https://github.com/Shopatat/megabox-conquest (branche `main`). Le dépôt et l’adresse du jeu gardent l’ancien nom ; les clés `localStorage` (préfixe `mbc2-`) aussi, pour ne pas perdre les sauvegardes.
 - Jeu en ligne (GitHub Pages, déployé automatiquement à chaque push sur `main`) : https://shopatat.github.io/megabox-conquest/
 - CLI GitHub installée en `C:\Program Files\GitHub CLI\gh.exe` (connectée en `Shopatat`). Commits signés avec l'adresse noreply GitHub (config locale du dépôt).
 

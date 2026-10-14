@@ -1,7 +1,7 @@
 {
-  "name": "Megabox Conquest",
-  "short_name": "Megabox",
-  "description": "Remake du jeu des Sagem myX (2001) : conquiers le terrain sans te faire toucher.",
+  "name": "Space Conquest",
+  "short_name": "Space Conquest",
+  "description": "Space Conquest, remake de Megabox Conquest, le jeu des Sagem myX (2001) : conquiers l’espace sans te faire toucher.",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",

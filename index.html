@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Megabox Conquest</title>
-<meta name="description" content="Remake du jeu des Sagem myX (2001) : conquiers le terrain sans te faire toucher.">
+<title>Space Conquest</title>
+<meta name="description" content="Space Conquest, remake de Megabox Conquest, le jeu des Sagem myX (2001) : conquiers l’espace sans te faire toucher.">
 <meta name="theme-color" content="#070916">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Megabox">
+<meta name="apple-mobile-web-app-title" content="Space Conquest">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -254,7 +254,7 @@ details li b{color:var(--text);font-weight:600}
 .tlogo .tsub{font-size:10px;font-weight:600;letter-spacing:.32em;color:#c9cdf2;padding:6px 13px;border:1px solid var(--line-2);border-radius:99px;background:rgba(10,8,30,.55);margin-bottom:18px}
 .tlogo b{display:block;font-family:var(--display);font-weight:400;line-height:.95;white-space:nowrap}
 .tlogo b i{display:inline-block;font-style:normal;-webkit-background-clip:text;background-clip:text;color:transparent}
-.tlogo .t1{font-size:min(15vw,74px);letter-spacing:.02em}
+.tlogo .t1{font-size:min(18.5vw,90px);letter-spacing:.04em}
 .tlogo .t1 i{background-image:linear-gradient(180deg,#fff7d6 10%,#ffd23f 42%,#ff8a3d 60%,#ff3b7a 100%);filter:drop-shadow(0 4px 0 #4a0f3a) drop-shadow(0 0 16px rgba(255,92,138,.55))}
 .tlogo .t2{font-size:min(11.4vw,56px);letter-spacing:.06em;margin-top:8px}
 .tlogo .t2 i{background-image:linear-gradient(180deg,#effcff 10%,#43e0ff 46%,#8c6bff 100%);filter:drop-shadow(0 4px 0 #1a1050) drop-shadow(0 0 16px rgba(67,224,255,.5))}
@@ -300,7 +300,7 @@ details li b{color:var(--text);font-weight:600}
   <header class="hud">
     <div class="top">
       <div class="who">
-        <span class="k" id="lab">MEGABOX CONQUEST</span>
+        <span class="k" id="lab">SPACE CONQUEST</span>
         <span class="v" id="score" aria-label="Score">0</span>
         <span class="lives" id="lives" aria-label="Vies"></span>
       </div>
@@ -3321,7 +3321,7 @@ function tweenScore(dt) {
   $('score').textContent = fmt(Math.round(scoreShown));
 }
 function hud() {
-  $('lab').textContent = S.phase === 'title' ? 'MEGABOX CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
+  $('lab').textContent = S.phase === 'title' ? 'SPACE CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
     : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL} · ${DIFFS[S.diff].name.toUpperCase()}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(SH().lives, S.lives);
@@ -3545,7 +3545,7 @@ function titleScreen() {
   showTitle(`
     <div class="tlogo">
       <span class="tsub">SAGEM · 2001 · REMIX</span>
-      <b class="t1">${letters('MEGABOX', 0)}</b>
+      <b class="t1">${letters('SPACE', 0)}</b>
       <b class="t2">${letters('CONQUEST', 0)}</b>
       <span class="tag">Conquiers l'espace, case par case</span>
     </div>

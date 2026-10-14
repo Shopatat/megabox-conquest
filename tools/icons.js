@@ -1,4 +1,4 @@
-// Génère les icônes PNG de Megabox Conquest (mini scène de jeu), sans dépendance.
+// Génère les icônes PNG de Space Conquest (mini scène de jeu), sans dépendance.
 // Usage (depuis la racine du projet) : node tools/icons.js icons
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const out = process.argv[2];
