@@ -136,6 +136,8 @@ canvas{display:block;border-radius:16px;touch-action:none;
 .card p{margin:0;font-size:15px;line-height:1.45}
 .card .keys{font-size:13px;color:var(--muted)}
 .card .new{font-size:13px;line-height:1.4;padding:9px 12px;border-radius:14px;background:rgba(255,92,138,.08);border:1px solid rgba(255,92,138,.25)}
+.card .new .foecv{float:left;width:48px;height:48px;margin:1px 10px 2px 0;border-radius:13px;background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.09),rgba(255,255,255,0) 72%),rgba(6,4,20,.55);border:1px solid rgba(255,255,255,.08)}
+.card .new::after{content:"";display:block;clear:both}
 .card .new b{font-family:var(--display);font-size:10.5px;letter-spacing:.06em;color:var(--accent);font-weight:700}
 .rows{display:grid;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--line);font-family:var(--display);font-size:12px}
 .rows div{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
@@ -3462,6 +3464,7 @@ function frame(now) {
   if (scale > 0 && cv.width) { update(dt); render(); }
   if (shipPick) drawPreview();
   if (!slotCv.hidden) drawSlot();
+  if (foePics.length) drawFoePics(dt);
   requestAnimationFrame(frame);
 }
 
@@ -3531,9 +3534,40 @@ function newcomers() {
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
-  for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new"><b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
+  for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new">${k === 'amph' ? '' : `<canvas class="foecv" data-k="${k}" aria-hidden="true"></canvas>`}<b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
   if (now.mobile && !comp(Math.max(1, S.level - 1), S.diff).mobile) html += `<p class="keys">À partir de maintenant, les bonus se déplacent.</p>`;
   return html;
+}
+// Portraits des nouveaux ennemis : un ennemi factice, dessiné par les fonctions du jeu (on leur prête le contexte
+// de son petit canvas, comme pour la machine à sous). Le trou noir n'en a pas (sa lentille copie le terrain).
+let foePics = [];
+const PIC = 3.4;
+function setupFoePics() {
+  foePics = [...ov.querySelectorAll('canvas.foecv')].map(c => {
+    const e = makeFoe(c.dataset.k, 1);
+    e.x = e.y = PIC / 2; e.hist = []; if (e.kind === 'ghost') e.gt = 0;
+    return { c, g: c.getContext('2d'), e, a: Math.random() * 6 };
+  });
+}
+function drawFoePics(dt) {
+  if (ov.hidden) { foePics = []; return; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), main = ctx;
+  for (const p of foePics) {
+    const c = p.c, w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+    if (!w || !p.g) continue;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    // il tourne lentement sur lui-même et flotte (les dessins suivent le sens du déplacement)
+    p.a += dt * .7;
+    const e = p.e, v = Math.hypot(e.vx, e.vy) || 1;
+    e.vx = Math.cos(p.a) * v; e.vy = Math.sin(p.a) * v; e.hd = p.a;
+    e.y = PIC / 2 + Math.sin(time * 2.2 + p.a) * .12;
+    ctx = p.g;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(w / PIC, 0, 0, h / PIC, 0, 0);
+    try { drawFoe(e); } catch (err) { /* un dessin qui dépend du terrain ne doit pas casser l'écran */ }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx = main;
 }
 function showReady(mode) {
   S.readyMode = mode; S.phase = 'ready';
@@ -3544,6 +3578,7 @@ function showReady(mode) {
     ${newcomers()}
     <button class="btn" id="go">PARTIR</button>
     <p class="count">ou touche l'écran</p>`, () => { hideOverlay(); S.phase = 'play'; last = performance.now(); sfx.start(); });
+  setupFoePics();
 }
 function showClear() {
   S.phase = 'clear';
