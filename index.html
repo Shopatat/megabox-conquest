@@ -72,6 +72,13 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw.armor{--c:var(--ac,#5dffb0);cursor:default}
 .pw.armor .in{color:var(--ac,#5dffb0);font-size:13px}
 .pw.hurt .in{color:#ff9fb5}
+/* Flambeur : jeton de casino avec le nombre de jetons (l'anneau doré montre la réserve, 5 au plus) */
+.pw.chip{--c:#ffd23f}
+.pw.chip .in{background:radial-gradient(circle,#2a1520 0 50%,transparent 51%),repeating-conic-gradient(#5a1a2a 0 22.5deg,#3a3550 22.5deg 45deg);color:#8f95c6;font-size:17px}
+.pw.chip.ready .in{background:radial-gradient(circle,#b0122c 0 50%,transparent 51%),repeating-conic-gradient(#ff3b5c 0 22.5deg,#fff 22.5deg 45deg);color:#fff;text-shadow:0 1px 0 #5a0010}
+.pw.chip.ready{box-shadow:0 0 0 3px rgba(255,210,63,.2),0 0 18px rgba(255,210,63,.55)}
+.pw.chip.on .in{background:radial-gradient(circle,#ffd23f 0 50%,transparent 51%),repeating-conic-gradient(#ff3b5c 0 22.5deg,#fff 22.5deg 45deg);color:#5a0010;animation:chipspin .5s linear infinite}
+@keyframes chipspin{to{transform:rotate(1turn)}}
 @keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
   background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
@@ -202,9 +209,13 @@ details li b{color:var(--text);font-weight:600}
   transition:transform .15s var(--ease),background .2s}
 .mini:active{transform:scale(.93);background:rgba(255,255,255,.1)}
 .testbar{width:var(--pw,100%);max-width:100%;display:grid;gap:6px;flex:none}
-.trow{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-.trow .k{width:100%}
-.trow .mini{padding:5px 8px;font-size:9.5px;letter-spacing:.05em;color:var(--text)}
+/* une ligne par rangée, qu'on fait défiler du doigt : la barre reste basse et laisse la place au terrain */
+.trow{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent);padding-right:18px}
+.trow::-webkit-scrollbar{display:none}
+.trow .k{flex:none;width:58px;font-size:9px}
+.trow .mini{flex:none;padding:6px 9px;font-size:9.5px;letter-spacing:.05em;color:var(--text)}
+.trow select.mini{-webkit-appearance:none;appearance:none;color:#ffd23f;border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.08);max-width:190px}
+.trow select.mini option{background:#14111c;color:#fff}
 .trow .mini.gold{color:#ffd23f;border-color:rgba(255,210,63,.5);background:rgba(255,210,63,.08)}
 .hint-touch{display:none}
 @media (pointer:coarse){.hint{display:none}.hint-touch{display:inline}}
@@ -222,6 +233,8 @@ details li b{color:var(--text);font-weight:600}
 .chip.schr{color:#7cf5c4;border-color:#7cf5c4;animation:supchip 1.6s linear infinite}.chip.schr b{background:radial-gradient(circle,#fff,#7cf5c4 60%,#43e0ff)}
 .chip.rage{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}.chip.rage b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
 @keyframes ragechip{50%{box-shadow:0 0 12px rgba(255,31,61,.8)}}
+.chip.frag{color:#ff5c6e;border-color:#ff1f3d}.chip.frag b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
+.chip.snail{color:#d9b38c}.chip.snail b{background:#a8784a}
 .chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
@@ -241,7 +254,7 @@ details li b{color:var(--text);font-weight:600}
 .lives i{transition:background .3s,box-shadow .3s}
 .seg button{transition:background .3s,color .3s,box-shadow .3s,transform .15s var(--ease)}
 .seg button:active{transform:scale(.95)}
-@media (prefers-reduced-motion:reduce){.card h1,.btn::after,.pw.ready,.meter .fill::after,.chip,.overlay{animation:none}}
+@media (prefers-reduced-motion:reduce){.card h1,.btn::after,.pw.ready,.pw.chip.on .in,.meter .fill::after,.chip,.overlay{animation:none}}
 @media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
 </style>
 </head>
@@ -271,11 +284,14 @@ details li b{color:var(--text);font-weight:600}
   </div>
 
   <div class="testbar" id="testbar" hidden>
+    <div class="trow"><span class="k">VAISSEAU</span>
+      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><select class="mini" id="tforce" aria-label="Case de la roue" hidden></select><button class="mini" id="tquit">QUITTER</button>
+    </div>
     <div class="trow"><span class="k">BONUS</span>
-      <button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
+      <button class="mini gold" data-item="coin" id="tcoin" hidden>+JETON</button><button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
     </div>
     <div class="trow"><span class="k">ENNEMIS</span>
-      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="puls">+PULSAR</button><button class="mini" data-foe="hunt">+CHASSEUR</button><button class="mini" data-foe="div">+DIVISEUR</button><button class="mini" data-foe="ghost">+SPECTRE</button><button class="mini" id="tclear">VIDER</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="tquit">QUITTER</button>
+      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="puls">+PULSAR</button><button class="mini" data-foe="hunt">+CHASSEUR</button><button class="mini" data-foe="div">+DIVISEUR</button><button class="mini" data-foe="ghost">+SPECTRE</button><button class="mini" id="tclear">VIDER</button>
     </div>
   </div>
 
@@ -306,14 +322,14 @@ const THEMES = {
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
-    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f', chr:'#7cf5c4', schr:'#7cf5c4' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
+    items:{ inv:'#ffe27a', spd:'#46d9ff', life:'#ff7a4d', terr:'#9aa6ff', sup:'#ffd23f', sterr:'#ffd23f', sspd:'#9ff3ff', slife:'#ff5d8f', chr:'#7cf5c4', schr:'#7cf5c4', coin:'#ffd23f' }, itemBg:'rgba(16,13,24,0.85)', itemInk:'#100d18', glow:true, rainbow:true },
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
     ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', puls:'#0b1838', pulsHi:'#5a80c8', hunt:'#0b1838', huntHi:'#5a80c8', div:'#0b1838', divHi:'#5a80c8', ghost:'#0b1838', ink:'#8fbaf2',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
-    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838', sterr:'#0b1838', sspd:'#0b1838', slife:'#0b1838', chr:'#0b1838', schr:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
+    items:{ inv:'#0b1838', spd:'#0b1838', life:'#0b1838', terr:'#0b1838', sup:'#0b1838', sterr:'#0b1838', sspd:'#0b1838', slife:'#0b1838', chr:'#0b1838', schr:'#0b1838', coin:'#0b1838' }, itemBg:'rgba(143,186,242,0.92)', itemInk:'#8fbaf2', glow:false, rainbow:false }
 };
 
 const ITEM = {
@@ -326,7 +342,8 @@ const ITEM = {
   sspd: { label: '', medium: 'land' },
   slife: { label: '', medium: 'sea' },
   chr: { label: 'CHRONO', medium: 'sea' },
-  schr: { label: '', medium: 'sea' }
+  schr: { label: '', medium: 'sea' },
+  coin: { label: '+1 JETON', medium: 'sea' }
 };
 // Versions « super » (rares) : type super -> bonus de base dont elles reprennent l'icône
 const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'chr' };
@@ -451,6 +468,21 @@ const SHIPS = [
       g.fillStyle = o.neon ? '#ffd23f' : T.playerSeaInk; g.strokeStyle = o.neon ? '#7a4a00' : T.playerSea; g.lineWidth = .02;
       g.beginPath(); g.moveTo(-.02, -.15); g.lineTo(-.02, .15); g.lineTo(-.18, .15); g.lineTo(-.32, .21); g.lineTo(-.25, .07); g.lineTo(-.36, 0);
       g.lineTo(-.25, -.07); g.lineTo(-.32, -.21); g.lineTo(-.18, -.15); g.closePath(); g.fill(); g.stroke();
+    } },
+  // Flambeur (idée de Fabien) : pas d'objets mais des jetons de casino ; chaque jeton lance la roue de la fortune
+  { key: 'gam', name: 'FLAMBEUR', tag: 'Faites vos jeux', lives: 2, bonus: 1, spd: 3, bon: 4, power: 'ROUE DE LA FORTUNE',
+    desc: 'Pas d\'objets mais des jetons de casino (5 au plus). Touche le jeton en haut à droite pour lancer la roue : casque, vitesse, combos, jackpot… et parfois un coup dur.',
+    hullA: '#a8ffcb', hullB: '#0e6b3a', glow: '#ffd23f', pit: '#ff3b5c', land: '#c4f5d8', flame: '255,210,63', tail: -.42, fw: .12, pitXY: [.12, .17, .17],
+    body(g) {
+      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.08, s * .3); g.lineTo(-.6, s * .58); g.lineTo(-.4, s * .12); g.closePath(); g.fill(); }
+      // coque en carreau (♦)
+      g.beginPath(); g.moveTo(.82, 0); g.lineTo(.1, -.42); g.lineTo(-.44, 0); g.lineTo(.1, .42); g.closePath(); g.fill();
+    },
+    deco(g, o) {
+      // jeton de casino sur le cockpit : liseré blanc en tirets, cœur doré
+      g.strokeStyle = o.neon ? '#ffffff' : T.playerSea; g.lineWidth = .045; g.setLineDash([.055, .055]);
+      g.beginPath(); g.arc(.12, 0, .12, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+      g.fillStyle = o.neon ? '#ffd23f' : T.playerSea; g.beginPath(); g.arc(.12, 0, .055, 0, Math.PI * 2); g.fill();
     } }
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
@@ -493,7 +525,11 @@ const S = { phase: 'title', diff: 0, level: 1, score: 0, lives: 3, filled: 0, in
 let P = null, foes = [], items = [], trail = [], erased = [], wave = null, grab = null;
 let particles = [], popups = [], fresh = [], rings = [];
 let reveal = null, shake = 0, flash = 0, invuln = 0, clearT = 0, scale = 10, time = 0, crashPos = null;
-const power = { inv: 0, spd: 0, sup: 0, hyp: 0, chr: 0, schr: 0 };
+const power = { inv: 0, spd: 0, sup: 0, hyp: 0, chr: 0, schr: 0, frag: 0 };
+// durée de départ de chaque pouvoir en cours (les barres du HUD ; la roue du Flambeur donne des durées variables)
+const powMax = {};
+const pm = k => powMax[k] || POWER_T;
+function setPow(k, t) { power[k] = t; powMax[k] = t; }
 // pouvoir du Frénétique : on = temps de frénésie restant, cd = recharge restante
 const ab = { on: 0, cd: 0, beat: 0 };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
@@ -551,6 +587,11 @@ const sfx = {
   cloak(){ tone(1100, .45, 'sine', .03, -850); tone(2200, .25, 'triangle', .012, -1800, .05); },
   decloak(){ tone(300, .3, 'sine', .03, 800); },
   guardUp(){ [784,1175,1568].forEach((f,i)=>tone(f,.09,'sine',.04,0,i*.07)); },
+  coin(){ tone(1568,.06,'square',.03); tone(2093,.14,'square',.03,0,.06); },
+  spin(){ [523,659,784,1047].forEach((f,i)=>tone(f,.07,'triangle',.035,0,i*.05)); },
+  win(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.1,'triangle',.045,0,i*.07)); tone(2093,.2,'sine',.03,0,.3); },
+  lose(){ [392,370,349,311].forEach((f,i)=>tone(f,i === 3 ? .5 : .22,'sawtooth',.035,i === 3 ? -60 : -15,i*.22)); },
+  jackpot(){ for(let i=0;i<16;i++) tone(1047+(i%4)*262,.07,'square',.035,0,i*.06); [523,659,784,1047,1319].forEach((f,i)=>tone(f,.45,'triangle',.05,0,1+i*.05)); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
 
@@ -754,7 +795,7 @@ function makeFoe(kind, sp) {
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
   S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
-  rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1;
+  rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -764,12 +805,12 @@ function continueGame() {
   if (!sv) return;
   ensureAudio(); S.test = false;
   S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
-  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; armor.hp = pw.hp ?? 1; carry = { guard: pw.guard || 0 };
+  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
-function setupLevel(L) {
+function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
-  if (S.test) S.comp = { name: '', out: 1, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
+  if (S.test) S.comp = { name: '', out: 2, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
   trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
@@ -782,19 +823,23 @@ function setupLevel(L) {
   // (chaque bonus prévu a 1 chance sur 2 d'en amener un deuxième)
   const bf = SH().bonus;
   if (bf !== 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) n += Math.floor(bf) + (Math.random() < bf % 1 ? 1 : 0); S.bonusLeft = n; }
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : recharge de la frénésie, bouclier et jauge conservés
   ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
+  if (wheel && wheel.st === 'spin') gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
+  wheel = null; gam.free = 0; gam.snail = 0;
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
     store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState() });
   }
-  $('testbar').hidden = !S.test;
+  $('testbar').hidden = !S.test; S.testWipe = 0;
+  if (S.test) testSync();
   drawBoard(); hud(); powersHud(); pwHud();
-  showReady('start');
+  if (instant) { hideOverlay(); S.phase = 'play'; last = performance.now(); }
+  else showReady('start');
 }
 function newPlayer(x = COLS >> 1, y = 0) {
   return { x, y, px: x, py: y, dir: {x:0,y:0}, next: null, acc: 0, drawing: false, start: null, face: {x:0,y:1}, morph: 0, vox: 0, voy: 0, pull: 0, pullAcc: 0, shield: true, shieldFade: 0, shieldHit: 0, guard: 0, grace: 0, noFill: false };
@@ -851,6 +896,8 @@ function cancelConquest() {
 function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
   if (helmet() || power.sup > 0 || SH().key === 'fur') return;
+  // Flambeur, case « fil fragile » de la roue : un ennemi qui touche le fil tue sur le coup
+  if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
   if (k < 0) return;
   const fast = e.kind === 'perf';
@@ -890,7 +937,7 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1)
-  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1);
+  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1);
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
@@ -1030,6 +1077,8 @@ function capture() {
   const tcells = [];
   for (let k = 0; k < trail.length; k++) if (!erased[k]) { grid[trail[k]] = 1; tcells.push(trail[k]); }
   if (SH().key === 'trap' && !P.noFill) trapFoes();
+  // Flambeur, case « escargot » : il dure un nombre de traversées
+  if (gam.snail > 0 && --gam.snail === 0) { const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 2, text: 'ESCARGOT FINI', age: 0, color: T.items.coin }); }
   const seen = new Uint8Array(N), stack = [];
   for (const e of seaSeeds()) {
     const i = at(Math.floor(e.x), Math.floor(e.y));
@@ -1082,7 +1131,13 @@ function awardCells(n, at0, big) {
   hud();
 }
 function checkGoal() {
-  if (S.test) return;
+  if (S.test) {
+    if (!S.testWipe && S.filled / S.interior >= TEST_GOAL) {
+      S.testWipe = 1.2;
+      popups.push({ x: COLS / 2, y: ROWS / 2, text: '75 % · ON EFFACE', age: -0.1, color: T.ball, big: true });
+    }
+    return;
+  }
   if (S.phase === 'play' && S.filled / S.interior >= DIFFS[S.diff].goal) { S.phase = 'clearing'; clearT = 1.2; sfx.level(); }
 }
 
@@ -1325,7 +1380,7 @@ function superMusic(dt) {
   tone(f, .09, 'square', .022); if (musicStep % 2) tone(f / 2, .1, 'triangle', .02);
 }
 function superOn(it) {
-  power.sup = POWER_T; power.inv = 0; combo = 0; musicT = 0; musicStep = 0;
+  setPow('sup', POWER_T); power.inv = 0; combo = 0; musicT = 0; musicStep = 0;
   slow = 0.6; superFlash = 1; superTint = '255,226,122'; shake = REDUCED ? 0 : 1;
   rings.push({ x: it.x, y: it.y, r: 0, max: 70, age: 0, color: T.rainbow ? '#ffe27a' : T.shock, big: true });
   for (let k = 0; k < 4; k++) burst(it.x, it.y, T.rainbow ? `hsl(${k * 90},100%,65%)` : T.ball, 30, 18);
@@ -1355,10 +1410,11 @@ const frenzyOn = () => ab.on > 0;
 const helmet = () => power.inv > 0 || ab.on > 0;
 // état des pouvoirs gardé d'un niveau à l'autre (carry) et dans la sauvegarde
 let carry = null;
-const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp });
+const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp, chips: gam.chips });
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
   if (SH().key === 'rew') { rewind(); return; }
+  if (SH().key === 'gam') { spinWheel(); return; }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
   ab.on = FR_T; ab.beat = 0;
   const pp = playerPos();
@@ -1663,13 +1719,277 @@ function armorHit(src) {
   if (armor.hp <= 0) crash();
 }
 
+// Flambeur (idée de Fabien) : à la place des objets, des jetons de casino (CHIPS_MAX au plus, gardés d'un niveau à
+// l'autre). Le bouton du HUD en dépense un et lance la roue de la fortune : surtout des objets améliorés (plus longs,
+// combinés), quelques gros lots, et environ 17 % de coups durs. Pendant que la roue tourne, le jeu passe au ralenti.
+const CHIPS_MAX = 5;
+// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : case imposée (mode test)
+const gam = { chips: 1, snail: 0, free: 0, force: '' };
+let wheel = null;
+// Cases de la roue : poids (en %), icônes (de l'intérieur vers l'extérieur), étiquette (durée ou « + »), texte du gain.
+// bad : coup dur ; gold : gros lot. Une case est d'autant plus large que sa chance est grande (à moitié seulement,
+// pour que les petites restent lisibles).
+const WHEEL = [
+  { k: 'inv', w: 11, ic: ['inv'], tag: '20', clock: 1, txt: 'CASQUE 20 S' },
+  { k: 'snail', w: 8, ic: ['snail'], tag: 'X3', bad: 1, txt: 'ESCARGOT !' },
+  { k: 'spd', w: 11, ic: ['spd'], tag: '20', clock: 1, txt: 'VITESSE 20 S' },
+  { k: 'invspd', w: 7, ic: ['inv', 'spd'], tag: '10', clock: 1, txt: 'CASQUE + VITESSE' },
+  { k: 'chr', w: 10, ic: ['chr'], tag: '15', clock: 1, txt: 'CHRONO 15 S' },
+  { k: 'frag', w: 6, ic: ['frag'], tag: '15', clock: 1, bad: 1, txt: 'FIL FRAGILE !' },
+  { k: 'terr', w: 10, ic: ['terr'], tag: '+', txt: 'TERRITOIRE +' },
+  { k: 'jack', w: 1, ic: ['777'], gold: 1, txt: 'JACKPOT !' },
+  { k: 'life', w: 7, ic: ['life'], tag: '+1', txt: '+1 VIE' },
+  { k: 'holdup', w: 4, ic: ['holdup'], txt: 'HOLD-UP !' },
+  { k: 'chrinv', w: 6, ic: ['chr', 'inv'], tag: '10', clock: 1, txt: 'CHRONO + CASQUE' },
+  { k: 'skull', w: 3, ic: ['skull'], bad: 1, txt: 'PERDU !' },
+  { k: 'sup', w: 5, ic: ['sup'], tag: '15', clock: 1, gold: 1, txt: 'SUPER CASQUE 15 S' },
+  { k: 'again', w: 4, ic: ['coin', 'coin'], tag: 'X2', txt: 'REJOUE X2 !' },
+  { k: 'bomb', w: 4, ic: ['bomb'], gold: 1, txt: 'SUPER BOMBE !' },
+  { k: 'life2', w: 3, ic: ['life'], tag: '++', txt: '+2 VIES' }
+];
+{ let a = 0; for (const s of WHEEL) { s.a0 = a; a += (1 / WHEEL.length + s.w / 100) / 2 * Math.PI * 2; s.a1 = a; } }
+const WHEEL_SPIN = 2.2, WHEEL_SHOW = 1.1, WHEEL_OUT = .35;
+function gainChip(it) {
+  const full = gam.chips >= CHIPS_MAX;
+  gam.chips = Math.min(CHIPS_MAX, gam.chips + 1);
+  if (full) popups.push({ x: it.x, y: it.y - 2.6, text: 'MAX', age: 0, color: T.items.coin });
+  sfx.coin(); pwHud();
+}
+function spinWheel() {
+  if (wheel || S.phase !== 'play') return;
+  if (gam.chips <= 0) { sfx.warn(); return; }
+  gam.chips--; startSpin(true);
+}
+// forced : tirage payé avec un jeton, la seule case que le mode test peut imposer (pas les tours gratuits)
+function startSpin(forced) {
+  let idx = S.test && forced ? WHEEL.findIndex(s => s.k === gam.force) : -1;
+  if (idx < 0) { let r = Math.random() * 100; idx = WHEEL.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
+  const s = WHEEL[idx], a = s.a0 + (s.a1 - s.a0) * (.2 + Math.random() * .6), T2 = Math.PI * 2;
+  const rot0 = wheel ? wheel.rot % T2 : Math.random() * T2;
+  // la case tirée finit sous le pointeur, en haut (angle + rotation = 0 modulo un tour), après 4 tours complets
+  const rot1 = rot0 + 4 * T2 + (((-a - rot0) % T2) + T2) % T2;
+  wheel = { st: 'spin', t: 0, age: wheel ? wheel.age : 0, rot0, rot1, rot: rot0, idx, last: -1 };
+  sfx.spin(); pwHud();
+}
+// case sous le pointeur
+function wheelAt(rot) {
+  const T2 = Math.PI * 2, a = ((-rot % T2) + T2) % T2, i = WHEEL.findIndex(s => a >= s.a0 && a < s.a1);
+  return i < 0 ? WHEEL.length - 1 : i;
+}
+// la roue avance en temps réel (appelée par frame(), avant le ralenti qu'elle impose au jeu)
+function updateWheel(dt) {
+  const w = wheel;
+  w.t += dt; w.age += dt;
+  if (w.st === 'spin') {
+    const u = Math.min(1, w.t / WHEEL_SPIN);
+    w.rot = w.rot0 + (w.rot1 - w.rot0) * (1 - Math.pow(1 - u, 3));
+    const i = wheelAt(w.rot);
+    if (i !== w.last) { w.last = i; if (!muted) tone(1700 + Math.random() * 200, .018, 'square', .018); }
+    if (u >= 1) { w.st = 'win'; w.t = 0; wheelWin(WHEEL[w.idx]); pwHud(); }
+  } else if (w.st === 'win') {
+    if (w.t >= WHEEL_SHOW) { if (gam.free > 0) { gam.free--; startSpin(); } else { w.st = 'out'; w.t = 0; } }
+  } else if (w.t >= WHEEL_OUT) { wheel = null; pwHud(); }
+}
+// centre du territoire ou de la bombe gagnés : la case à conquérir la plus proche du vaisseau, au milieu d'un coin assez vaste
+function seaNear() {
+  const pp = playerPos(); let best = null, bd = 1e9;
+  for (let y = 2; y < ROWS - 2; y++) for (let x = 2; x < COLS - 2; x++) {
+    if (grid[at(x, y)] !== 0) continue;
+    const d = Math.hypot(x + .5 - pp.x, y + .5 - pp.y);
+    if (d < 2 || d >= bd) continue;
+    let n = 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (grid[at(x + i, y + j)] === 0) n++;
+    if (n >= 15) { bd = d; best = { x: x + .5, y: y + .5 }; }
+  }
+  return best;
+}
+function wheelWin(s) {
+  const pp = playerPos(), gold = T.rainbow ? '#ffd23f' : T.shock;
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: s.bad ? 6 : 10, age: 0, color: s.bad ? T.danger : gold, big: !s.bad });
+  if (s.bad) { sfx.lose(); flash = Math.max(flash, .3); shake = REDUCED ? 0 : .6; }
+  else if (s.k === 'jack') sfx.jackpot();
+  else if (!s.gold) sfx.win();
+  switch (s.k) {
+    case 'inv': setPow('inv', 20); break;
+    case 'spd': setPow('spd', 20); power.hyp = 0; break;
+    case 'chr': setPow('chr', 15); break;
+    case 'invspd': setPow('inv', 10); setPow('spd', 10); power.hyp = 0; break;
+    case 'chrinv': setPow('chr', 10); setPow('inv', 10); break;
+    case 'terr': { const c = seaNear(); if (c) territoryBurst(c, .15); break; }
+    case 'bomb': { const c = seaNear(); if (c) superBomb({ type: 'sterr', x: c.x, y: c.y }); break; }
+    case 'life': case 'life2': {
+      S.lives = Math.min(maxLives(), S.lives + (s.k === 'life' ? 1 : 2)); hud(); sfx.lifeUp();
+      const lv = $('lives'); lv.classList.remove('boost'); void lv.offsetWidth; lv.classList.add('boost');
+      break;
+    }
+    case 'sup': superOn(pp); setPow('sup', 15); break;
+    case 'jack':
+      // Super Casque, Super Vitesse et 3 jetons, sous une pluie de pièces
+      superOn(pp); setPow('sup', 15); setPow('hyp', 10); power.spd = 0;
+      gam.chips = Math.min(CHIPS_MAX, gam.chips + 3);
+      superTint = '255,210,63';
+      for (let k = 0; k < 60; k++) particles.push({ x: Math.random() * COLS, y: -1 - Math.random() * 6, vx: (Math.random() - .5) * 3, vy: 6 + Math.random() * 10, life: 0, max: 2, color: Math.random() < .7 ? gold : '#ff3b5c', size: .3 + Math.random() * .2 });
+      break;
+    case 'again': gam.free += 2; break;
+    case 'holdup': {
+      let e = null, bd = 1e9;
+      for (const f of foes) { if (f.dead) continue; const d = Math.hypot(f.x - pp.x, f.y - pp.y); if (d < bd) { bd = d; e = f; } }
+      if (e) {
+        e.dead = true; const fc = foeColor(e);
+        burst(e.x, e.y, fc, 36, 12); burst(e.x, e.y, gold, 18, 8);
+        rings.push({ x: e.x, y: e.y, r: 0, max: 4, age: 0, color: gold });
+        popups.push({ x: e.x, y: e.y - 1.4, text: 'BANG !', age: 0, color: fc });
+        shake = REDUCED ? 0 : .6; sfx.smash();
+      }
+      break;
+    }
+    case 'snail': gam.snail = 3; break;
+    case 'frag': setPow('frag', 15); break;
+    case 'skull':
+      // la roue ne prend jamais la dernière vie
+      if (S.lives > 1 && !S.test) { S.lives--; hud(); burst(pp.x, pp.y, T.danger, 30, 10); }
+      else popups.push({ x: pp.x, y: pp.y - 2, text: 'OUF, ÉPARGNÉ', age: 0, color: T.items.coin });
+      break;
+  }
+  powersHud();
+}
+// Jeton de casino centré sur l'origine, de rayon r
+function drawChipIcon(r) {
+  const red = T.rainbow ? '#e8233f' : T.ball, white = T.rainbow ? '#ffffff' : T.empty, gold = T.rainbow ? '#ffd23f' : T.ball;
+  ctx.fillStyle = red; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = white;
+  for (let k = 0; k < 8; k++) { ctx.save(); ctx.rotate(k * Math.PI / 4); ctx.fillRect(-r * .13, -r, r * .26, r * .28); ctx.restore(); }
+  ctx.strokeStyle = white; ctx.lineWidth = r * .08; ctx.beginPath(); ctx.arc(0, 0, r * .62, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(0, 0, r * .44, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = red; ctx.beginPath(); ctx.moveTo(0, -r * .26); ctx.lineTo(r * .18, 0); ctx.lineTo(0, r * .26); ctx.lineTo(-r * .18, 0); ctx.closePath(); ctx.fill();
+}
+// Jeton posé sur le terrain : il tourne sur lui-même
+function drawCoinItem(it) {
+  const left = it.ttl - it.age, ending = left < 2.5, pop = Math.min(1, it.age * 4);
+  ctx.save(); ctx.translate(it.x, it.y + Math.sin(time * 3 + it.x) * .15); ctx.scale(pop, pop);
+  halo(0, 0, 2, T.items.coin, .5);
+  for (let k = 0; k < 3; k++) {
+    const a = time * 2 + k * Math.PI * 2 / 3;
+    ctx.fillStyle = T.rainbow ? '#fff6c8' : T.ball; ctx.beginPath(); ctx.arc(Math.cos(a) * 1.25, Math.sin(a) * 1.25, .1, 0, Math.PI * 2); ctx.fill();
+  }
+  if (!(ending && Math.floor(left * 4) % 2 === 0)) {
+    glowOn(T.items.coin, 1.4);
+    ctx.scale(Math.max(.12, Math.abs(Math.cos(time * 2.4))), 1);
+    drawChipIcon(1);
+    glowOff();
+  }
+  ctx.restore();
+}
+// Icônes de la roue, centrées sur l'origine (taille de base : environ une case)
+function wheelIcon(type, sz) {
+  const ink = c => T.rainbow ? c : T.ball;
+  ctx.save(); ctx.scale(sz, sz);
+  if (type === 'coin') drawChipIcon(.48);
+  else if (type === 'sup') {
+    itemIcon('inv', ink('#ffd23f'));
+    ctx.fillStyle = ink('#ffd23f');
+    ctx.beginPath(); ctx.moveTo(-.3, -.42); ctx.lineTo(-.3, -.68); ctx.lineTo(-.15, -.54); ctx.lineTo(0, -.76); ctx.lineTo(.15, -.54); ctx.lineTo(.3, -.68); ctx.lineTo(.3, -.42); ctx.closePath(); ctx.fill();
+  } else if (type === 'bomb') {
+    ctx.fillStyle = T.rainbow ? '#30304a' : T.ball; ctx.strokeStyle = ink('#c9cdf2'); ctx.lineWidth = .06;
+    ctx.beginPath(); ctx.arc(0, .1, .4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = ink('#d9b38c'); ctx.lineWidth = .08; ctx.beginPath(); ctx.moveTo(.22, -.22); ctx.quadraticCurveTo(.42, -.52, .22, -.6); ctx.stroke();
+    ctx.fillStyle = ink('#ffd23f'); ctx.beginPath(); ctx.arc(.22, -.62, .1 + Math.sin(time * 20) * .03, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'snail') {
+    ctx.fillStyle = ink('#e0b98c'); ctx.beginPath(); ctx.ellipse(.02, .3, .5, .12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink('#e0b98c'); ctx.lineWidth = .05;
+    ctx.beginPath(); ctx.moveTo(.4, .22); ctx.lineTo(.5, -.08); ctx.moveTo(.46, .24); ctx.lineTo(.62, 0); ctx.stroke();
+    ctx.fillStyle = ink('#a8784a'); ctx.beginPath(); ctx.arc(-.06, .02, .32, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink('#ffe2bd'); ctx.lineWidth = .06; ctx.beginPath(); ctx.arc(-.06, .02, .17, 0, 4.6); ctx.stroke();
+  } else if (type === 'skull') {
+    ctx.fillStyle = ink('#f2f3ff'); ctx.beginPath(); ctx.arc(0, -.08, .4, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-.22, .16, .44, .26);
+    ctx.fillStyle = T.rainbow ? '#1a0c24' : T.empty;
+    ctx.beginPath(); ctx.arc(-.15, -.06, .11, 0, Math.PI * 2); ctx.arc(.15, -.06, .11, 0, Math.PI * 2); ctx.fill();
+    for (const x of [-.11, .01, .13]) ctx.fillRect(x - .02, .26, .05, .16);
+  } else if (type === 'frag') {
+    ctx.fillStyle = ink('#ff3b5c'); ctx.beginPath(); ctx.moveTo(0, -.52); ctx.lineTo(.52, .4); ctx.lineTo(-.52, .4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = T.rainbow ? '#ffffff' : T.empty; ctx.fillRect(-.05, -.2, .1, .34); ctx.beginPath(); ctx.arc(0, .27, .065, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'holdup') {
+    ctx.strokeStyle = ink('#ff5c6e'); ctx.lineWidth = .09;
+    ctx.beginPath(); ctx.arc(0, 0, .36, 0, Math.PI * 2);
+    for (const [x, y] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { ctx.moveTo(x * .56, y * .56); ctx.lineTo(x * .16, y * .16); }
+    ctx.stroke(); ctx.fillStyle = ink('#ff5c6e'); ctx.beginPath(); ctx.arc(0, 0, .07, 0, Math.PI * 2); ctx.fill();
+  } else if (type === '777') {
+    ctx.fillStyle = ink('#ffd23f'); ctx.font = '700 0.6px Silkscreen, "Courier New", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('777', 0, .04);
+  } else itemIcon(type, ink(T.items[type]));
+  ctx.restore();
+}
+function drawWheel() {
+  const w = wheel, T2 = Math.PI * 2, gold = T.rainbow ? '#ffd23f' : T.ball;
+  const a = w.st === 'out' ? Math.max(0, 1 - w.t / WHEEL_OUT) : Math.min(1, w.age / .2);
+  const R = 18.5 * (w.st === 'out' ? 1 - (1 - a) * .25 : Math.min(1, .75 + w.age * 1.25)), top = -Math.PI / 2;
+  ctx.save();
+  ctx.globalAlpha = a * .5; ctx.fillStyle = T.rainbow ? '#05030c' : T.empty; ctx.fillRect(0, 0, COLS, ROWS);
+  ctx.globalAlpha = a; ctx.translate(COLS / 2, ROWS / 2 - 2);
+  // jante dorée et ampoules qui clignotent
+  glowOn(gold, 2.5); ctx.fillStyle = T.rainbow ? '#2a1a08' : T.ball; ctx.beginPath(); ctx.arc(0, 0, R + 1.1, 0, T2); ctx.fill(); glowOff();
+  ctx.strokeStyle = gold; ctx.lineWidth = .25; ctx.stroke();
+  for (let k = 0; k < 24; k++) {
+    const b = k * T2 / 24;
+    ctx.fillStyle = (k + Math.floor(time * 8)) % 2 ? (T.rainbow ? '#8a6a20' : T.landA) : (T.rainbow ? '#fff6c8' : T.empty);
+    ctx.beginPath(); ctx.arc(Math.cos(b) * (R + .55), Math.sin(b) * (R + .55), .2, 0, T2); ctx.fill();
+  }
+  const winI = w.st === 'spin' ? -1 : w.idx, blink = Math.floor(w.t * 8) % 2 === 0;
+  WHEEL.forEach((s, i) => {
+    const a0 = s.a0 + w.rot + top, a1 = s.a1 + w.rot + top;
+    ctx.fillStyle = T.rainbow ? (s.bad ? '#2b0b19' : s.gold ? '#7a5208' : i % 2 ? '#0e5c34' : '#8a1228') : (s.bad ? T.landA : i % 2 ? T.empty : T.dot);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath(); ctx.fill();
+    if (i === winI && blink) { ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill(); }
+    if (winI >= 0 && i !== winI) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill(); }
+  });
+  ctx.strokeStyle = gold; ctx.lineWidth = .12; ctx.beginPath();
+  for (const s of WHEEL) { const b = s.a0 + w.rot + top; ctx.moveTo(0, 0); ctx.lineTo(Math.cos(b) * R, Math.sin(b) * R); }
+  ctx.stroke();
+  // icônes (toujours droites) et étiquettes : durée avec un petit chrono, ou « + »
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  WHEEL.forEach(s => {
+    const m = (s.a0 + s.a1) / 2 + w.rot + top, span = s.a1 - s.a0, cs = Math.cos(m), sn = Math.sin(m), n = s.ic.length;
+    s.ic.forEach((ic, j) => {
+      const r = n === 1 ? R * (s.tag ? .56 : .66) : R * (.4 + j * .25);
+      ctx.save(); ctx.translate(cs * r, sn * r); wheelIcon(ic, Math.min(2.7, span * r / 1.3)); ctx.restore();
+    });
+    if (!s.tag) return;
+    const r = R * .86, x = cs * r, y = sn * r, tc = s.bad ? (T.rainbow ? '#ff7a8a' : T.ball) : gold;
+    ctx.font = '700 1.6px Silkscreen, "Courier New", monospace';
+    const tw = ctx.measureText(s.tag).width, ox = s.clock ? .7 : 0;
+    ctx.fillStyle = tc; ctx.fillText(s.tag, x + ox, y + .05);
+    if (s.clock) {
+      const cx0 = x + ox - tw / 2 - .7;
+      ctx.strokeStyle = tc; ctx.lineWidth = .14; ctx.beginPath(); ctx.arc(cx0, y + .05, .5, 0, T2);
+      ctx.moveTo(cx0, y + .05); ctx.lineTo(cx0, y - .25); ctx.moveTo(cx0, y + .05); ctx.lineTo(cx0 + .25, y + .05); ctx.stroke();
+    }
+  });
+  // moyeu : un jeton qui tourne avec la roue
+  ctx.fillStyle = T.rainbow ? '#2a1a08' : T.ball; ctx.beginPath(); ctx.arc(0, 0, 2.1, 0, T2); ctx.fill();
+  ctx.strokeStyle = gold; ctx.lineWidth = .2; ctx.stroke();
+  ctx.save(); ctx.rotate(w.rot); drawChipIcon(1.6); ctx.restore();
+  // pointeur doré en haut
+  glowOn(gold, 1.5); ctx.fillStyle = gold;
+  ctx.beginPath(); ctx.moveTo(-1, -R - 2); ctx.lineTo(1, -R - 2); ctx.lineTo(0, -R + .7); ctx.closePath(); ctx.fill(); glowOff();
+  ctx.strokeStyle = T.rainbow ? '#5a3a00' : T.empty; ctx.lineWidth = .12; ctx.stroke();
+  // textes : en haut pendant le tirage, le gain en dessous
+  const say = (t, y, sz, c, hue) => {
+    ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`;
+    const tw = ctx.measureText(t).width; if (tw > COLS - 4) { sz *= (COLS - 4) / tw; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`; }
+    ctx.fillStyle = T.textShadow; ctx.fillText(t, .15, y + .15);
+    ctx.fillStyle = hue && T.rainbow ? `hsl(${(time * 360) % 360},100%,65%)` : c; ctx.fillText(t, 0, y);
+  };
+  say(gam.free > 0 ? 'TOURS GRATUITS : ' + gam.free : 'FAITES VOS JEUX', -R - 3.4, 1.5, gold);
+  if (winI >= 0) { const s = WHEEL[winI]; say(s.txt, R + 3.4, 2.6, s.bad ? T.danger : gold, s.gold); }
+  ctx.restore();
+}
+
 /* ---------- Crash ---------- */
 function crash() {
   if (S.phase !== 'play') return;
   if (helmet() || power.sup > 0) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
-  power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   plan = null; dash = null;
   powersHud(); pwHud();
   sfx.crash();
@@ -1699,7 +2019,7 @@ function updateCrash(dt) {
     if (S.test && armor.hp <= 0) armor.hp = 1;
     rw.hist = []; camo.on = 0;
     invuln = 0;
-    showReady('restart');
+    if (S.test) { S.phase = 'play'; hud(); pwHud(); } else showReady('restart');
   }
 }
 
@@ -1715,6 +2035,8 @@ function bonusDelay(first) {
   return (first ? 2 : 4) + -Math.log(1 - Math.random()) * (first ? 12 : 14);
 }
 function pickType() {
+  // Flambeur : des jetons de casino à la place des objets
+  if (SH().key === 'gam') return 'coin';
   // Monarque : rien que des super bonus, dès le niveau 1 (la Super Vie seulement s'il n'a pas atteint son maximum)
   if (SH().onlySuper) {
     const pool = [['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35], ['schr', 0.35]];
@@ -1787,9 +2109,10 @@ function collect(it) {
   else if (it.type === 'sterr') superBomb(it);
   else if (it.type === 'sspd') superSpeed(it);
   else if (it.type === 'slife') superLife(it);
-  else if (it.type === 'chr') { power.chr = POWER_T; sfx.chrono(); rings.push({ x: it.x, y: it.y, r: 0, max: 14, age: 0, color: T.items.chr }); }
+  else if (it.type === 'chr') { setPow('chr', POWER_T); sfx.chrono(); rings.push({ x: it.x, y: it.y, r: 0, max: 14, age: 0, color: T.items.chr }); }
   else if (it.type === 'schr') superChrono(it);
-  else { power[it.type] = POWER_T; sfx.power(); }
+  else if (it.type === 'coin') gainChip(it);
+  else { setPow(it.type, POWER_T); sfx.power(); }
   powersHud();
 }
 // Entrée en scène commune des super bonus : ralenti, flash teinté, grand titre arc-en-ciel
@@ -1810,7 +2133,7 @@ function superBomb(it) {
 // Super Vitesse : vitesse x4 pendant 10 s, des éclairs frappent le vaisseau
 function superSpeed(it) {
   superIntro(it, 'SUPER VITESSE !', '159,243,255');
-  power.hyp = POWER_T; power.spd = 0;
+  setPow('hyp', POWER_T); power.spd = 0;
   const pp = playerPos();
   for (let k = 0; k < 4; k++) bolts.push({ x0: pp.x + (Math.random() - .5) * 30, y0: -1, x1: pp.x, y1: pp.y, age: -k * 0.07, max: 0.45, follow: true });
   burst(pp.x, pp.y, T.rainbow ? '#9ff3ff' : T.ball, 50, 20); burst(pp.x, pp.y, '#ffffff', 25, 14);
@@ -1833,7 +2156,7 @@ function superLife(it) {
 // Super Chrono : le monde se fige presque (ennemis ×0,15), le vaisseau garde sa vitesse
 function superChrono(it) {
   superIntro(it, 'SUPER CHRONO !', '124,245,196');
-  power.schr = POWER_T; power.chr = 0;
+  setPow('schr', POWER_T); power.chr = 0;
   for (let k = 0; k < 3; k++) rings.push({ x: it.x, y: it.y, r: 0, max: 16 + k * 16, age: 0, color: T.rainbow ? ['#7cf5c4', '#ffffff', '#43e0ff'][k] : T.shock, big: k === 2 });
   for (const c of ['#7cf5c4', '#ffffff', '#43e0ff']) burst(it.x, it.y, T.rainbow ? c : T.ball, 35, 16);
   sfx.superChrono();
@@ -1918,7 +2241,7 @@ function updateItems(dt) {
     if (ITEM[it.type].medium === 'sea' && grid[at(Math.floor(it.x), Math.floor(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
-  for (const k of ['inv', 'spd', 'sup', 'hyp', 'chr', 'schr']) if (power[k] > 0) {
+  for (const k of ['inv', 'spd', 'sup', 'hyp', 'chr', 'schr', 'frag']) if (power[k] > 0) {
     const before = power[k];
     power[k] = Math.max(0, power[k] - dt);
     if (before > 2 && power[k] <= 2) sfx.warn();
@@ -1928,11 +2251,13 @@ function updateItems(dt) {
 let powersSig = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard;
+  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig;
-    el.innerHTML = (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
+    el.innerHTML = (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
+      + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
+      + (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
       + (guard ? `<div class="chip guard"><b></b><span>BOUCLIER</span><div class="t"><i id="tguard"></i></div></div>` : '')
       + (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
       + (power.inv > 0 ? `<div class="chip inv"><b></b><span>CASQUE</span><div class="t"><i id="tinv"></i></div></div>` : '')
@@ -1941,12 +2266,7 @@ function powersHud() {
       + (power.schr > 0 ? `<div class="chip schr"><b></b><span>SUPER CHRONO</span><div class="t"><i id="tschr"></i></div></div>` : '')
       + (power.chr > 0 ? `<div class="chip chr"><b></b><span>CHRONO</span><div class="t"><i id="tchr"></i></div></div>` : '');
   }
-  const h = $('thyp'); if (h) h.style.width = (power.hyp / POWER_T * 100) + '%';
-  for (const k of ['chr', 'schr']) { const el = $('t' + k); if (el) el.style.width = (power[k] / POWER_T * 100) + '%'; }
-  const a = $('tinv'), b = $('tspd');
-  if (a) a.style.width = (power.inv / POWER_T * 100) + '%';
-  if (b) b.style.width = (power.spd / POWER_T * 100) + '%';
-  const c = $('tsup'); if (c) c.style.width = (power.sup / POWER_T * 100) + '%';
+  for (const k of ['hyp', 'chr', 'schr', 'inv', 'spd', 'sup', 'frag']) { const el = $('t' + k); if (el) el.style.width = (power[k] / pm(k) * 100) + '%'; }
   const r = $('trage'); if (r) r.style.width = (ab.on / FR_T * 100) + '%';
   // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
   const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_CELLS) * 100) + '%';
@@ -1957,7 +2277,7 @@ const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H
 const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H17.5 C17.5 7.5 15.5 9.6 13.3 12 C15.5 14.4 17.5 16.5 17.5 20 H19 V22 H5 V20 H6.5 C6.5 16.5 8.5 14.4 10.7 12 C8.5 9.6 6.5 7.5 6.5 4 H5 Z M8.6 4 C8.8 6.6 10.2 8.2 12 10 C13.8 8.2 15.2 6.6 15.4 4 Z M9 19.5 H15 C14.6 17.6 13.4 16.4 12 15.2 C10.6 16.4 9.4 17.6 9 19.5 Z" fill-rule="evenodd"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
-  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob');
+  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam');
   if (b.hidden === show) b.hidden = !show;
   if (!show) { pwSig = ''; return; }
   let cls, p, inner, label;
@@ -1969,6 +2289,10 @@ function pwHud() {
     const hp = armor.hp;
     cls = 'armor'; p = hp; inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
     b.style.setProperty('--ac', hp > .6 ? '#5dffb0' : hp > .3 ? '#ffb347' : '#ff4d5e');
+  } else if (k === 'gam') {
+    const n = gam.chips;
+    cls = wheel ? 'chip on' : n > 0 ? 'chip ready' : 'chip'; p = n / CHIPS_MAX; inner = String(n);
+    label = wheel ? 'La roue tourne' : n > 0 ? `Lancer la roue (${n} jeton${n > 1 ? 's' : ''})` : 'Pas de jeton : ramasse-en dans la zone à conquérir';
   } else if (k === 'rew') {
     if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
     else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
@@ -2008,12 +2332,13 @@ function update(dt) {
     if (S.phase === 'play') updateItems(dt);
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0)) powersHud();
+    if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0)) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
       const pp = playerPos(), rage = frenzyOn();
-      particles.push({ x: pp.x - P.dir.x * .55 + (Math.random() - .5) * .2, y: pp.y - P.dir.y * .55 + (Math.random() - .5) * .2, vx: -P.dir.x * 2.5 + (Math.random() - .5), vy: -P.dir.y * 2.5 + (Math.random() - .5), life: 0, max: .25 + Math.random() * .2, color: rage ? (Math.random() < .5 ? '#ff1f3d' : '#ff8a5c') : SH().key === 'mon' ? 'hsl(' + ((time * 300 + Math.random() * 80) % 360 | 0) + ',100%,70%)' : Math.random() < .5 ? '#ff8a3d' : '#ffd23f', size: .12 + Math.random() * .1, ng: 1 });
+      particles.push({ x: pp.x - P.dir.x * .55 + (Math.random() - .5) * .2, y: pp.y - P.dir.y * .55 + (Math.random() - .5) * .2, vx: -P.dir.x * 2.5 + (Math.random() - .5), vy: -P.dir.y * 2.5 + (Math.random() - .5), life: 0, max: .25 + Math.random() * .2, color: rage ? (Math.random() < .5 ? '#ff1f3d' : '#ff8a5c') : SH().key === 'mon' ? 'hsl(' + ((time * 300 + Math.random() * 80) % 360 | 0) + ',100%,70%)' : SH().key === 'gam' ? (Math.random() < .65 ? '#ffd23f' : '#ff3b5c') : Math.random() < .5 ? '#ff8a3d' : '#ffd23f', size: .12 + Math.random() * .1, ng: 1 });
     }
   } else if (ph === 'crash') {
     updateCrash(dt);
@@ -2112,6 +2437,7 @@ function render() {
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
+  if (wheel) drawWheel();
 }
 function drawFoe(e) {
   {
@@ -2819,6 +3145,7 @@ function drawSuperItem(it) {
 }
 function drawItem(it) {
   if (SUPER[it.type]) { drawSuperItem(it); return; }
+  if (it.type === 'coin') { drawCoinItem(it); return; }
   const color = T.items[it.type], left = it.ttl - it.age, ending = left < 2.5;
   const pop = Math.min(1, it.age * 4), bob = it.vx || it.vy ? 0 : Math.sin(time * 3 + it.x) * 0.15;
   const r = 0.95 * pop;
@@ -2881,6 +3208,7 @@ function itemIcon(type, color) {
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (wheel && S.phase !== 'pause' && S.phase !== 'title') { updateWheel(dt); if (wheel && wheel.st === 'spin') dt *= .25; }
   if (slow > 0) { slow -= dt; dt *= 0.3; }
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
   if (scale > 0 && cv.width) { update(dt); render(); }
@@ -2903,7 +3231,7 @@ function hud() {
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(SH().lives, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
-  const goal = Math.round(DIFFS[S.diff].goal * 100);
+  const goal = Math.round((S.test ? TEST_GOAL : DIFFS[S.diff].goal) * 100);
   const p = Math.min(100, Math.floor(S.filled / S.interior * 100));
   $('bar').style.width = p + '%';
   $('goal').style.left = goal + '%';
@@ -2935,7 +3263,7 @@ function infoRows(done) {
     </div>`;
 }
 function newcomers() {
-  if (S.test) return '<p class="keys">Vies infinies, pas d\'objectif. Utilise les boutons sous le terrain pour faire apparaître bonus et ennemis.</p>';
+  if (S.test) return '<p class="keys">Vies infinies, pas d’objectif : à 75 %, le terrain s’efface tout seul. Sous le terrain : change de vaisseau, recharge son pouvoir, fais apparaître bonus et ennemis, et réinitialise d’un tap.</p>';
   if (S.readyMode !== 'start') return '';
   // un ennemi n'est présenté que la première fois qu'il apparaît (les niveaux à thème en font revenir certains)
   const now = S.comp, seen = {};
@@ -2948,6 +3276,7 @@ function newcomers() {
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
+    if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour lancer la roue : surtout du bon, mais parfois un coup dur !</p>';
     if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
     if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
@@ -2973,7 +3302,7 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   if (ab.on > 0) { ab.on = 0; ab.cd = FR_CELLS; }
   carry = { guard: P ? P.guard : 0 };
   powersHud(); pwHud();
@@ -3008,7 +3337,7 @@ function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); 
 function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', `Tu as conquis les 25 niveaux en mode ${DIFFS[S.diff].name}.`); }
 
 function titleScreen() {
-  S.phase = 'title'; cv.style.filter = ''; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
+  S.phase = 'title'; cv.style.filter = ''; wheel = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
   startDemo();
   const maxL = Math.max(1, store.get('max' + menuDiff, 1));
   menuLevel = Math.min(menuLevel, maxL);
@@ -3042,7 +3371,7 @@ function titleScreen() {
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une roue de la fortune). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`, () => showShips(false));
@@ -3082,7 +3411,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -3129,7 +3458,7 @@ function startDemo() {
   for (let y = B; y < 14; y++) for (let x = 34; x < COLS - B; x++) grid[at(x,y)] = 1;
   foes = [makeFoe('out', .8), makeFoe('perf', .8), makeFoe('amph', .8)];
   foes[2].y = 30;
-  items = []; trail = []; erased = []; wave = null; P = null; plan = null; dash = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0;
+  items = []; trail = []; erased = []; wave = null; P = null; plan = null; dash = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   S.filled = 0; reveal = null; drawBoard();
 }
 function togglePause() {
@@ -3137,12 +3466,42 @@ function togglePause() {
     S.pausedFrom = 'play'; S.phase = 'pause';
     showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">QUITTER LA PARTIE</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
     // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
-    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; ab.on = 0; ab.cd = 0; powersHud(); titleScreen(); });
+    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0; ab.on = 0; ab.cd = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
 }
 function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }
 
 /* ---------- Mode test ---------- */
+const TEST_GOAL = .75;
+// barre du mode test : nom du vaisseau, jeton et roue seulement pour le Flambeur
+function testSync() {
+  $('tship').textContent = SH().name;
+  $('tcoin').hidden = $('tforce').hidden = SH().key !== 'gam';
+}
+// pouvoirs à plein : frénésie, bouclier, rembobinage, blindage, jetons
+function testRefill() {
+  if (!S.test) return;
+  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX;
+  if (P) P.guard = 0;
+  powersHud(); pwHud();
+}
+// Réinitialisation instantanée (sans écran d'info) : terrain vierge, 2 boules et un gardien, pouvoirs à plein.
+// keep : le terrain s'efface tout seul à 75 % ; on garde les mêmes ennemis, le score et les pouvoirs.
+function testReset(keep) {
+  if (!S.test) return;
+  const kinds = keep ? foes.filter(e => !e.dead && !(e.gen > 0)).map(e => e.kind) : null;
+  if (!keep) { S.score = 0; S.lives = SH().lives; }
+  setupLevel(1, true);
+  if (kinds) foes = kinds.map(k => makeFoe(k, DIFFS[S.diff].sp));
+  else testRefill();
+  rings.push({ x: P.x + .5, y: P.y + .5, r: 0, max: 30, age: 0, color: T.shock, big: true });
+  sfx.start();
+}
+function testShip(d) {
+  if (!S.test) return;
+  menuShip = S.ship = (S.ship + d + SHIPS.length) % SHIPS.length; store.set('ship', S.ship);
+  testReset();
+}
 function testItem(type) {
   if (!S.test || !P || (S.phase !== 'play' && S.phase !== 'ready' && S.phase !== 'pause')) return;
   const medium = ITEM[type].medium, pp = playerPos(), cands = [];
@@ -3181,7 +3540,14 @@ function testFoe(kind) {
 document.querySelectorAll('#testbar [data-item]').forEach(b => b.addEventListener('click', () => { ensureAudio(); testItem(b.dataset.item); }));
 document.querySelectorAll('#testbar [data-foe]').forEach(b => b.addEventListener('click', () => { ensureAudio(); testFoe(b.dataset.foe); }));
 $('tclear').addEventListener('click', () => { if (S.test) { for (const e of foes) burst(e.x, e.y, T.shock, 10, 6); foes = []; } });
-$('treset').addEventListener('click', () => { if (S.test) { S.score = 0; setupLevel(1); } });
+$('treset').addEventListener('click', () => testReset());
+$('tprev').addEventListener('click', () => testShip(-1));
+$('tnext').addEventListener('click', () => testShip(1));
+$('tship').addEventListener('click', () => testShip(1));
+$('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
+const tforce = $('tforce');
+tforce.innerHTML = '<option value="">ROUE : AU HASARD</option>' + WHEEL.map(w => `<option value="${w.k}">ROUE : ${w.txt}</option>`).join('');
+tforce.addEventListener('change', () => { gam.force = tforce.value; tforce.blur(); });
 $('tquit').addEventListener('click', () => { if (S.test) titleScreen(); });
 
 /* ---------- Contrôles ---------- */
