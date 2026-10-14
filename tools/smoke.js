@@ -443,7 +443,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const prey = g.makeFoe('out', 1); prey.x = PX(); prey.y = PY() + 5; prey.vx = 0; prey.vy = 0; g.foes.push(prey);
   const f0 = g.S.filled, s0 = g.S.score;
   g.usePower(); step(20);
-  console.log(`prédateur : sans fil ${noTrail} ; bond -> proie dévorée ${prey.dead}, combo ${g.pred.combo}, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, +${g.S.score - s0} points, phase ${g.S.phase}`);
+  console.log(`prédateur : sans fil ${noTrail} ; bond -> proie dévorée ${prey.dead}, combo ${g.pred.combo}, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, +${g.S.score - s0} points, recharge du bond après la proie ${g.pred.cd} (0), phase ${g.S.phase}`);
   const speed = c => { start(); g.pred.combo = c; g.pred.ct = 99; g.setDir('right'); step(2); const x = g.P.x; step(30); return (g.P.x - x) / G * 2; };
   const v0 = speed(0), v3 = speed(3), v5 = speed(5);
   start(); g.pred.combo = 5; g.pred.ct = 99; g.setDir('right'); step(2); const xb = g.P.x; g.usePower(); step(6); const vb = (g.P.x - xb) / G * 10;

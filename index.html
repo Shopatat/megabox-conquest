@@ -616,8 +616,9 @@ function setPow(k, t) { power[k] = t; powMax[k] = t; }
 const ab = { on: 0, cd: 0, beat: 0 };
 // Prédateur : bond en cours (bite, s), recharge (cd, s), combo (jusqu'à PRED_MAX) et temps restant pour l'entretenir (ct) ;
 // again : une proie vient d'être dévorée, on peut rebondir aussitôt
-const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 3, PRED_MAX = 5, PRED_FEAR = 8;
-const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false };
+const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 6, PRED_MAX = 5, PRED_FEAR = 8;
+// heat : intensité du carnage (0 à 1, suit le combo en douceur) ; hb : phase du battement de cœur ; beat : battement en cours
+const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false, heat: 0, hb: 0, beat: 0 };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
@@ -1076,7 +1077,7 @@ function setupLevel(L, instant) {
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
-  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; stains = [];
+  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; stains = []; drops = [];
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -1726,7 +1727,10 @@ function predBite() {
   sfx.lunge(pred.combo); pwHud();
 }
 function updatePred(dt) {
-  if (pred.bite > 0) { pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.again = false; pred.cd = PRED_CD; } pwHud(); }
+  if (pred.bite > 0) {
+    // une proie dévorée pendant ce bond : pas de recharge, on peut rebondir aussitôt
+    pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.cd = pred.again ? 0 : PRED_CD; pred.again = false; } pwHud();
+  }
   else if (pred.cd > 0) { pred.cd = Math.max(0, pred.cd - dt); if (!pred.cd) sfx.ready(); pwHud(); }
   if (pred.combo > 0 && (pred.ct -= dt) <= 0) { pred.combo = 0; pred.ct = 0; powersHud(); }
   // sillage de braises (pas de fil)
@@ -1756,7 +1760,11 @@ function devour(e) {
   gore(x, y, foeColor(e), c);
   const pts = 300 * S.level * c; S.score += pts;
   popups.push({ x, y: y - 1.3, text: (c > 1 ? 'CARNAGE ×' + c + ' ' : 'DÉVORÉ ') + '+' + pts, age: 0, color: T.rainbow ? '#ff4d5e' : T.ball });
-  if (c === PRED_MAX) popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'MASSACRE ×5', age: -0.05, color: T.rainbow ? '#ff2a3a' : T.ball, big: true });
+  // grand titre du combo : le nouveau remplace le précédent
+  if (c >= 2) {
+    popups = popups.filter(p => !p.carn);
+    popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: c === PRED_MAX ? 'MASSACRE ×5' : 'CARNAGE ×' + c, age: 0, color: T.rainbow ? (c === PRED_MAX ? '#ff2a3a' : '#ff4d5e') : T.ball, big: true, carn: true });
+  }
   sfx.crunch(c);
   if (!split && isSea(e)) predConquer(x, y, c);
   hud(); powersHud(); pwHud();
@@ -1764,23 +1772,61 @@ function devour(e) {
 }
 // Gerbe de sang : gouttes projetées dans le sens du bond, morceaux de la couleur de l'ennemi, taches qui sèchent
 var stains = [];
-const STAIN_T = 7;
+const STAIN_T = 10;
 function gore(x, y, color, c) {
   const red = T.rainbow, d = P.dir.x || P.dir.y ? P.dir : P.face, dir = Math.atan2(d.y, d.x);
-  const reds = ['#b0001a', '#e0102a', '#ff2a3a', '#7a0010'];
-  for (let k = 0, n = 40 + c * 12; k < n; k++) {
-    const a = dir + (Math.random() - .5) * (Math.random() < .65 ? 1.5 : 6.28), v = 3 + Math.random() * (9 + c * 3);
-    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .45 + Math.random() * .7, color: red ? reds[(Math.random() * 4) | 0] : T.danger, size: .1 + Math.random() * .3, ng: 1 });
+  const reds = ['#b0001a', '#e0102a', '#ff2a3a', '#7a0010', '#d4001f'];
+  // jet de sang : gouttes étirées, surtout vers l'avant du bond, qui laissent une tache en retombant
+  for (let k = 0, n = 34 + c * 12; k < n; k++) {
+    const a = dir + (Math.random() - .5) * (Math.random() < .7 ? 1.3 : 6.28), v = 7 + Math.random() * (13 + c * 4);
+    drops.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .2 + Math.random() * .45, w: .08 + Math.random() * .2, col: red ? reds[(Math.random() * 5) | 0] : T.danger });
   }
-  burst(x, y, color, 12, 7);
-  rings.push({ x, y, r: 0, max: 2.5 + c * .6, age: 0, color: red ? '#ff2a3a' : T.shock });
-  stains.push({ x, y, r: .75 + c * .08, age: 0, dark: true });
-  for (let k = 0, n = 6 + 2 * c; k < n; k++) {
-    const a = dir + (Math.random() - .5) * 1.8, t = .5 + Math.random() * (1.5 + c * .35);
-    stains.push({ x: x + Math.cos(a) * t, y: y + Math.sin(a) * t, r: .12 + Math.random() * .38, age: 0 });
+  // éclats lumineux
+  for (let k = 0, n = 50 + c * 20; k < n; k++) {
+    const a = dir + (Math.random() - .5) * (Math.random() < .55 ? 1.6 : 6.28), v = 4 + Math.random() * (14 + c * 4);
+    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .35 + Math.random() * .6, color: red ? reds[(Math.random() * 3 + 1) | 0] : T.danger, size: .12 + Math.random() * (.3 + c * .03), ng: 1 });
   }
-  shake = REDUCED ? 0 : Math.min(1.5, .5 + c * .18);
-  if (red && !REDUCED) { superFlash = Math.max(superFlash, .2 + c * .05); superTint = '255,20,40'; }
+  burst(x, y, color, 16, 9);
+  // onde de choc : boule de feu, puis trois anneaux de plus en plus larges
+  if (red) rings.push({ x, y, r: 0, max: 1.4 + c * .3, age: 0, color: '#ff2a3a', fill: true });
+  rings.push({ x, y, r: 0, max: 3.5 + c, age: 0, color: red ? '#ffffff' : T.shock, big: true });
+  rings.push({ x, y, r: 0, max: 6 + c * 1.6, age: 0, color: red ? '#ff2a3a' : T.shock, big: true });
+  rings.push({ x, y, r: 0, max: 9 + c * 2.4, age: 0, color: red ? '#8a0016' : T.shock });
+  // grosse tache irrégulière sous la proie
+  for (let k = 0; k < 5; k++) { const a = Math.random() * 6.28, t = Math.random() * .6; stains.push({ x: x + Math.cos(a) * t, y: y + Math.sin(a) * t, r: .5 + Math.random() * .5 + c * .1, age: 0, dark: k < 2 }); }
+  if (stains.length > 500) stains.splice(0, stains.length - 500);
+  shake = REDUCED ? 0 : Math.min(2.2, .9 + c * .26);
+  if (!REDUCED) slow = Math.max(slow, .07 + c * .025);
+  if (red && !REDUCED) { superFlash = Math.max(superFlash, .35 + c * .08); superTint = '255,20,40'; }
+  pred.beat = 1;
+}
+// gouttes de sang : elles filent, freinent, et laissent une tache où elles retombent
+var drops = [];
+function updateDrops(dt) {
+  const k = Math.exp(-dt * 5);
+  for (const d of drops) {
+    d.life += dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= k; d.vy *= k;
+    if (d.life >= d.max && Math.random() < .65) stains.push({ x: d.x, y: d.y, r: d.w * (1.2 + Math.random() * 1.6), age: 0, dark: Math.random() < .3 });
+  }
+  drops = drops.filter(d => d.life < d.max);
+}
+function drawDrops() {
+  if (!drops.length) return;
+  ctx.lineCap = 'round';
+  for (const d of drops) {
+    ctx.strokeStyle = d.col; ctx.lineWidth = d.w;
+    ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.vx * .035, d.y - d.vy * .035); ctx.stroke();
+  }
+}
+// Battement de cœur du carnage : de plus en plus rapide avec le combo (« poum-poum »), le son suit
+function updateHeart(dt) {
+  const target = pred.combo / PRED_MAX;
+  pred.heat += (target - pred.heat) * Math.min(1, dt * (target > pred.heat ? 5 : 1.1));
+  if (!pred.combo && pred.heat < .01) { pred.heat = 0; pred.beat = 0; return; }
+  const prev = pred.hb; pred.hb += dt * (70 + 120 * pred.heat) / 60;
+  if (pred.combo && Math.floor(pred.hb) !== Math.floor(prev) && S.phase === 'play') sfx.heart();
+  const f = pred.hb % 1, sp = t0 => Math.exp(-Math.pow((f - t0) / .05, 2));
+  pred.beat = Math.max(pred.beat * Math.exp(-dt * 8), sp(.03), .7 * sp(.22));
 }
 function drawStains() {
   if (!stains.length || !T.rainbow) return;
@@ -2841,6 +2887,8 @@ function update(dt) {
     }
     rings = rings.filter(r => r.age < 0.9);
     if (stains.length) { for (const st of stains) st.age += dt; stains = stains.filter(st => st.age < STAIN_T); }
+    if (drops.length) updateDrops(dt);
+    if (pred.heat > 0 || pred.combo > 0) updateHeart(dt);
     shake = Math.max(0, shake - dt * 2.2);
     flash = Math.max(0, flash - dt * 2.5);
   }
@@ -2857,7 +2905,9 @@ function render() {
   // tremblement fluide (somme de sinus) plutôt qu'un sautillement aléatoire
   const ox = shake ? (Math.sin(time * 57) * .3 + Math.sin(time * 31) * .15) * shake : 0, oy = shake ? (Math.cos(time * 49) * .3 + Math.sin(time * 27) * .15) * shake : 0;
   shX = ox; shY = oy;
-  ctx.setTransform(scale,0,0,sy,ox*scale,oy*sy);
+  // carnage du Prédateur : l'écran bat comme un cœur (léger zoom à chaque battement)
+  const zf = pred.heat > 0 && !REDUCED && SH().key === 'pred' ? 1 + pred.beat * (.008 + .022 * pred.heat) : 1;
+  ctx.setTransform(scale * zf, 0, 0, sy * zf, ox * scale + (1 - zf) * W / 2, oy * sy + (1 - zf) * H / 2);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
   if (boardDirty || (boardRev && !reveal)) drawBoard();
   ctx.drawImage(board, 0, 0, COLS, ROWS);
@@ -2865,6 +2915,7 @@ function render() {
   drawChrono('clock');
   drawEdgeGlow();
   drawStains();
+  drawDrops();
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -2998,6 +3049,17 @@ function drawFx() {
     const beat = Math.pow(Math.max(0, Math.sin(time * 9)), 6), g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .32, COLS / 2, ROWS / 2, ROWS * .78);
     g.addColorStop(0, 'rgba(255,31,61,0)'); g.addColorStop(1, `rgba(${T.rainbow ? '255,31,61' : '11,24,56'},${(.16 + beat * .14) * Math.min(1, ab.on / .4)})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+  }
+  // carnage : l'image vire au rouge (vert et bleu étouffés), de plus en plus fort avec le combo, et pulse à chaque battement
+  if (pred.heat > 0 && SH().key === 'pred' && T.rainbow) {
+    const h = pred.heat, b = pred.beat, k = Math.round(255 - (95 + 85 * b) * h);
+    ctx.save(); ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgb(255,${k},${Math.min(255, k + 15)})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4);
+    ctx.restore();
+    const vg = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * (.42 - .14 * b * h), COLS / 2, ROWS / 2, ROWS * .8);
+    vg.addColorStop(0, 'rgba(255,0,30,0)'); vg.addColorStop(1, `rgba(170,0,20,${Math.min(.85, .08 + (.3 + .35 * b) * h)})`);
+    ctx.fillStyle = vg; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4);
+    if (b > .15) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,20,40,${.1 * b * h})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); ctx.globalCompositeOperation = 'source-over'; }
   }
   if (superFlash > 0) { ctx.fillStyle = T.rainbow ? `rgba(${superTint},${superFlash * 0.45})` : `rgba(11,24,56,${superFlash * 0.3})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
   if (flash > 0) { ctx.fillStyle = `rgba(${T.flash},${flash * 0.28})`; ctx.fillRect(-2, -2, COLS + 4, ROWS + 4); }
