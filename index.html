@@ -361,7 +361,7 @@ const DIFFS = [
 
 const THEMES = {
   color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, space:true, smooth:true, edge:'#dfe4ff',
-    trail:'#ff7a4d', trailCore:'rgba(16,13,24,0.9)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
+    trail:'#ff7a4d', trailCore:'rgba(42,15,42,0.85)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
     ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', puls:'#46d9ff', pulsHi:'#e6fbff', hunt:'#ff4466', huntHi:'#ffd0da', div:'#ff9f43', divHi:'#ffe2bd', ghost:'#d9d4ff', ink:'#1a0c24',
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
@@ -2853,6 +2853,37 @@ function bolt(x0, y0, x1, y1, jag, color, w) {
 }
 
 let trailXY = [];
+// Fil de chaque vaisseau (thème couleur) : dégradé du départ au vaisseau (en TRAIL_NC teintes), épaisseur et centre
+// à son image. c : trois couleurs ; w : épaisseur ; core : couleur, épaisseur, tirets et vitesse de défilement du centre
+// (négative : il remonte vers le départ).
+const TRAIL_NC = 16;
+const TRAIL_LOOK = {
+  // Veinard : comme l'icône, de l'or au rose, points ronds
+  cla: { c: ['#ffd36b', '#ff8a4d', '#ff4d8d'], w: .58, core: ['rgba(42,15,42,0.85)', .15, [.01, .47], 1.5] },
+  // Blindé : fil épais, acier chauffé, rivets carrés
+  rob: { c: ['#c4ced8', '#ffb347', '#ff7a3d'], w: .7, core: ['rgba(30,24,20,0.8)', .2, [.12, .3], 1], cap: 'butt' },
+  // Frénétique : flamme, points qui filent vite
+  fre: { c: ['#ffd23f', '#ff5c3d', '#ff1f3d'], w: .58, core: ['rgba(60,6,10,0.85)', .15, [.01, .36], 4.5] },
+  // Encaisseur : violet vers le vert du bouclier
+  enc: { c: ['#d2c4ff', '#a58cff', '#5dffb0'], w: .6, core: ['rgba(26,12,52,0.8)', .15, [.01, .47], 1.2] },
+  // Fulgurant : fil fin électrique, longs traits blancs rapides
+  ful: { c: ['#ffffff', '#9fe8ff', '#43c8ff'], w: .46, core: ['rgba(255,255,255,0.95)', .08, [.3, .25], 6] },
+  // Furtif : sarcelle sombre, un simple filet lumineux au centre
+  fur: { c: ['#1e6f7a', '#2bb8a0', '#46ffc8'], w: .5, core: ['rgba(170,255,230,0.75)', .06, [], 0], halo: .5 },
+  // Rembobineur : cuivre et sable, les points remontent le fil
+  rew: { c: ['#ffe2a0', '#ffb84d', '#c4782a'], w: .58, core: ['rgba(48,22,4,0.85)', .15, [.01, .47], -1.6] },
+  // Piégeur : vert acide, tirets comme des dents
+  trap: { c: ['#e4ff9a', '#b6ff5c', '#3fae3a'], w: .58, core: ['rgba(14,40,10,0.85)', .14, [.16, .28], 1.5] },
+  // Monarque : or, rose et violet royal, perles dorées
+  mon: { c: ['#ffd86b', '#ff5dd2', '#8c5cff'], w: .6, core: ['rgba(255,243,176,0.95)', .14, [.01, .42], 1.2] },
+  // Flambeur : or, vert tapis et rouge jeton, liseré de jeton blanc
+  gam: { c: ['#ffd23f', '#3fdc7a', '#ff3b5c'], w: .58, core: ['rgba(255,255,255,0.9)', .1, [.12, .14], 1.5] }
+};
+const trailLook = () => TRAIL_LOOK[SH().key] || TRAIL_LOOK.cla;
+const trailRgb = (L, b) => {
+  const u = (b + .5) / TRAIL_NC * 2, k = Math.min(1, u | 0), f = u - k, a = rgbOf(L.c[k]).split(','), c = rgbOf(L.c[k + 1]).split(',');
+  return a.map((v, i) => Math.round(+v + (c[i] - v) * f)).join(',');
+};
 function drawTrail(pp) {
   const dead = S.phase === 'crash';
   const last = trail.length - 1, hs = holes(), runs = [];
@@ -2867,24 +2898,60 @@ function drawTrail(pp) {
     else run.push([x, y, k]);
   }
   trailXY = [];
-  ctx.beginPath();
+  const sup = power.sup > 0 && !dead;
+  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : frenzyOn() && T.rainbow ? '#ff2e4a' : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
+  // fil normal du thème couleur : dégradé le long du fil, de l'or (départ) à l'orange puis au rose (vaisseau)
+  const grad = T.smooth && T.rainbow && tc === T.trail;
+  const tp = new Path2D(), parts = [];
   for (const r of runs) {
     const sm = T.smooth ? smoothPts(r, 3 * G, false) : r;
     r.forEach((q, j) => { if (q[2] >= 0) trailXY[q[2]] = sm[j]; });
-    if (T.smooth) curvePts(ctx, sm, false);
-    else { ctx.moveTo(sm[0][0], sm[0][1]); for (let j = 1; j < sm.length; j++) ctx.lineTo(sm[j][0], sm[j][1]); }
+    if (T.smooth) curvePts(tp, sm, false);
+    else { tp.moveTo(sm[0][0], sm[0][1]); for (let j = 1; j < sm.length; j++) tp.lineTo(sm[j][0], sm[j][1]); }
+    if (grad) {
+      // morceaux de couleur (TRAIL_NC teintes), chacun repart du dernier point du précédent
+      let part = null;
+      for (let j = 0; j < sm.length; j++) {
+        const u = r[j][2] < 0 ? 0 : r[j][2] / Math.max(1, last), b = Math.min(TRAIL_NC - 1, (u * TRAIL_NC) | 0);
+        if (!part || part.b !== b) { const prev = part && part.p[part.p.length - 1]; part = { b, p: prev ? [prev] : [] }; parts.push(part); }
+        part.p.push(sm[j]);
+      }
+    }
   }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  // halo doux sous le fil (remplace les cases teintées)
-  ctx.strokeStyle = T.trailFill; ctx.lineWidth = 1.1; ctx.stroke();
-  const sup = power.sup > 0 && !dead;
-  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : frenzyOn() && T.rainbow ? '#ff2e4a' : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
-  glowOn(tc, sup ? 1.8 : .9);
-  ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.8 : 0.58; ctx.stroke();
-  if (sup) { ctx.strokeStyle = T.rainbow ? `hsl(${(time * 300) % 360},100%,70%)` : T.empty; ctx.lineWidth = .3; ctx.stroke(); }
-  glowOff();
-  ctx.strokeStyle = T.trailCore; ctx.lineWidth = 0.16; ctx.lineCap = 'round';
-  ctx.setLineDash([0.06, 0.36]); ctx.lineDashOffset = -time * 1.5; ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'round';
+  const L = trailLook();
+  if (grad) {
+    const line = p => { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (let j = 1; j < p.length; j++) ctx.lineTo(p[j][0], p[j][1]); };
+    // halo coloré en lumière additive, d'un seul tenant (pas de raccords) : dégradé du départ vers la tête du fil
+    const p0 = parts[0] && parts[0].p[0], p1 = parts.length && parts[parts.length - 1].p.slice(-1)[0];
+    if (p0 && p1) {
+      const hk = L.halo || 1;
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [lw, a] of [[2, .022], [1.65, .026], [1.35, .03], [1.1, .036], [.88, .045]]) {
+        const hg = ctx.createLinearGradient(p0[0], p0[1], p1[0] + .01, p1[1] + .01);
+        L.c.forEach((c, i) => hg.addColorStop(i / 2, `rgba(${rgbOf(c)},${a * hk})`));
+        ctx.strokeStyle = hg; ctx.lineWidth = lw; ctx.stroke(tp);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    for (const pt of parts) {
+      if (pt.p.length < 2) continue;
+      line(pt.p); ctx.strokeStyle = `rgb(${trailRgb(L, pt.b)})`; ctx.lineWidth = L.w; ctx.stroke();
+    }
+    // reflet au centre du fil
+    ctx.strokeStyle = 'rgba(255,244,236,0.3)'; ctx.lineWidth = L.w * .45; ctx.stroke(tp);
+  } else {
+    // halo doux sous le fil (remplace les cases teintées)
+    ctx.strokeStyle = T.trailFill; ctx.lineWidth = 1.1; ctx.stroke(tp);
+    glowOn(tc, sup ? 1.8 : .9);
+    ctx.strokeStyle = tc; ctx.lineWidth = sup ? 0.8 : 0.58; ctx.stroke(tp);
+    if (sup) { ctx.strokeStyle = T.rainbow ? `hsl(${(time * 300) % 360},100%,70%)` : T.empty; ctx.lineWidth = .3; ctx.stroke(tp); }
+    glowOff();
+  }
+  // centre en points ronds qui défilent
+  const core = grad ? L.core : [T.trailCore, .16, [0.06, 0.36], 1.5];
+  ctx.strokeStyle = core[0]; ctx.lineWidth = core[1]; ctx.lineCap = grad && L.cap || 'round';
+  ctx.setLineDash(core[2]); ctx.lineDashOffset = -time * core[3]; ctx.stroke(tp); ctx.setLineDash([]); ctx.lineCap = 'round';
   if (wave) {
     for (const f of [wave.lo, wave.hi]) {
       const k = Math.round(Math.max(0, Math.min(last, f)));
@@ -2996,7 +3063,7 @@ function drawPlayer(pp) {
   // Furtif camouflé : silhouette presque transparente qui ondule, comme de l'air chaud, avec un reflet qui glisse
   if (camoOn()) {
     const fade = Math.min(1, camo.on / .35), a = .1 + .05 * Math.sin(time * 11) + (1 - fade) * .5;
-    ctx.globalAlpha = a; drawHull(ctx, sh, { neon: T.rainbow, moving, px: scale });
+    ctx.globalAlpha = a; drawHull(ctx, sh, { neon: T.rainbow, moving, px: scale, ang: P.ang });
     ctx.translate(Math.sin(time * 23) * .07, Math.cos(time * 17) * .06);
     ctx.globalAlpha = a * .7; drawHull(ctx, sh, { neon: false, moving: false, px: scale });
     if (Math.sin(time * 5) > .7) { ctx.globalAlpha = .35; ctx.fillStyle = '#ffffff'; ctx.fillRect(-.4 + (time * 2 % 1) * .9, -.3, .06, .6); }
@@ -3019,13 +3086,13 @@ function drawPlayer(pp) {
   if (m > 0.02) {
     // dans la zone à conquérir : vaisseau effilé (nez pointu, deux ailerons à l'arrière, comme l'original)
     ctx.globalAlpha = m;
-    drawHull(ctx, sh, { neon, hot, rage, moving, fast: power.spd > 0 || power.hyp > 0, px: scale });
+    drawHull(ctx, sh, { neon, hot, rage, moving, fast: power.spd > 0 || power.hyp > 0, px: scale, ang: P.ang });
     ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
 // Coque du vaisseau (sert aussi à l'aperçu de l'écran de choix) : flamme qui ondule, coque en dégradé, cockpit lumineux.
-// o.hot : Super Casque (doré) ; o.rage : frénésie (rouge vif) ; o.px : pixels par case, pour les halos
+// o.hot : Super Casque (doré) ; o.rage : frénésie (rouge vif) ; o.px : pixels par case, pour les halos ; o.ang : rotation, pour l'éclairage
 function drawHull(g, sh, o) {
   const glow = (c, k) => { if (o.neon) { g.shadowColor = c; g.shadowBlur = o.px * k; } }, noGlow = () => { g.shadowBlur = 0; };
   if (o.moving) {
@@ -3035,21 +3102,70 @@ function drawHull(g, sh, o) {
     fg.addColorStop(0, o.neon ? 'rgba(255,255,255,0.95)' : `rgba(${fc},1)`); fg.addColorStop(.35, `rgba(${fc},0.9)`); fg.addColorStop(1, `rgba(${fc},0)`);
     g.fillStyle = fg;
     g.beginPath(); g.moveTo(x0 + .02, -w); g.quadraticCurveTo(x0 - fl * .6, -w * .66, x0 - fl, 0); g.quadraticCurveTo(x0 - fl * .6, w * .66, x0 + .02, w); g.closePath(); g.fill();
+    // cœur blanc de la flamme
+    if (o.neon) {
+      const cl = fl * .55, cw = w * .5, cg = g.createLinearGradient(x0, 0, x0 - cl, 0);
+      cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = cg;
+      g.beginPath(); g.moveTo(x0 + .02, -cw); g.quadraticCurveTo(x0 - cl * .6, -cw * .6, x0 - cl, 0); g.quadraticCurveTo(x0 - cl * .6, cw * .6, x0 + .02, cw); g.closePath(); g.fill();
+    }
   }
-  let hull = o.hot ? '#ffe27a' : T.playerSea;
-  if (o.neon && !o.hot) {
-    const gr = g.createLinearGradient(-.5, 0, .75, 0);
-    gr.addColorStop(0, o.rage ? '#ff1030' : sh.hullB); gr.addColorStop(1, o.rage ? '#ff9a9a' : sh.hullA); hull = gr;
-  }
-  glow(o.rage ? '#ff1f3d' : sh.glow, o.rage ? 2 : 1.3);
-  g.fillStyle = hull; sh.body(g);
-  noGlow();
   const [cx, rx, ry] = sh.pitXY, pit = o.hot ? '#ff7a4d' : o.rage ? '#fff1a8' : sh.pit;
-  if (o.neon) { glow(pit, 1); g.fillStyle = pit; } else g.fillStyle = T.playerSeaInk;
+  if (!o.neon) {
+    g.fillStyle = o.hot ? '#ffe27a' : T.playerSea; sh.body(g);
+    g.fillStyle = T.playerSeaInk; g.beginPath(); g.ellipse(cx, 0, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    if (sh.deco && !o.hot && !o.rage) sh.deco(g, o);
+    return;
+  }
+  // coque en relief (dessinée à part, voir hullSprite), avec son halo
+  const spr = hullSprite(sh, o);
+  glow(o.rage ? '#ff1f3d' : o.hot ? '#ffd23f' : sh.glow, o.rage ? 2 : 1.3);
+  g.drawImage(spr, HS_X, HS_Y, HS_W, HS_H);
+  noGlow();
+  // cockpit en verre : dégradé, liseré sombre et reflet
+  const pg = g.createRadialGradient(cx + rx * .3, -ry * .35, 0, cx, 0, Math.max(rx, ry) * 1.15);
+  pg.addColorStop(0, '#ffffff'); pg.addColorStop(.35, pit); pg.addColorStop(1, `rgb(${shadeRgb(pit, .45)})`);
+  glow(pit, 1); g.fillStyle = pg;
   g.beginPath(); g.ellipse(cx, 0, rx, ry, 0, 0, Math.PI * 2); g.fill();
   noGlow();
-  if (o.neon) { g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.ellipse(cx + rx * .25, -ry * .35, rx * .35, ry * .3, 0, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = 'rgba(10,8,40,0.45)'; g.lineWidth = .025; g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.ellipse(cx + rx * .25, -ry * .38, rx * .35, ry * .28, 0, 0, Math.PI * 2); g.fill();
   if (sh.deco && !o.hot && !o.rage) sh.deco(g, o);
+}
+// Coque en relief (thème couleur) : dessinée dans un petit canvas à part pour pouvoir l'ombrer. Dégradé de la coque,
+// ombrage selon une lumière qui vient d'en haut à gauche de l'écran (o.ang : rotation du vaisseau), liseré clair
+// côté lumière et liseré sombre de l'autre côté (la silhouette décalée sert de masque).
+const HS_X = -.72, HS_Y = -.72, HS_W = 1.8, HS_H = 1.44;
+var hullCv = null, hullCv2 = null;
+const shadeRgb = (h, f) => rgbOf(h).split(',').map(v => Math.round(v * f)).join(',');
+function hullSprite(sh, o) {
+  const res = Math.max(24, Math.min(170, Math.round(o.px * 1.6))), w = Math.ceil(HS_W * res), h = Math.ceil(HS_H * res);
+  if (!hullCv) { hullCv = document.createElement('canvas'); hullCv2 = document.createElement('canvas'); }
+  for (const c of [hullCv, hullCv2]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const a = hullCv.getContext('2d'), b = hullCv2.getContext('2d');
+  if (!a || !b) return hullCv;
+  a.setTransform(1, 0, 0, 1, 0, 0); a.globalCompositeOperation = 'source-over'; a.clearRect(0, 0, w, h);
+  a.setTransform(res, 0, 0, res, -HS_X * res, -HS_Y * res);
+  let fill = '#ffe27a';
+  if (!o.hot) { fill = a.createLinearGradient(-.5, 0, .75, 0); fill.addColorStop(0, o.rage ? '#ff1030' : sh.hullB); fill.addColorStop(1, o.rage ? '#ff9a9a' : sh.hullA); }
+  a.fillStyle = fill; sh.body(a);
+  // direction de la lumière dans le repère du vaisseau
+  const an = o.ang === undefined ? -Math.PI / 2 : o.ang, c = Math.cos(-an), s = Math.sin(-an);
+  const lx = c * -.55 - s * -.83, ly = s * -.55 + c * -.83;
+  a.globalCompositeOperation = 'source-atop';
+  const sg = a.createLinearGradient(lx * .6, ly * .6, -lx * .6, -ly * .6);
+  sg.addColorStop(0, 'rgba(255,255,255,0.3)'); sg.addColorStop(.5, 'rgba(255,255,255,0)'); sg.addColorStop(1, 'rgba(16,8,52,0.38)');
+  a.fillStyle = sg; a.fillRect(HS_X, HS_Y, HS_W, HS_H);
+  a.setTransform(1, 0, 0, 1, 0, 0);
+  const d = Math.max(1, res * .045);
+  for (const [k, col] of [[1, 'rgba(255,255,255,0.8)'], [-1, 'rgba(12,6,40,0.5)']]) {
+    b.globalCompositeOperation = 'source-over'; b.clearRect(0, 0, w, h);
+    b.drawImage(hullCv, 0, 0);
+    b.globalCompositeOperation = 'destination-out'; b.drawImage(hullCv, -lx * k * d, -ly * k * d);
+    b.globalCompositeOperation = 'source-in'; b.fillStyle = col; b.fillRect(0, 0, w, h);
+    a.globalCompositeOperation = 'source-atop'; a.drawImage(hullCv2, 0, 0);
+  }
+  a.globalCompositeOperation = 'source-over';
+  return hullCv;
 }
 
 // Halo lumineux additif (thème couleur seulement)
@@ -3725,7 +3841,7 @@ function drawTitle(dt) {
     g.fillStyle = tg; g.fillRect(x - px * .12, y + px * .4, px * .24, px * 3);
     g.save(); g.globalAlpha = Math.min(1, .35 + p.s * .5);
     g.setTransform(px, 0, 0, px, x, y); g.rotate(-Math.PI / 2 + sway * .14);
-    drawHull(g, p.sh, { neon: true, moving: true, px });
+    drawHull(g, p.sh, { neon: true, moving: true, px, ang: -Math.PI / 2 + sway * .14 });
     g.restore();
   }
   tships = tships.filter(p => p.y > -.12);
@@ -3865,7 +3981,7 @@ function drawPreview() {
     g.beginPath(); g.arc(0, 0, .98, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
   }
   g.rotate(-Math.PI / 2 + Math.sin(time * 1.3) * .08);
-  drawHull(g, sh, { neon: true, moving: true, px });
+  drawHull(g, sh, { neon: true, moving: true, px, ang: -Math.PI / 2 + Math.sin(time * 1.3) * .08 });
 }
 function startDemo() {
   resetGrid();
