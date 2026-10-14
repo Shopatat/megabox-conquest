@@ -202,7 +202,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
   const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20); g.usePower(); const stillOff = g.ab.on === 0;
   for (let i = 0; i < 299; i++) g.seaStep(); g.usePower(); const early = g.ab.on > 0; g.seaStep(); g.usePower();
-  { g.newGame(1, 5, 2); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`frénésie : bonus tirés ${[...ts].sort().join(' ')} (ni inv, ni spd, ni sspd)`); }
+  { g.newGame(1, 5, 2); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`frénésie : bonus tirés ${[...ts].sort().join(' ')} (ni inv, ni sup, ni spd, ni sspd)`); }
   console.log(`frénésie : pas dispo après 299 cases ${!early} ; finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 300 cases ${g.ab.on > 0}`);
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
