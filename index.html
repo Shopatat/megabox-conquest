@@ -243,6 +243,38 @@ details li b{color:var(--text);font-weight:600}
 @keyframes supglow{0%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}33%{box-shadow:0 0 0 2px #ff5dd2,0 0 28px #ff5dd2}66%{box-shadow:0 0 0 2px #46d9ff,0 0 28px #46d9ff}100%{box-shadow:0 0 0 2px #ffd23f,0 0 28px #ffd23f}}
 .lives.boost i:not(.off){animation:lifeboost .32s ease-out 4}
 @keyframes lifeboost{50%{transform:scaleY(1.35);background:#ffd23f;box-shadow:0 0 10px #ff5d8f}}
+/* ---- Écran titre (plein écran) ---- */
+.title{position:fixed;inset:0;z-index:20;overflow-y:auto;overflow-x:hidden;background:#06030f;transition:opacity .26s ease;scrollbar-width:none}
+.title::-webkit-scrollbar{display:none}
+.title.out{opacity:0;pointer-events:none}
+.title canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.tin{position:relative;min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:26px;
+  padding:max(30px,calc(env(safe-area-inset-top) + 20px)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.tlogo{display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:3vh;animation:tfloat 5s ease-in-out infinite}
+.tlogo .tsub{font-size:10px;font-weight:600;letter-spacing:.32em;color:#c9cdf2;padding:6px 13px;border:1px solid var(--line-2);border-radius:99px;background:rgba(10,8,30,.55);margin-bottom:18px}
+.tlogo b{display:block;font-family:var(--display);font-weight:400;line-height:.95;white-space:nowrap}
+.tlogo b i{display:inline-block;font-style:normal;-webkit-background-clip:text;background-clip:text;color:transparent}
+.tlogo .t1{font-size:min(15vw,74px);letter-spacing:.02em}
+.tlogo .t1 i{background-image:linear-gradient(180deg,#fff7d6 10%,#ffd23f 42%,#ff8a3d 60%,#ff3b7a 100%);filter:drop-shadow(0 4px 0 #4a0f3a) drop-shadow(0 0 16px rgba(255,92,138,.55))}
+.tlogo .t2{font-size:min(11.4vw,56px);letter-spacing:.06em;margin-top:8px}
+.tlogo .t2 i{background-image:linear-gradient(180deg,#effcff 10%,#43e0ff 46%,#8c6bff 100%);filter:drop-shadow(0 4px 0 #1a1050) drop-shadow(0 0 16px rgba(67,224,255,.5))}
+.tlogo .tag{margin-top:16px;font-size:13px;color:#c9cdf2;letter-spacing:.05em;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.title.intro .tlogo b i{animation:tdrop .7s var(--ease) both;animation-delay:calc(var(--i) * 65ms + .1s)}
+.title.intro .tlogo .t2 i{animation-delay:calc(var(--i) * 65ms + .55s)}
+.title.intro .tlogo .tag,.title.intro .tlogo .tsub{animation:cardin .6s ease 1.1s both}
+@keyframes tdrop{from{opacity:0;transform:translateY(-70px) scale(.5)}}
+@keyframes tfloat{50%{transform:translateY(-7px)}}
+.tmenu{width:100%;max-width:360px;display:grid;gap:12px;padding:16px;box-sizing:border-box;border-radius:24px;background:rgba(14,10,36,.66);border:1px solid var(--line-2);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.title.intro .tmenu{animation:cardin .55s var(--ease) .9s both}
+.tmenu .keys{margin:-3px 0 0;font-size:12.5px;line-height:1.4;color:var(--muted);text-align:center}
+.tmenu .btn.play{font-size:22px;padding:18px;letter-spacing:.14em;animation:pwpulse 1.8s ease-in-out infinite}
+.tmenu .duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tmenu .duo .btn{padding:11px 6px;font-size:11px}
+.tmenu .duo .btn:only-child{grid-column:1/-1}
+.tmenu .btn small{display:block;margin-top:4px;font-family:var(--body);font-size:9.5px;font-weight:600;letter-spacing:.14em;color:var(--muted)}
+.tfoot{display:flex;justify-content:center;gap:8px}
+@media (prefers-reduced-motion:reduce){.tlogo,.title.intro .tlogo b i,.title.intro .tmenu,.title.intro .tlogo .tag,.title.intro .tlogo .tsub,.tmenu .btn.play{animation:none}}
 /* ---- Finitions animées ---- */
 .card h1{background:linear-gradient(90deg,#ff5c8a,#ff9a4d,#ffd23f,#ff9a4d,#ff5c8a);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;animation:sheen 7s linear infinite;filter:none}
 .btn{position:relative;overflow:hidden;isolation:isolate}
@@ -261,6 +293,8 @@ details li b{color:var(--text);font-weight:600}
 </style>
 </head>
 <body>
+
+<div class="title" id="title" hidden><canvas id="titlecv" aria-hidden="true"></canvas><div class="tin" id="tin"></div></div>
 
 <div class="app">
   <header class="hud">
@@ -3267,6 +3301,7 @@ function itemIcon(type, color) {
 let last = performance.now();
 function frame(now) {
   let dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!titleEl.hidden) drawTitle(dt);
   if (slot && S.phase !== 'pause' && S.phase !== 'title') updateSlot(dt);
   if (slow > 0) { slow -= dt; dt *= 0.3; }
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
@@ -3396,29 +3431,91 @@ function endScreen(title, sub) {
 function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); }
 function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', `Tu as conquis les 25 niveaux en mode ${DIFFS[S.diff].name}.`); }
 
-function titleScreen() {
-  S.phase = 'title'; cv.style.filter = ''; slot = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
-  startDemo();
-  const maxL = Math.max(1, store.get('max' + menuDiff, 1));
-  menuLevel = Math.min(menuLevel, maxL);
-  const sv = store.get('save', null);
-  const best = store.get('best' + menuDiff, 0);
-  showOverlay(`
-    <h1><span>SAGEM · 2001 · REMIX</span>MEGABOX CONQUEST</h1>
-    <div class="seg" role="radiogroup" aria-label="Difficulté">
-      ${DIFFS.map((d, i) => `<button role="radio" aria-checked="${i === menuDiff}" data-d="${i}">${d.name.toUpperCase()}</button>`).join('')}
-    </div>
-    <p class="keys">${DIFFS[menuDiff].note}</p>
-    <div class="stepper"><span class="k">NIVEAU DE DÉPART</span>
-      <button id="lm" aria-label="Niveau précédent" ${menuLevel <= 1 ? 'disabled' : ''}>−</button>
-      <span class="v" id="lv">${pad2(menuLevel)}</span>
-      <button id="lp" aria-label="Niveau suivant" ${menuLevel >= maxL ? 'disabled' : ''}>+</button>
-    </div>
-    <button class="btn" id="go">NOUVEAU JEU</button>
-    ${sv ? `<button class="btn ghost" id="cont">CONTINUER · NIV ${pad2(sv.L)} · ${DIFFS[sv.d].short}</button>` : ''}
-    <button class="btn ghost" id="tmode">MODE TEST</button>
-    ${best ? `<div class="rows"><div><span>Record ${DIFFS[menuDiff].name}</span><span>${fmt(best)}</span></div></div>` : ''}
-    <details><summary>COMMENT JOUER</summary>
+// Écran titre plein écran (demande de Fabien) : il recouvre tout, HUD compris. Fond animé dans son propre canvas
+// (ciel de nuit, étoiles qui défilent, grille néon en perspective, vaisseaux du jeu qui passent), logo en lettres
+// qui tombent une à une à la première apparition, menu en verre dépoli en bas.
+const titleEl = $('title'), titleCv = $('titlecv'), titleCtx = titleCv.getContext('2d');
+const TSTARS = Array.from({ length: 170 }, () => ({ x: Math.random(), y: Math.random(), z: .15 + Math.random() * .85 }));
+let tships = [], tshipT = 0, titleTimer = 0;
+function showTitle(html) {
+  clearTimeout(titleTimer);
+  const first = titleEl.hidden || titleEl.classList.contains('out');
+  $('tin').innerHTML = html;
+  titleEl.classList.remove('out');
+  if (first) { titleEl.classList.remove('intro'); void titleEl.offsetWidth; titleEl.classList.add('intro'); titleEl.scrollTop = 0; }
+  titleEl.hidden = false;
+}
+function hideTitle() {
+  titleEl.classList.add('out');
+  clearTimeout(titleTimer);
+  titleTimer = setTimeout(() => { titleEl.hidden = true; titleEl.classList.remove('out', 'intro'); }, 260);
+}
+function drawTitle(dt) {
+  const c = titleCv, dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
+  if (!W || !H) return;
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const g = titleCtx, hz = H * .66;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+  // ciel de nuit et halos
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#0b0724'); sky.addColorStop(.6, '#1c0f44'); sky.addColorStop(.66, '#2a0f4a'); sky.addColorStop(1, '#06030f');
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  for (const [x, y, r, col] of [[.12, .16, .75, '140,107,255,.38'], [.92, .4, .6, '255,92,138,.24'], [.5, .66, .55, '67,224,255,.2']]) {
+    const hg = g.createRadialGradient(x * W, y * H, 0, x * W, y * H, r * W);
+    hg.addColorStop(0, `rgba(${col})`); hg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = hg; g.fillRect(0, 0, W, H);
+  }
+  // étoiles qui défilent lentement vers le bas, et scintillent
+  g.fillStyle = '#ffffff';
+  for (const s of TSTARS) {
+    s.y += dt * s.z * .045;
+    if (s.y > 1) { s.y -= 1; s.x = Math.random(); }
+    if (s.y * H > hz) continue;
+    g.globalAlpha = (.2 + .8 * s.z) * (.65 + .35 * Math.sin(time * 3 + s.x * 50));
+    const sz = dpr * (.5 + s.z * 1.5); g.fillRect(s.x * W, s.y * H, sz, sz);
+  }
+  g.globalAlpha = 1;
+  // grille néon en perspective, qui avance vers nous
+  g.save(); g.beginPath(); g.rect(0, hz, W, H - hz); g.clip();
+  const floor = g.createLinearGradient(0, hz, 0, H); floor.addColorStop(0, 'rgba(255,92,138,0.16)'); floor.addColorStop(1, 'rgba(8,4,20,0)');
+  g.fillStyle = floor; g.fillRect(0, hz, W, H - hz);
+  g.lineWidth = dpr * 1.2;
+  for (let k = -14; k <= 14; k++) {
+    g.strokeStyle = `rgba(255,92,180,${.5 - Math.abs(k) * .022})`;
+    g.beginPath(); g.moveTo(W / 2 + k * W * .035, hz); g.lineTo(W / 2 + k * W * .3, H); g.stroke();
+  }
+  for (let i = 0; i < 14; i++) {
+    const t = ((i + time * .7) % 14) / 14, y = hz + (H - hz) * Math.pow(t, 2.3);
+    g.strokeStyle = `rgba(140,107,255,${Math.min(1, t * 1.6) * .75})`;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+  }
+  g.restore();
+  // horizon lumineux
+  const hl = g.createLinearGradient(0, hz - 3 * dpr, 0, hz + 3 * dpr);
+  hl.addColorStop(0, 'rgba(255,154,77,0)'); hl.addColorStop(.5, 'rgba(255,190,120,0.95)'); hl.addColorStop(1, 'rgba(255,154,77,0)');
+  g.fillStyle = hl; g.fillRect(0, hz - 3 * dpr, W, 6 * dpr);
+  // les vaisseaux du jeu qui passent, du plus lointain au plus proche
+  tshipT -= dt;
+  if (tshipT <= 0) {
+    tshipT = .8 + Math.random() * 1.3;
+    tships.push({ sh: SHIPS[(Math.random() * SHIPS.length) | 0], x: .08 + Math.random() * .84, y: 1.12, v: .1 + Math.random() * .12, s: .55 + Math.random() * .75, ph: Math.random() * 6 });
+    tships.sort((a, b) => a.s - b.s);
+  }
+  for (const p of tships) {
+    p.y -= dt * p.v * (.6 + p.s * .6);
+    const px = W / 12 * p.s, sway = Math.sin(time * 1.2 + p.ph), x = p.x * W + sway * W * .025, y = p.y * H;
+    // traînée lumineuse derrière le réacteur
+    const tg = g.createLinearGradient(x, y, x, y + px * 3.2);
+    tg.addColorStop(0, `rgba(${rgbOf(p.sh.glow)},${.35 * p.s})`); tg.addColorStop(1, `rgba(${rgbOf(p.sh.glow)},0)`);
+    g.fillStyle = tg; g.fillRect(x - px * .12, y + px * .4, px * .24, px * 3);
+    g.save(); g.globalAlpha = Math.min(1, .35 + p.s * .5);
+    g.setTransform(px, 0, 0, px, x, y); g.rotate(-Math.PI / 2 + sway * .14);
+    drawHull(g, p.sh, { neon: true, moving: true, px });
+    g.restore();
+  }
+  tships = tships.filter(p => p.y > -.12);
+}
+// « Comment jouer », sur l'écran titre
+const HOWTO = `<details><summary>COMMENT JOUER</summary>
       <ul>
         <li>Pars de ton terrain et trace un fil dans la zone à conquérir. En revenant sur ton terrain, toute la zone sans boule ni perforateur est conquise.</li>
         <li><b>Boule</b> : si elle touche ton fil, une onde de choc le remonte. Regagne ton terrain avant qu'elle te rattrape !</li>
@@ -3434,13 +3531,55 @@ function titleScreen() {
         <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une machine à sous). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
-    </details>`, () => showShips(false));
-  ov.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { menuDiff = +b.dataset.d; store.set('diff', menuDiff); menuLevel = 1; titleScreen(); }));
+    </details>`;
+function titleScreen() {
+  S.phase = 'title'; cv.style.filter = ''; slot = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
+  startDemo();
+  // plus d'écran dans le terrain : l'écran titre recouvre tout
+  clearTimeout(ovTimer); ov.hidden = true; ov.innerHTML = ''; ov.classList.remove('out'); shipPick = null;
+  const maxL = Math.max(1, store.get('max' + menuDiff, 1));
+  menuLevel = Math.min(menuLevel, maxL);
+  const sv = store.get('save', null);
+  const best = store.get('best' + menuDiff, 0);
+  const letters = (w, i0) => [...w].map((c, i) => `<i style="--i:${i0 + i}">${c}</i>`).join('');
+  showTitle(`
+    <div class="tlogo">
+      <span class="tsub">SAGEM · 2001 · REMIX</span>
+      <b class="t1">${letters('MEGABOX', 0)}</b>
+      <b class="t2">${letters('CONQUEST', 0)}</b>
+      <span class="tag">Conquiers l'espace, case par case</span>
+    </div>
+    <div class="tmenu">
+      <div class="seg" role="radiogroup" aria-label="Difficulté">
+        ${DIFFS.map((d, i) => `<button role="radio" aria-checked="${i === menuDiff}" data-d="${i}">${d.name.toUpperCase()}</button>`).join('')}
+      </div>
+      <p class="keys">${DIFFS[menuDiff].note}</p>
+      <div class="stepper"><span class="k">NIVEAU DE DÉPART</span>
+        <button id="lm" aria-label="Niveau précédent" ${menuLevel <= 1 ? 'disabled' : ''}>−</button>
+        <span class="v" id="lv">${pad2(menuLevel)}</span>
+        <button id="lp" aria-label="Niveau suivant" ${menuLevel >= maxL ? 'disabled' : ''}>+</button>
+      </div>
+      <button class="btn play" id="tgo">JOUER</button>
+      <div class="duo">
+        ${sv ? `<button class="btn ghost" id="cont">CONTINUER<small>NIV ${pad2(sv.L)} · ${DIFFS[sv.d].short}</small></button>` : ''}
+        <button class="btn ghost" id="tmode">MODE TEST<small>BAC À SABLE</small></button>
+      </div>
+      ${best ? `<div class="rows"><div><span>Record ${DIFFS[menuDiff].name}</span><span>${fmt(best)}</span></div></div>` : ''}
+      ${HOWTO}
+      <div class="tfoot"><button class="mini" id="tscr">${$('scr').textContent}</button><button class="mini" id="tsnd">${$('snd').textContent}</button></div>
+    </div>`);
+  onGo = () => { hideTitle(); showShips(false); };
+  const tin = $('tin');
+  $('tgo').addEventListener('click', () => { ensureAudio(); go(); });
+  tin.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { menuDiff = +b.dataset.d; store.set('diff', menuDiff); menuLevel = 1; titleScreen(); }));
   const lm = $('lm'), lp = $('lp');
   lm && lm.addEventListener('click', () => { menuLevel = Math.max(1, menuLevel - 1); titleScreen(); });
   lp && lp.addEventListener('click', () => { menuLevel = Math.min(maxL, menuLevel + 1); titleScreen(); });
-  const c = $('cont'); c && c.addEventListener('click', () => { onGo = null; continueGame(); });
-  $('tmode').addEventListener('click', () => { onGo = null; ensureAudio(); showShips(true); });
+  const c = $('cont'); c && c.addEventListener('click', () => { onGo = null; hideTitle(); continueGame(); });
+  $('tmode').addEventListener('click', () => { onGo = null; ensureAudio(); hideTitle(); showShips(true); });
+  // son et thème : les mêmes boutons que le pied de page, recopiés ici
+  $('tscr').addEventListener('click', e => { $('scr').click(); e.currentTarget.textContent = $('scr').textContent; });
+  $('tsnd').addEventListener('click', e => { $('snd').click(); e.currentTarget.textContent = $('snd').textContent; });
   S.diff = menuDiff; S.level = menuLevel; S.score = 0; S.ship = menuShip; S.lives = SH().lives;
   hud(); powersHud(); pwHud();
 }
@@ -3616,7 +3755,7 @@ const KEYS = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'rig
 addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if (k === 'Enter' && onGo && !ov.hidden) { e.preventDefault(); ensureAudio(); go(); return; }
+  if (k === 'Enter' && onGo && (!ov.hidden || !titleEl.hidden)) { e.preventDefault(); ensureAudio(); go(); return; }
   if (shipPick && !ov.hidden && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); shipPick.step(menuShip + (k === 'ArrowRight' ? 1 : -1)); return; }
   if (plan) {
     const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], z: [0, -1], w: [0, -1], s: [0, 1], q: [-1, 0], a: [-1, 0], d: [1, 0] }[k];
