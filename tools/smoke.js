@@ -468,6 +468,14 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   start(); const side = g.makeFoe('out', 1); side.x = PX() + 1.4; side.y = PY() + 6; side.vx = 0; side.vy = 0; g.foes.push(side); g.usePower(); step(20);
   console.log(`prédateur, SANG ! : ${drain.toFixed(2)} s perdues en 1 s ; une proie à ×1 rend ${gain.toFixed(1)} s ; doublé dans un bond (${d1.dead && d2.dead}) : 10 -> ${dbl.toFixed(1)} s ; proie à 1,4 case du trajet mordue ${side.dead}`);
   start(); g.pred.blood = .05; step(5); const ph = g.S.phase, lv = g.S.lives; step(200);
+  // élan : après une proie, l'ennemi suivant percuté sur sa lancée est mangé (et non un crash) ; l'élan retombé, un contact tue
+  start(); const q1 = g.makeFoe('out', 1); q1.x = PX(); q1.y = PY() + 4; q1.vx = 0; q1.vy = 0; g.foes.push(q1);
+  g.usePower(); let nn = 0; while (g.pred.bite > 0 && nn++ < 60) step();
+  const q2 = g.makeFoe('out', 1); q2.x = PX(); q2.y = PY() + 1.3; q2.vx = 0; q2.vy = 0; g.foes.push(q2); step(6);
+  const carried = q1.dead && q2.dead && g.S.phase === 'play';
+  nn = 0; while ((g.pred.bite > 0 || g.pred.tail > 0) && nn++ < 120) step(); step(2);
+  const q3 = g.makeFoe('out', 1); q3.x = PX(); q3.y = PY() + 1.3; q3.vx = 0; q3.vy = 0; g.foes.push(q3); step(8);
+  console.log(`prédateur, élan : proie suivante percutée juste après le bond mangée ${carried} ; élan retombé, contact -> ${g.S.phase}`);
   console.log(`prédateur, SANG ! à sec -> ${ph}, ${lv} vie(s) ; il repart avec ${g.pred.blood.toFixed(0)} s de sang`);
 }
 

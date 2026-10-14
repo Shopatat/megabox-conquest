@@ -641,9 +641,13 @@ const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 6, PRED_MAX = 5, PRED_FEAR = 8;
 // en continu (plus vite avec le niveau) et chaque proie la remplit de 4 s + 2 s × combo, +4 s par proie en plus dans le même bond
 const BLOOD_MAX = 30, BLOOD_START = 20, BLOOD_LOW = .25;
 // heat : intensité du carnage (0 à 1, suit le combo en douceur) ; hb : phase du battement de cœur ; beat : battement en cours
-const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false, heat: 0, hb: 0, beat: 0, blood: BLOOD_START, kills: 0, lowHb: 0, sw: 0 };
+const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false, heat: 0, hb: 0, beat: 0, blood: BLOOD_START, kills: 0, lowHb: 0, sw: 0, tail: 0 };
 // il avale : la coque gonfle un instant après chaque proie (PRED_SWALLOW s)
 const PRED_SWALLOW = .42;
+// élan (demande de Fabien : il fonçait par inertie sur la proie suivante et mourait) : chaque proie prolonge le bond d'au
+// moins PRED_CARRY s, et après le bond les mâchoires restent ouvertes PRED_TAIL s tant qu'il file sur sa lancée (pred.tail)
+const PRED_CARRY = .22, PRED_TAIL = .35;
+const jawsOpen = () => pred.bite > 0 || pred.tail > 0;
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
@@ -1103,7 +1107,7 @@ function setupLevel(L, instant) {
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
-  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; pred.blood = BLOOD_START; pred.kills = 0; stains = []; drops = [];
+  pred.bite = 0; pred.tail = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; pred.blood = BLOOD_START; pred.kills = 0; stains = []; drops = [];
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -1613,7 +1617,7 @@ function hitPlayer(e) {
   if (S.phase !== 'play') return;
   if (power.sup > 0) { if (e) smash(e); return; }
   // Prédateur : pendant un bond (ou sous Casque), il dévore ce qu'il touche ; le trou noir et le spectre invisible ne se mangent pas
-  if (SH().key === 'pred' && e && (pred.bite > 0 || helmet()) && devour(e)) return;
+  if (SH().key === 'pred' && e && (jawsOpen() || helmet()) && devour(e)) return;
   if (helmet() || P.shield) return;
   if (invuln > 0 && !P.drawing) return;
   if (SH().key === 'enc' && absorb(e)) return;
@@ -1762,10 +1766,11 @@ function updatePred(dt) {
   const low = bloodLow();
   if (low > 0 && !pred.combo) { const prev = pred.lowHb; pred.lowHb += dt * (48 + 30 * low) / 60; if (Math.floor(pred.lowHb) !== Math.floor(prev)) sfx.heavyHeart(); }
   if (pred.sw > 0) pred.sw = Math.max(0, pred.sw - dt);
-  if (pred.bite > 0) predCheck();
+  if (jawsOpen()) predCheck();
+  if (pred.tail > 0) pred.tail = Math.max(0, pred.tail - dt);
   if (pred.bite > 0) {
-    // une proie dévorée pendant ce bond : pas de recharge, on peut rebondir aussitôt
-    pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.cd = pred.again ? 0 : PRED_CD; pred.again = false; } pwHud();
+    // une proie dévorée pendant ce bond : pas de recharge, on peut rebondir aussitôt ; il garde l'élan, mâchoires ouvertes
+    pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.cd = pred.again ? 0 : PRED_CD; pred.again = false; pred.tail = PRED_TAIL; } pwHud();
   }
   else if (pred.cd > 0) { pred.cd = Math.max(0, pred.cd - dt); if (!pred.cd) sfx.ready(); pwHud(); }
   if (pred.combo > 0 && (pred.ct -= dt) <= 0) { pred.combo = 0; pred.ct = 0; powersHud(); }
@@ -1790,7 +1795,7 @@ function exsangue() {
 // pendant le bond (ou sous Casque), chaque case parcourue dévore les proies à portée de mâchoires
 // (le trou noir et le spectre invisible ne comptent qu'au contact, comme pour les autres vaisseaux)
 function predCheck() {
-  if (S.phase !== 'play' || !(pred.bite > 0 || helmet())) return;
+  if (S.phase !== 'play' || !(jawsOpen() || helmet())) return;
   const pp = playerPos(), reach = biteReach();
   for (const e of foes) {
     if (S.phase !== 'play') return;
@@ -1807,6 +1812,8 @@ function devour(e) {
   pred.combo = Math.min(PRED_MAX, pred.combo + 1); pred.ct = PRED_WIN; pred.cd = 0; pred.again = true;
   const c = pred.combo, x = e.x, y = e.y, split = e.kind === 'div' && e.gen < 2;
   pred.sw = PRED_SWALLOW;
+  // il garde l'élan : le bond se prolonge, ou l'élan repart pour une proie mangée sur sa lancée
+  if (pred.bite > 0) pred.bite = Math.max(pred.bite, PRED_CARRY); else if (pred.tail > 0) pred.tail = PRED_TAIL;
   // SANG ! : chaque proie remplit la jauge, d'autant plus que le carnage est fort ; plusieurs proies d'un même bond rapportent plus
   if (pred.bite > 0) pred.kills++;
   const multi = pred.bite > 0 && pred.kills >= 2, gain = 4 + 2 * c + (multi ? 4 : 0);
@@ -2536,7 +2543,7 @@ function crash() {
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   plan = null; dash = null;
-  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false;
+  pred.bite = 0; pred.tail = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false;
   powersHud(); pwHud();
   sfx.crash();
 }
@@ -3396,7 +3403,7 @@ function drawPlayer(pp) {
   }
   // Prédateur : aura rouge qui grossit avec le combo ; pendant le bond, traits de vitesse ; arc de morsure (sa portée)
   if (SH().key === 'pred' && S.phase !== 'crash' && T.glow) {
-    const R = .9 + biteReach(), fa = Math.atan2(P.face.y, P.face.x), on = pred.bite > 0;
+    const R = .9 + biteReach(), fa = Math.atan2(P.face.y, P.face.x), on = jawsOpen();
     ctx.lineCap = 'round';
     ctx.strokeStyle = on ? 'rgba(255,60,70,0.7)' : `rgba(255,42,58,${.16 + .05 * pred.combo})`; ctx.lineWidth = on ? .12 : .07;
     ctx.beginPath(); ctx.arc(pp.x, pp.y, R, fa - .9, fa + .9); ctx.stroke();
@@ -3454,7 +3461,7 @@ function drawPlayer(pp) {
     // dans la zone à conquérir : vaisseau effilé (nez pointu, deux ailerons à l'arrière, comme l'original)
     ctx.globalAlpha = m;
     if (sh.key === 'pred') {
-      jaw = pred.bite > 0 ? 1 : .12 + .08 * Math.sin(time * 7);
+      jaw = jawsOpen() ? 1 : .12 + .08 * Math.sin(time * 7);
       // il respire (plus vite avec le carnage) et gonfle un instant en avalant
       const sw = pred.sw > 0 ? Math.sin((1 - pred.sw / PRED_SWALLOW) * Math.PI) * .14 : 0, br = 1 + .035 * Math.sin(time * (2.4 + 3 * pred.heat)) + sw;
       ctx.scale(br, br * (1 - sw * .3));
