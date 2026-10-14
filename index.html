@@ -80,6 +80,8 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw.chip.on .in{background:radial-gradient(circle,#ffd23f 0 50%,transparent 51%),repeating-conic-gradient(#ff3b5c 0 22.5deg,#fff 22.5deg 45deg);color:#5a0010;animation:chipspin .5s linear infinite}
 @keyframes chipspin{to{transform:rotate(1turn)}}
 @keyframes pwpulse{50%{box-shadow:0 0 0 5px rgba(255,154,77,.12),0 0 26px rgba(255,92,138,.8)}}
+/* machine à sous du Flambeur, à gauche du jeton */
+.slotcv{flex:none;width:96px;height:40px;margin-right:-2px}
 .pbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0;cursor:pointer;border-radius:13px;
   background:rgba(255,255,255,.06);border:1px solid var(--line-2);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);transition:transform .15s var(--ease),background .2s}
 .pbtn i{width:4px;height:13px;background:var(--text);border-radius:2px}
@@ -268,6 +270,7 @@ details li b{color:var(--text);font-weight:600}
         <span class="v" id="score" aria-label="Score">0</span>
         <span class="lives" id="lives" aria-label="Vies"></span>
       </div>
+      <canvas class="slotcv" id="slotcv" hidden aria-hidden="true"></canvas>
       <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span></button>
       <button class="pbtn" id="pz" aria-label="Pause"><i></i><i></i></button>
     </div>
@@ -507,7 +510,9 @@ const store = {
 };
 
 const $ = id => document.getElementById(id);
-const cv = $('cv'), ctx = cv.getContext('2d'), stage = $('stage'), ov = $('ov');
+const cv = $('cv'), stage = $('stage'), ov = $('ov');
+// contexte de dessin courant (prêté un instant au canvas de la machine à sous du Flambeur)
+let ctx = cv.getContext('2d');
 const bg = document.createElement('canvas'), gctx = bg.getContext('2d');
 const board = document.createElement('canvas'), bctx = board.getContext('2d');
 
@@ -1723,9 +1728,11 @@ function armorHit(src) {
 // l'autre). Le bouton du HUD en dépense un et lance la machine à sous : surtout des objets améliorés (plus longs,
 // combinés), quelques gros lots, et environ 17 % de coups durs. La machine tourne dans un coin du terrain, en fond :
 // le jeu continue à vitesse normale (une première version, une roue de la fortune, cachait le terrain et ralentissait tout).
+// Elle est dans le HUD, juste à gauche du jeton.
 const CHIPS_MAX = 5;
-// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test)
-const gam = { chips: 1, snail: 0, free: 0, force: '' };
+// chips : jetons ; snail : traversées restantes à vitesse réduite ; free : tours gratuits ; force : gain imposé (mode test) ;
+// last : dernier gain, affiché par la machine au repos
+const gam = { chips: 1, snail: 0, free: 0, force: '', last: 0 };
 let slot = null;
 // Gains : poids (en %), les 3 rouleaux (deux icônes et une étiquette : durée avec un chrono, « + », X2… ; ou trois fois
 // le même symbole pour les gros lots et les coups durs), texte du gain. bad : coup dur ; gold : gros lot.
@@ -1748,6 +1755,7 @@ const SLOT = [
   { k: 'skull', w: 3, r: ['skull', 'skull', 'skull'], bad: 1, txt: 'PERDU !' }
 ];
 // symboles qui défilent sur les rouleaux pendant qu'ils tournent
+gam.last = SLOT.findIndex(s => s.k === 'jack');
 const SLOT_POOL = ['inv', 'spd', 'chr', 'terr', 'life', 'sup', 'bomb', 'coin', '777', 'holdup', 'snail', 'frag', 'skull'];
 // arrêt de chaque rouleau (s), puis affichage du gain et disparition
 const SLOT_STOP = [.9, 1.35, 1.8], SLOT_SHOW = 1.4, SLOT_OUT = .35;
@@ -1766,9 +1774,7 @@ function spinSlot() {
 function startSpin(forced) {
   let idx = S.test && forced ? SLOT.findIndex(s => s.k === gam.force) : -1;
   if (idx < 0) { let r = Math.random() * 100; idx = SLOT.findIndex(s => (r -= s.w) < 0); if (idx < 0) idx = 0; }
-  // la machine se met dans le coin du haut le plus éloigné du vaisseau
-  const left = slot ? slot.left : playerPos().x > COLS / 2;
-  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, left, stopped: 0, free: !forced, ph: [Math.random() * 13, Math.random() * 13, Math.random() * 13] };
+  slot = { st: 'spin', t: 0, age: slot ? slot.age : 0, idx, stopped: 0, free: !forced, ph: [Math.random() * 13, Math.random() * 13, Math.random() * 13] };
   sfx.spin(); pwHud();
 }
 // la machine avance en temps réel, en fond (appelée par frame(), sauf en pause)
@@ -1780,7 +1786,7 @@ function updateSlot(dt) {
       m.stopped++;
       if (!muted) { tone(180, .08, 'square', .05); tone(1200 + m.stopped * 200, .05, 'triangle', .03, 0, .02); }
     }
-    if (m.stopped === 3) { m.st = 'win'; m.t = 0; slotWin(SLOT[m.idx]); pwHud(); }
+    if (m.stopped === 3) { m.st = 'win'; m.t = 0; gam.last = m.idx; slotWin(SLOT[m.idx]); pwHud(); }
     else if (!muted && Math.floor(m.age * 16) !== Math.floor((m.age - dt) * 16)) tone(1500 + Math.random() * 400, .015, 'square', .012);
   } else if (m.st === 'win') {
     if (m.t >= SLOT_SHOW) { if (gam.free > 0) { gam.free--; startSpin(); } else { m.st = 'out'; m.t = 0; } }
@@ -1800,6 +1806,7 @@ function seaNear() {
 }
 function slotWin(s) {
   const pp = playerPos(), gold = T.rainbow ? '#ffd23f' : T.shock;
+  popups.push({ x: pp.x, y: pp.y - 2.2, text: s.txt, age: 0, color: s.bad ? T.danger : (T.rainbow ? '#ffd23f' : T.ball), hue: !!s.gold });
   rings.push({ x: pp.x, y: pp.y, r: 0, max: s.bad ? 6 : 10, age: 0, color: s.bad ? T.danger : gold, big: !s.bad });
   if (s.bad) { sfx.lose(); flash = Math.max(flash, .3); shake = REDUCED ? 0 : .6; }
   else if (s.k === 'jack') sfx.jackpot();
@@ -1928,51 +1935,51 @@ function slotIcon(type, sz, bad) {
   } else itemIcon(type, ink(T.items[type]));
   ctx.restore();
 }
-// Machine à sous du Flambeur, dans un coin du haut du terrain ; elle s'efface quand le vaisseau passe dessous
+// Machine à sous du Flambeur, dans le HUD à gauche du jeton (demande de Fabien) : elle tourne en fond pendant qu'on joue.
+// Au repos, elle montre le dernier tirage, en sourdine. Dessinée dans son propre canvas, avec les mêmes icônes (on
+// prête le canvas à ctx le temps du dessin).
 const SLOT_RW = 5, SLOT_RH = 5, SLOT_W = 3 * SLOT_RW + 2 * .45 + 2 * .7, SLOT_H = SLOT_RH + 1.4 + .7;
+const slotCv = $('slotcv'), slotCtx = slotCv.getContext('2d');
 function drawSlot() {
-  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m.idx], won = m.st !== 'spin';
-  const x0 = m.left ? 2.6 : COLS - 3.9 - SLOT_W, y0 = 2.6, pp = P ? playerPos() : null;
-  let a = m.st === 'out' ? Math.max(0, 1 - m.t / SLOT_OUT) : Math.min(1, m.age / .2);
-  if (pp && pp.x > x0 - 2 && pp.x < x0 + SLOT_W + 3.3 && pp.y > y0 - 2 && pp.y < y0 + SLOT_H + 4) a *= .3;
-  const pop = m.st === 'out' ? 1 : Math.min(1, .8 + m.age * 1.5);
-  ctx.save(); ctx.globalAlpha = a;
-  ctx.translate(x0 + SLOT_W / 2, y0 + SLOT_H / 2); ctx.scale(pop, pop); ctx.translate(-SLOT_W / 2, -SLOT_H / 2);
-  // levier, abaissé au lancement puis qui remonte
-  const pull = m.st === 'spin' ? Math.max(0, 1 - m.t / .5) : 0, lx = SLOT_W + .55, ly = 2.4 + pull * 2.6;
-  ctx.strokeStyle = T.rainbow ? '#c9cdf2' : T.ball; ctx.lineWidth = .28; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(SLOT_W, SLOT_H * .62); ctx.lineTo(lx, SLOT_H * .62); ctx.lineTo(lx, ly); ctx.stroke();
-  ctx.fillStyle = T.rainbow ? '#ff3b5c' : T.ball; ctx.beginPath(); ctx.arc(lx, ly - .35, .55, 0, Math.PI * 2); ctx.fill();
-  // caisse : jante dorée qui clignote au gain (rouge pour un coup dur)
-  const flashOn = won && Math.floor(m.t * 8) % 2 === 0 && m.st === 'win';
+  const c = slotCv;
+  if (!c.clientWidth) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const main = ctx; ctx = slotCtx;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+  const k = Math.min(w / SLOT_W, h / SLOT_H); ctx.setTransform(k, 0, 0, k, (w - SLOT_W * k) / 2, (h - SLOT_H * k) / 2);
+  const m = slot, gold = T.rainbow ? '#ffd23f' : T.ball, s = SLOT[m ? m.idx : gam.last], won = m && m.st !== 'spin', idle = !m;
+  // caisse : jante dorée qui clignote au gain (rouge pour un coup dur, arc-en-ciel au jackpot)
+  const flashOn = won && m.st === 'win' && Math.floor(m.t * 8) % 2 === 0;
   const rim = flashOn ? (s.bad ? T.danger : s.k === 'jack' && T.rainbow ? `hsl(${(time * 400) % 360},100%,60%)` : '#ffffff') : gold;
-  glowOn(rim, flashOn ? 3 : 1.6);
-  ctx.fillStyle = T.rainbow ? '#2a0f24' : T.ball; rrect(0, 0, SLOT_W, SLOT_H, 1); ctx.fill(); glowOff();
-  ctx.strokeStyle = rim; ctx.lineWidth = .22; rrect(0, 0, SLOT_W, SLOT_H, 1); ctx.stroke();
-  // ampoules du fronton
-  for (let k = 0; k < 9; k++) {
-    ctx.fillStyle = (k + Math.floor(time * 7)) % 2 ? (T.rainbow ? '#7a5a18' : T.landA) : (T.rainbow ? '#fff3b0' : T.empty);
-    ctx.beginPath(); ctx.arc(1.1 + k * (SLOT_W - 2.2) / 8, .75, .2, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = idle ? .55 : 1;
+  ctx.fillStyle = T.rainbow ? '#2a0f24' : T.ball; rrect(.15, .15, SLOT_W - .3, SLOT_H - .3, 1); ctx.fill();
+  ctx.strokeStyle = rim; ctx.lineWidth = flashOn ? .4 : .25; ctx.stroke();
+  // ampoules du fronton (elles défilent quand la machine tourne)
+  for (let b = 0; b < 9; b++) {
+    const lit = idle ? b % 2 === 0 : (b + Math.floor(time * 9)) % 2;
+    ctx.fillStyle = lit ? (T.rainbow ? '#fff3b0' : T.empty) : (T.rainbow ? '#7a5a18' : T.landA);
+    ctx.beginPath(); ctx.arc(1.1 + b * (SLOT_W - 2.2) / 8, .78, .24, 0, Math.PI * 2); ctx.fill();
   }
   // rouleaux
   const ry = 1.4;
-  for (let k = 0; k < 3; k++) {
-    const rx = .7 + k * (SLOT_RW + .45);
+  for (let r = 0; r < 3; r++) {
+    const rx = .7 + r * (SLOT_RW + .45);
     ctx.save();
     ctx.fillStyle = T.rainbow ? '#120a1c' : T.empty; rrect(rx, ry, SLOT_RW, SLOT_RH, .45); ctx.fill(); ctx.clip();
     const cx = rx + SLOT_RW / 2, cy = ry + SLOT_RH / 2, step = SLOT_RH * .85;
-    if (won || k < m.stopped) {
+    if (idle || won || r < m.stopped) {
       // rouleau arrêté : le symbole final arrive d'en haut avec un petit rebond
-      const ts = won ? 1 : m.t - SLOT_STOP[k], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
-      ctx.save(); ctx.translate(cx, cy + off); slotIcon(s.r[k], 2.7, s.bad); ctx.restore();
+      const ts = idle || won ? 1 : m.t - SLOT_STOP[r], off = ts < .16 ? -(1 - ts / .16) * step * .45 : ts < .3 ? Math.sin((ts - .16) / .14 * Math.PI) * .25 : 0;
+      ctx.save(); ctx.translate(cx, cy + off); slotIcon(s.r[r], 2.7, s.bad); ctx.restore();
     } else {
       // rouleau qui tourne : les symboles défilent vers le bas, un peu flous
-      const p = m.ph[k] + m.age * 14, i = Math.floor(p), f = p - i;
-      ctx.globalAlpha = a * .75;
+      const p = m.ph[r] + m.age * 14, i = Math.floor(p), f = p - i;
+      ctx.globalAlpha = .75;
       for (const [j, dy] of [[i, f * step], [i + 1, (f - 1) * step], [i - 1, (f + 1) * step]]) {
         ctx.save(); ctx.translate(cx, cy + dy); ctx.scale(1, 1.25); slotIcon(SLOT_POOL[((j % SLOT_POOL.length) + SLOT_POOL.length) % SLOT_POOL.length], 2.5); ctx.restore();
       }
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = 1;
     }
     // ombre en haut et en bas du rouleau (effet cylindre)
     if (T.rainbow) {
@@ -1983,20 +1990,10 @@ function drawSlot() {
     ctx.restore();
   }
   // ligne de gain
-  ctx.strokeStyle = won ? (s.bad ? T.danger : gold) : 'rgba(255,210,63,0.35)'; ctx.lineWidth = .1;
-  ctx.beginPath(); ctx.moveTo(.35, ry + SLOT_RH / 2); ctx.lineTo(SLOT_W - .35, ry + SLOT_RH / 2); ctx.stroke();
-  // texte sous la machine : le gain, ou les tours gratuits restants
-  const say = (t, c, hue) => {
-    let sz = 1.5; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`;
-    const tw = ctx.measureText(t).width; if (tw > 30) { sz *= 30 / tw; ctx.font = `700 ${sz}px Silkscreen, "Courier New", monospace`; }
-    // aligné sur le bord de la machine, pour ne pas sortir du terrain
-    const tx = m.left ? 0 : SLOT_W; ctx.textAlign = m.left ? 'left' : 'right'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = T.textShadow; ctx.fillText(t, tx + .12, SLOT_H + 1.3 + .12);
-    ctx.fillStyle = hue && T.rainbow ? `hsl(${(time * 360) % 360},100%,65%)` : c; ctx.fillText(t, tx, SLOT_H + 1.3);
-  };
-  if (won) say(s.txt, s.bad ? T.danger : gold, s.gold);
-  else if (m.free) say('TOUR GRATUIT', gold);
-  ctx.restore();
+  ctx.strokeStyle = won ? (s.bad ? T.danger : gold) : 'rgba(255,210,63,0.35)'; ctx.lineWidth = .12;
+  ctx.beginPath(); ctx.moveTo(.4, ry + SLOT_RH / 2); ctx.lineTo(SLOT_W - .4, ry + SLOT_RH / 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx = main;
 }
 
 /* ---------- Crash ---------- */
@@ -2295,7 +2292,7 @@ const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 
 function pwHud() {
   const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam');
   if (b.hidden === show) b.hidden = !show;
-  if (!show) { pwSig = ''; return; }
+  if (!show) { pwSig = ''; slotCv.hidden = true; return; }
   let cls, p, inner, label;
   if (k === 'fre') {
     if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
@@ -2318,6 +2315,7 @@ function pwHud() {
     if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_CELLS; inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
     else { cls = 'guard'; p = 1; inner = SHIELDI; label = 'Bouclier prêt'; }
   }
+  const sl = k === 'gam'; if (slotCv.hidden === sl) slotCv.hidden = !sl;
   b.style.setProperty('--p', p.toFixed(3));
   const sig = cls + inner;
   if (sig === pwSig) return;
@@ -2453,7 +2451,6 @@ function render() {
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawFx();
-  if (slot) drawSlot();
 }
 function drawFoe(e) {
   {
@@ -3229,6 +3226,7 @@ function frame(now) {
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
   if (scale > 0 && cv.width) { update(dt); render(); }
   if (shipPick) drawPreview();
+  if (!slotCv.hidden) drawSlot();
   requestAnimationFrame(frame);
 }
 
