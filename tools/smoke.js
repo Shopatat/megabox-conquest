@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -433,16 +433,42 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`entre deux niveaux : recharge frénésie ${cdKept} (40), bouclier ${guardKept} (30), jauge rembobinage ${g.rw.charge} (1.2)`);
 }
 
+// 5q) Prédateur : pas de fil, le bond dévore, combo qui accélère, terrain conquis autour des proies, contact hors bond = crash,
+// fuite des proies, trou noir immangeable, massacre de toutes les proies = toute la zone conquise
+{
+  const PR = g.SHIPS.findIndex(sh => sh.key === 'pred');
+  const start = () => { g.newGame(1, 1, PR); g.go(); g.foes.length = 0; const k = g.makeFoe('out', 1); k.x = 45.5; k.y = 60.5; k.vx = 0; k.vy = 0; g.foes.push(k); g.setDir('down'); step(80); return k; };
+  start();
+  const noTrail = g.trail.length === 0 && !g.P.drawing;
+  const prey = g.makeFoe('out', 1); prey.x = PX(); prey.y = PY() + 5; prey.vx = 0; prey.vy = 0; g.foes.push(prey);
+  const f0 = g.S.filled, s0 = g.S.score;
+  g.usePower(); step(20);
+  console.log(`prédateur : sans fil ${noTrail} ; bond -> proie dévorée ${prey.dead}, combo ${g.pred.combo}, +${((g.S.filled - f0) / g.S.interior * 100).toFixed(1)} % de terrain, +${g.S.score - s0} points, phase ${g.S.phase}`);
+  const speed = c => { start(); g.pred.combo = c; g.pred.ct = 99; g.setDir('right'); step(2); const x = g.P.x; step(30); return (g.P.x - x) / G * 2; };
+  const v0 = speed(0), v3 = speed(3), v5 = speed(5);
+  start(); g.pred.combo = 5; g.pred.ct = 99; g.setDir('right'); step(2); const xb = g.P.x; g.usePower(); step(6); const vb = (g.P.x - xb) / G * 10;
+  console.log(`prédateur : ${v0.toFixed(0)} cases/s, combo ×3 ${v3.toFixed(0)}, ×5 ${v5.toFixed(0)}, bond à ×5 ${vb.toFixed(0)}`);
+  start(); const b = g.makeFoe('out', 1); b.x = PX(); b.y = PY() + .7; b.vx = 0; b.vy = -7.2; g.foes.push(b); step(10);
+  console.log(`prédateur : touché hors du bond -> ${g.S.phase}`);
+  start(); const f = g.makeFoe('out', 1); f.x = PX(); f.y = PY() + 7; f.vx = 0; f.vy = -7.2; g.foes.push(f); step(40);
+  console.log(`prédateur : une boule qui fonçait sur lui l’évite (phase ${g.S.phase}, distance ${Math.hypot(f.x - PX(), f.y - PY()).toFixed(1)})`);
+  start(); const h = g.makeFoe('amph', 1); h.x = PX(); h.y = PY() + 3.5; h.vx = 0; h.vy = 0; g.foes.push(h); g.usePower(); step(40);
+  console.log(`prédateur : bond sur le trou noir -> ${g.S.phase}, trou noir vivant ${!h.dead}`);
+  start(); g.foes.length = 0; const last = g.makeFoe('out', 1); last.x = PX(); last.y = PY() + 4; last.vx = 0; last.vy = 0; g.foes.push(last);
+  g.usePower(); step(30);
+  console.log(`prédateur : dernière proie dévorée -> ${(g.S.filled / g.S.interior * 100).toFixed(0)} % conquis, phase ${g.S.phase}`);
+}
+
 // 6) Parties aléatoires
 let tot = 0;
-for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 7], [2, 25, 3], [0, 25, 1], [1, 15, 7], [1, 9, 9], [2, 18, 9]]) {
+for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 7], [2, 25, 3], [0, 25, 1], [1, 15, 7], [1, 9, 9], [2, 18, 9], [1, 11, 10], [2, 22, 10]]) {
   const c = play(d, L, 6000, 12345 + d * 7 + L, sh);
   tot += c; console.log(`partie d=${d} L=${L} vaisseau ${g.SHIPS[sh].name} : 6000 frames ok, ${c} crashs, ${g.foes.length} ennemis`);
 }
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 10); maxFoes = Math.max(maxFoes, g.foes.length); }
+  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 11); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 console.log('OK');

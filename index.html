@@ -400,6 +400,8 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
 const FR_T = 5, FR_CELLS = 300, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+// ouverture des mandibules du Prédateur (0 à 1) imposée par le jeu ; null : elles mâchonnent toutes seules
+var jaw = null;
 const SHIPS = [
   // Veinard (ex-Classique, nom choisi par Fabien) : le vaisseau d'origine, avec la chance en plus
   { key: 'cla', name: 'VEINARD', tag: 'La chance du débutant', lives: 3, bonus: 1.5, superLuck: 2, itemLife: 1.5, spd: 3, bon: 5, power: 'CHANCE',
@@ -527,6 +529,37 @@ const SHIPS = [
       g.strokeStyle = o.neon ? '#ffffff' : T.playerSea; g.lineWidth = .045; g.setLineDash([.055, .055]);
       g.beginPath(); g.arc(.12, 0, .12, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
       g.fillStyle = o.neon ? '#ffd23f' : T.playerSea; g.beginPath(); g.arc(.12, 0, .055, 0, Math.PI * 2); g.fill();
+    } },
+  // Prédateur (idée de Fabien) : il ne trace pas de fil, il chasse. Son bond dévore ce qu'il touche, chaque proie conquiert
+  // le terrain autour d'elle ; le combo (jusqu'à ×5) l'accélère, rend ses bonds plus brutaux et multiplie le score
+  { key: 'pred', name: 'PRÉDATEUR', tag: 'Rien ne lui échappe', lives: 2, bonus: 1, spd: 4, bon: 3, power: 'MORSURE',
+    noItems: ['terr', 'sterr'], noPit: true,
+    desc: 'Pas de fil : il chasse. Tap (ou F) pour bondir : ce qu\'il touche pendant le bond est dévoré et le terrain autour est conquis. Hors du bond, un contact le tue. Chaque proie enchaînée l\'accélère et multiplie le score, jusqu\'à ×5.',
+    hullA: '#e04460', hullB: '#2a1420', glow: '#ff2a3a', pit: '#ff2a3a', land: '#ff8a9a', flame: '255,60,50', tail: -.5, fw: .12, pitXY: [.1, .1, .1],
+    body(g) {
+      // épines arrière
+      for (const s of [-1, 1]) { g.beginPath(); g.moveTo(-.16, s * .26); g.lineTo(-.64, s * .54); g.lineTo(-.4, s * .14); g.closePath(); g.fill(); }
+      // tête
+      g.beginPath(); g.moveTo(.36, -.16); g.quadraticCurveTo(.2, -.36, -.12, -.32); g.quadraticCurveTo(-.42, -.28, -.5, 0);
+      g.quadraticCurveTo(-.42, .28, -.12, .32); g.quadraticCurveTo(.2, .36, .36, .16); g.quadraticCurveTo(.46, 0, .36, -.16); g.closePath(); g.fill();
+      // mandibles, qui s'ouvrent pendant le bond
+      const open = (jaw === null ? .18 + .14 * Math.sin(time * 6) : jaw) * .6;
+      for (const s of [-1, 1]) {
+        g.save(); g.translate(.3, s * .16); g.rotate(s * open); g.translate(-.3, -s * .16);
+        g.beginPath(); g.moveTo(.24, s * .26); g.quadraticCurveTo(.68, s * .42, .92, s * .03); g.lineTo(.76, s * .09);
+        g.lineTo(.66, s * .07); g.lineTo(.62, s * .15); g.quadraticCurveTo(.48, s * .2, .3, s * .08); g.closePath(); g.fill();
+        g.restore();
+      }
+    },
+    deco(g, o) {
+      // deux yeux rouges en fente
+      if (o.neon) { g.shadowColor = '#ff2a3a'; g.shadowBlur = o.px * .9; }
+      for (const s of [-1, 1]) {
+        g.fillStyle = o.neon ? '#ff2a3a' : T.playerSeaInk;
+        g.beginPath(); g.ellipse(.12, s * .13, .11, .045, s * .4, 0, Math.PI * 2); g.fill();
+        if (o.neon) { g.fillStyle = '#ffd6d6'; g.beginPath(); g.ellipse(.14, s * .125, .045, .018, s * .4, 0, Math.PI * 2); g.fill(); }
+      }
+      g.shadowBlur = 0;
     } }
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
@@ -581,6 +614,10 @@ const pm = k => powMax[k] || POWER_T;
 function setPow(k, t) { power[k] = t; powMax[k] = t; }
 // pouvoir du Frénétique : on = temps de frénésie restant, cd = recharge restante
 const ab = { on: 0, cd: 0, beat: 0 };
+// Prédateur : bond en cours (bite, s), recharge (cd, s), combo (jusqu'à PRED_MAX) et temps restant pour l'entretenir (ct) ;
+// again : une proie vient d'être dévorée, on peut rebondir aussitôt
+const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 3, PRED_MAX = 5, PRED_FEAR = 8;
+const pred = { bite: 0, cd: 0, combo: 0, ct: 0, again: false };
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
 let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
@@ -641,6 +678,8 @@ const sfx = {
   win(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.1,'triangle',.045,0,i*.07)); tone(2093,.2,'sine',.03,0,.3); },
   lose(){ [392,370,349,311].forEach((f,i)=>tone(f,i === 3 ? .5 : .22,'sawtooth',.035,i === 3 ? -60 : -15,i*.22)); },
   jackpot(){ for(let i=0;i<16;i++) tone(1047+(i%4)*262,.07,'square',.035,0,i*.06); [523,659,784,1047,1319].forEach((f,i)=>tone(f,.45,'triangle',.05,0,1+i*.05)); },
+  lunge(c){ tone(110+c*25,.2,'sawtooth',.05,300+c*80); tone(1600+c*200,.07,'square',.02,-1200,.02); },
+  crunch(c){ tone(55,.28,'square',.08,-25); tone(160+c*30,.14,'sawtooth',.06,-120,.01); for(let i=0;i<3;i++) tone(1100-i*250+c*80,.035,'square',.03,-500,.04+i*.035); if(c>=5) tone(90,.6,'sawtooth',.06,140,.1); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
 
@@ -1037,6 +1076,7 @@ function setupLevel(L, instant) {
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
+  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; stains = [];
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
@@ -1145,7 +1185,7 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1)
-  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1);
+  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
@@ -1162,6 +1202,7 @@ function stepPlayer() {
   const nx = P.x + P.dir.x, ny = P.y + P.dir.y;
   if (!inB(nx, ny)) { P.dir = {x:0,y:0}; return; }
   moveInto(nx, ny);
+  if (SH().key === 'pred') predCheck();
 }
 function moveInto(nx, ny) {
   const c = grid[at(nx, ny)];
@@ -1174,6 +1215,8 @@ function moveInto(nx, ny) {
   const ox = P.x, oy = P.y;
   P.x = nx; P.y = ny;
   if (c === 0) {
+    // Prédateur : il vole librement dans l'espace, sans fil
+    if (SH().key === 'pred') { pickItems(); return; }
     if (!P.drawing) { P.drawing = true; P.start = { x: ox, y: oy }; resetTrailArrays(); sfx.draw(); }
     pushTrail(at(nx, ny)); seaStep();
   } else if (P.drawing) {
@@ -1330,11 +1373,12 @@ function startReveal(list) {
   if (T.smooth) { boardHid.fill(0); for (const r of list) boardHid[r.i] = 1; boardDirty = true; }
   reveal = { list, k: 0, t: 0, pChance: Math.min(1, 90 / Math.max(1, list.length)) };
 }
-function awardCells(n, at0, big) {
+function awardCells(n, at0, big, mult = 1) {
   S.filled += n;
   // 10 points × niveau par case d'origine (une case d'origine = G × G cases de la grille)
   let pts = Math.round(n * 10 * S.level / (G * G));
   if (big) pts *= 2;
+  pts *= mult;
   S.score += pts;
   popups.push({ x: at0.x, y: at0.y - 1, text: '+' + pts, age: 0, color: T.ball });
   if (big) { popups.push({ x: COLS/2, y: ROWS/2, text: 'MEGA !', age: -0.15, color: T.trail, big: true }); sfx.mega(); }
@@ -1380,7 +1424,7 @@ const HUNT_AIM = .6, HUNT_DASH = .5, HUNT_REST = .65, HUNT_V = 15;
 // et sans terrain conquis entre eux. Une fois verrouillé, il finit sa visée.
 const HUNT_FOV = 50 * Math.PI / 180, HUNT_RANGE = 22;
 function huntSees(e) {
-  if (S.phase !== 'play' || !P || !P.drawing || P.shield || camoOn()) return false;
+  if (S.phase !== 'play' || !P || !inSeaNow() || P.shield || camoOn()) return false;
   const pp = playerPos(), dx = pp.x - e.x, dy = pp.y - e.y, d = Math.hypot(dx, dy);
   if (d > HUNT_RANGE) return false;
   let da = Math.abs(Math.atan2(dy, dx) - e.hd);
@@ -1390,7 +1434,7 @@ function huntSees(e) {
   return true;
 }
 function huntAI(e, dt) {
-  const hunting = S.phase === 'play' && P && P.drawing && !P.shield;
+  const hunting = S.phase === 'play' && P && inSeaNow() && !P.shield;
   if (Math.hypot(e.vx, e.vy) > .3 && e.st !== 'aim') e.hd = Math.atan2(e.vy, e.vx);
   e.t -= dt;
   if (e.st === 'roam') {
@@ -1427,7 +1471,7 @@ function pulsarTick(e, dt) {
 }
 // L'anneau coupe le fil qu'il traverse (onde de choc) et touche le vaisseau s'il est dans la zone à conquérir
 function pulsarHits(e) {
-  if (!P || !P.drawing) return;
+  if (!P || !inSeaNow()) return;
   for (const w of e.waves) {
     for (let k = 0; k < trail.length; k++) {
       if (erased[k]) continue;
@@ -1511,6 +1555,7 @@ function moveFoe(e, dt) {
     return;
   }
   unstick(e);
+  if (SH().key === 'pred') flee(e, dt);
   if (e.kind === 'hunt') huntAI(e, dt);
   else if (e.kind === 'puls') pulsarTick(e, dt);
   else if (e.kind === 'ghost') e.gt += dt;
@@ -1540,6 +1585,8 @@ function updateFoes(dt) {
 function hitPlayer(e) {
   if (S.phase !== 'play') return;
   if (power.sup > 0) { if (e) smash(e); return; }
+  // Prédateur : pendant un bond (ou sous Casque), il dévore ce qu'il touche ; le trou noir et le spectre invisible ne se mangent pas
+  if (SH().key === 'pred' && e && (pred.bite > 0 || helmet()) && devour(e)) return;
   if (helmet() || P.shield) return;
   if (invuln > 0 && !P.drawing) return;
   if (SH().key === 'enc' && absorb(e)) return;
@@ -1623,6 +1670,7 @@ let carry = null;
 const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp, chips: gam.chips });
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
 function usePower() {
+  if (SH().key === 'pred') { predBite(); return; }
   if (SH().key === 'rew') { rewind(); return; }
   if (SH().key === 'gam') { spinSlot(); return; }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
@@ -1652,6 +1700,137 @@ function updateAbility(dt) {
   }
   if (SH().key === 'fur') updateCamo(dt);
   if (SH().key === 'rew') recordRewind(dt);
+  if (SH().key === 'pred') updatePred(dt);
+}
+/* Prédateur (idée de Fabien) : pas de fil, il chasse.
+   - Bond (tap, bouton ou F) : il fonce tout droit, mâchoires ouvertes, et dévore ce qu'il touche (devour).
+   - Hors du bond, un contact le tue. Le trou noir est indestructible, le spectre ne se mord que visible.
+   - Chaque proie : gerbe de sang, terrain conquis autour d'elle (predConquer), bond rechargé aussitôt et combo +1
+     (jusqu'à ×5, entretenu PRED_WIN s) ; le combo l'accélère, rend ses bonds plus rapides et multiplie le score.
+   - Les zones vides de proies sont conquises : massacrer toutes les proies conquiert toute la zone.
+   - Les ennemis fuient quand il approche (sauf le chasseur, qui se bat, et le trou noir). */
+// le vaisseau est-il dans la zone à conquérir (en traçant, ou en vol libre pour le Prédateur) ?
+const inSeaNow = () => !!P && (P.drawing || (SH().key === 'pred' && cell(P.x, P.y) === 0));
+function predSpd() {
+  if (SH().key !== 'pred') return 1;
+  const c = pred.combo;
+  return (1 + .2 * c) * (pred.bite > 0 ? 2.6 + .5 * c : 1);
+}
+function predBite() {
+  if (S.phase !== 'play' || !P || pred.cd > 0 || (pred.bite > 0 && !pred.again)) return;
+  dropShield();
+  if (!P.dir.x && !P.dir.y) { P.dir = { x: P.face.x, y: P.face.y }; P.acc = 0; }
+  pred.again = false;
+  pred.bite = PRED_BITE / (1 + .25 * pred.combo);
+  shake = REDUCED ? 0 : Math.max(shake, .2 + pred.combo * .12);
+  sfx.lunge(pred.combo); pwHud();
+}
+function updatePred(dt) {
+  if (pred.bite > 0) { pred.bite -= dt; if (pred.bite <= 0) { pred.bite = 0; pred.again = false; pred.cd = PRED_CD; } pwHud(); }
+  else if (pred.cd > 0) { pred.cd = Math.max(0, pred.cd - dt); if (!pred.cd) sfx.ready(); pwHud(); }
+  if (pred.combo > 0 && (pred.ct -= dt) <= 0) { pred.combo = 0; pred.ct = 0; powersHud(); }
+  // sillage de braises (pas de fil)
+  if (P && (P.dir.x || P.dir.y) && T.glow && Math.random() < (pred.bite > 0 ? 1 : .55)) {
+    const pp = playerPos();
+    for (let k = 0; k < (pred.bite > 0 ? 3 : 1); k++) particles.push({ x: pp.x - P.dir.x * .5 + (Math.random() - .5) * .3, y: pp.y - P.dir.y * .5 + (Math.random() - .5) * .3, vx: -P.dir.x * 2 + (Math.random() - .5) * 1.5, vy: -P.dir.y * 2 + (Math.random() - .5) * 1.5, life: 0, max: .35 + Math.random() * .4, color: Math.random() < .45 ? '#ff2a3a' : Math.random() < .6 ? '#ff8a3d' : '#7a0010', size: .1 + Math.random() * .12, ng: 1 });
+  }
+}
+// pendant le bond (ou sous Casque), chaque case parcourue vérifie les ennemis à portée de mâchoires
+function predCheck() {
+  if (S.phase !== 'play' || !(pred.bite > 0 || helmet())) return;
+  const x = (P.x + .5) / G, y = (P.y + .5) / G;
+  for (const e of foes) {
+    if (e.dead || S.phase !== 'play') continue;
+    const r = (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .3;
+    if (Math.hypot(e.x - x, e.y - y) < r) hitPlayer(e);
+  }
+}
+// Dévore un ennemi ; renvoie false s'il ne se mange pas (le contact compte alors comme un coup)
+function devour(e) {
+  if (e.dead) return true;
+  if (e.kind === 'amph' || (e.kind === 'ghost' && ghostAlpha(e) < .35)) return false;
+  if (e.kind === 'div' && e.cd > 0) return true;
+  pred.combo = Math.min(PRED_MAX, pred.combo + 1); pred.ct = PRED_WIN; pred.cd = 0; pred.again = true;
+  const c = pred.combo, x = e.x, y = e.y, split = e.kind === 'div' && e.gen < 2;
+  if (split) divSplit(e); else e.dead = true;
+  gore(x, y, foeColor(e), c);
+  const pts = 300 * S.level * c; S.score += pts;
+  popups.push({ x, y: y - 1.3, text: (c > 1 ? 'CARNAGE ×' + c + ' ' : 'DÉVORÉ ') + '+' + pts, age: 0, color: T.rainbow ? '#ff4d5e' : T.ball });
+  if (c === PRED_MAX) popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'MASSACRE ×5', age: -0.05, color: T.rainbow ? '#ff2a3a' : T.ball, big: true });
+  sfx.crunch(c);
+  if (!split && isSea(e)) predConquer(x, y, c);
+  hud(); powersHud(); pwHud();
+  return true;
+}
+// Gerbe de sang : gouttes projetées dans le sens du bond, morceaux de la couleur de l'ennemi, taches qui sèchent
+var stains = [];
+const STAIN_T = 7;
+function gore(x, y, color, c) {
+  const red = T.rainbow, d = P.dir.x || P.dir.y ? P.dir : P.face, dir = Math.atan2(d.y, d.x);
+  const reds = ['#b0001a', '#e0102a', '#ff2a3a', '#7a0010'];
+  for (let k = 0, n = 40 + c * 12; k < n; k++) {
+    const a = dir + (Math.random() - .5) * (Math.random() < .65 ? 1.5 : 6.28), v = 3 + Math.random() * (9 + c * 3);
+    particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: .45 + Math.random() * .7, color: red ? reds[(Math.random() * 4) | 0] : T.danger, size: .1 + Math.random() * .3, ng: 1 });
+  }
+  burst(x, y, color, 12, 7);
+  rings.push({ x, y, r: 0, max: 2.5 + c * .6, age: 0, color: red ? '#ff2a3a' : T.shock });
+  stains.push({ x, y, r: .75 + c * .08, age: 0, dark: true });
+  for (let k = 0, n = 6 + 2 * c; k < n; k++) {
+    const a = dir + (Math.random() - .5) * 1.8, t = .5 + Math.random() * (1.5 + c * .35);
+    stains.push({ x: x + Math.cos(a) * t, y: y + Math.sin(a) * t, r: .12 + Math.random() * .38, age: 0 });
+  }
+  shake = REDUCED ? 0 : Math.min(1.5, .5 + c * .18);
+  if (red && !REDUCED) { superFlash = Math.max(superFlash, .2 + c * .05); superTint = '255,20,40'; }
+}
+function drawStains() {
+  if (!stains.length || !T.rainbow) return;
+  for (const s of stains) {
+    const a = .55 * Math.min(1, (STAIN_T - s.age) / 2.5);
+    ctx.fillStyle = `rgba(${s.dark ? '95,0,16' : '150,0,26'},${a})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+// Terrain conquis autour de la proie (plus large avec le combo), puis toutes les zones où il ne reste aucune proie
+function predConquer(x, y, c) {
+  const R = (4.5 + .6 * c) * G, cx = gc(x), cy = gc(y), ox = cx + .5, oy = cy + .5, list = [];
+  for (let yy = Math.max(0, Math.floor(cy - R)); yy <= Math.min(GR - 1, Math.ceil(cy + R)); yy++)
+    for (let xx = Math.max(0, Math.floor(cx - R)); xx <= Math.min(GC - 1, Math.ceil(cx + R)); xx++) {
+      const i = at(xx, yy);
+      if (grid[i] === 0 && Math.hypot(xx + .5 - ox, yy + .5 - oy) <= R) { grid[i] = 1; list.push(i); }
+    }
+  // les proies prises dans le cercle (morceaux de diviseur compris) sont repoussées hors du terrain
+  const prey = foes.concat(spawned).filter(e => !e.dead && isSea(e));
+  for (const e of prey) if (grid[at(gc(e.x), gc(e.y))] !== 0) pushOut(e, ox / G, oy / G, R / G);
+  const seen = new Uint8Array(N), st = [];
+  for (const e of prey) { if (e.dead) continue; const i = at(gc(e.x), gc(e.y)); if (grid[i] === 0 && !seen[i]) { seen[i] = 1; st.push(i); } }
+  while (st.length) {
+    const i = st.pop(), xx = i % GC, yy = (i / GC) | 0;
+    if (xx > 0 && !seen[i - 1] && grid[i - 1] === 0) { seen[i - 1] = 1; st.push(i - 1); }
+    if (xx < GC - 1 && !seen[i + 1] && grid[i + 1] === 0) { seen[i + 1] = 1; st.push(i + 1); }
+    if (yy > 0 && !seen[i - GC] && grid[i - GC] === 0) { seen[i - GC] = 1; st.push(i - GC); }
+    if (yy < GR - 1 && !seen[i + GC] && grid[i + GC] === 0) { seen[i + GC] = 1; st.push(i + GC); }
+  }
+  for (let i = 0; i < N; i++) if (grid[i] === 0 && !seen[i]) { grid[i] = 1; list.push(i); }
+  if (!list.length) return;
+  const wr = R / G, rv = list.map(i => ({ i, t: Math.min(1.4, Math.hypot(wx(i) - x, wy(i) - y) / wr * .5) }));
+  rv.sort((a, b) => a.t - b.t);
+  startReveal(rv);
+  awardCells(list.length, { x, y: y + 2.4 }, list.length >= S.interior * 0.15, c);
+  for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
+  items = items.filter(it => !it.done);
+  checkGoal();
+}
+// Les proies fuient le Prédateur : elles virent pour s'éloigner, d'autant plus vite qu'il est près (même vitesse)
+function flee(e, dt) {
+  if (e.kind === 'amph' || e.kind === 'hunt' || !P || P.shield || S.phase !== 'play') return;
+  const pp = playerPos(), dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy), v = Math.hypot(e.vx, e.vy);
+  if (d > PRED_FEAR || d < .01 || v < .05) return;
+  const a = Math.atan2(e.vy, e.vx);
+  let da = Math.atan2(dy, dx) - a;
+  while (da > Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  const turn = Math.min(Math.abs(da), 9 * (1.3 - d / PRED_FEAR) * dt) * (da >= 0 ? 1 : -1), b = a + turn;
+  e.vx = Math.cos(b) * v; e.vy = Math.sin(b) * v;
 }
 // Chaque nouvelle case de fil recharge les pouvoirs (frénésie, bouclier, rembobinage)
 function seaStep() {
@@ -2255,6 +2434,7 @@ function crash() {
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   plan = null; dash = null;
+  pred.bite = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false;
   powersHud(); pwHud();
   sfx.crash();
 }
@@ -2518,11 +2698,12 @@ function updateItems(dt) {
 let powersSig = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
-  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail;
+  const sig = (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig;
-    el.innerHTML = (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
+    el.innerHTML = (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
+      + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
       + (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
       + (guard ? `<div class="chip guard"><b></b><span>BOUCLIER</span><div class="t"><i id="tguard"></i></div></div>` : '')
@@ -2535,6 +2716,7 @@ function powersHud() {
   }
   for (const k of ['hyp', 'chr', 'schr', 'inv', 'spd', 'sup', 'frag']) { const el = $('t' + k); if (el) el.style.width = (power[k] / pm(k) * 100) + '%'; }
   const r = $('trage'); if (r) r.style.width = (ab.on / FR_T * 100) + '%';
+  const tc = $('tcarn'); if (tc) tc.style.width = (pred.ct / PRED_WIN * 100) + '%';
   // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
   const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_CELLS) * 100) + '%';
 }
@@ -2542,9 +2724,10 @@ function powersHud() {
 let pwSig = '';
 const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
 const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H17.5 C17.5 7.5 15.5 9.6 13.3 12 C15.5 14.4 17.5 16.5 17.5 20 H19 V22 H5 V20 H6.5 C6.5 16.5 8.5 14.4 10.7 12 C8.5 9.6 6.5 7.5 6.5 4 H5 Z M8.6 4 C8.8 6.6 10.2 8.2 12 10 C13.8 8.2 15.2 6.6 15.4 4 Z M9 19.5 H15 C14.6 17.6 13.4 16.4 12 15.2 C10.6 16.4 9.4 17.6 9 19.5 Z" fill-rule="evenodd"/></svg>';
+const FANG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5 C6 5 9 7 10.5 9.5 L9 21 L13 11 C13.5 10 14.5 9.6 15.5 9.8 L20 8.5 L16 7.6 C14.5 4.5 9 3.5 2 5 Z"/></svg>';
 const SHIELDI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L20 5 V11 C20 16.5 16.5 20.5 12 22 C7.5 20.5 4 16.5 4 11 V5 Z"/></svg>';
 function pwHud() {
-  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam');
+  const k = SH().key, b = $('pw'), show = S.phase !== 'title' && (k === 'fre' || k === 'enc' || k === 'rew' || k === 'rob' || k === 'gam' || k === 'pred');
   // Flambeur : pendant un tirage, la machine à sous prend la place du jeton
   const sl = show && k === 'gam' && !!slot;
   if (slotCv.hidden === sl) slotCv.hidden = !sl;
@@ -2563,6 +2746,10 @@ function pwHud() {
     const n = gam.chips;
     cls = slot ? 'chip on' : n > 0 ? 'chip ready' : 'chip'; p = n / CHIPS_MAX; inner = String(n);
     label = slot ? 'La machine tourne' : n > 0 ? `Lancer la machine à sous (${n} jeton${n > 1 ? 's' : ''})` : 'Pas de jeton : ramasse-en dans la zone à conquérir';
+  } else if (k === 'pred') {
+    if (pred.bite > 0) { cls = 'on'; p = 1; inner = FANG; label = 'Bond en cours'; }
+    else if (pred.cd > 0) { cls = 'cd'; p = 1 - pred.cd / PRED_CD; inner = FANG; label = 'Bond en recharge'; }
+    else { cls = 'ready'; p = 1; inner = FANG; label = 'Bondir'; }
   } else if (k === 'rew') {
     if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
     else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
@@ -2603,7 +2790,7 @@ function update(dt) {
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0)) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
@@ -2653,6 +2840,7 @@ function update(dt) {
       for (let k = 0; k < 2; k++) particles.push({ x: pp.x, y: pp.y, vx: (Math.random() - .5) * 7 - P.dir.x * 5, vy: (Math.random() - .5) * 7 - P.dir.y * 5, life: 0, max: .3, color: Math.random() < .5 ? '#ffffff' : (T.rainbow ? '#9ff3ff' : T.ball), size: .14, ng: 1 });
     }
     rings = rings.filter(r => r.age < 0.9);
+    if (stains.length) { for (const st of stains) st.age += dt; stains = stains.filter(st => st.age < STAIN_T); }
     shake = Math.max(0, shake - dt * 2.2);
     flash = Math.max(0, flash - dt * 2.5);
   }
@@ -2676,6 +2864,7 @@ function render() {
   drawTwinkle();
   drawChrono('clock');
   drawEdgeGlow();
+  drawStains();
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -3045,9 +3234,22 @@ function drawPlayer(pp) {
       ctx.beginPath(); ctx.moveTo(pp.x + ox - P.dir.x * .7, pp.y + oy - P.dir.y * .7); ctx.lineTo(pp.x + ox - P.dir.x * (.7 + L), pp.y + oy - P.dir.y * (.7 + L)); ctx.stroke();
     }
   }
+  // Prédateur : aura rouge qui grossit avec le combo ; pendant le bond, traits de vitesse
+  if (SH().key === 'pred' && S.phase !== 'crash' && T.glow) {
+    if (pred.combo > 0) halo(pp.x, pp.y, 1.3 + pred.combo * .25, '#ff1f3d', .12 + pred.combo * .06);
+    if (pred.bite > 0 && (P.dir.x || P.dir.y)) {
+      ctx.lineWidth = .07; ctx.lineCap = 'round';
+      for (let k = -1; k <= 1; k++) {
+        const ox = P.dir.y ? k * .32 : 0, oy = P.dir.x ? k * .32 : 0, L = (k ? 1.2 : 2) + Math.random() * .8 + pred.combo * .35;
+        const x0 = pp.x + ox - P.dir.x * .6, y0 = pp.y + oy - P.dir.y * .6, x1 = x0 - P.dir.x * L, y1 = y0 - P.dir.y * L;
+        const lg = ctx.createLinearGradient(x0, y0, x1, y1); lg.addColorStop(0, 'rgba(255,70,80,0.7)'); lg.addColorStop(1, 'rgba(255,70,80,0)');
+        ctx.strokeStyle = lg; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+    }
+  }
   if (P.dir.x || P.dir.y) P.face = P.dir;
   const face = P.face;
-  const target = P.drawing ? 1 : 0;
+  const target = P.drawing || SH().key === 'pred' ? 1 : 0;
   P.morph += (target - P.morph) * 0.3;
   const m = P.morph;
   // rotation lissée : le vaisseau pivote au lieu de sauter d'une direction à l'autre, et s'incline dans les virages
@@ -3086,7 +3288,9 @@ function drawPlayer(pp) {
   if (m > 0.02) {
     // dans la zone à conquérir : vaisseau effilé (nez pointu, deux ailerons à l'arrière, comme l'original)
     ctx.globalAlpha = m;
+    if (sh.key === 'pred') jaw = pred.bite > 0 ? 1 : .12 + .08 * Math.sin(time * 7);
     drawHull(ctx, sh, { neon, hot, rage, moving, fast: power.spd > 0 || power.hyp > 0, px: scale, ang: P.ang });
+    jaw = null;
     ctx.globalAlpha = 1;
   }
   ctx.restore();
@@ -3112,8 +3316,8 @@ function drawHull(g, sh, o) {
   const [cx, rx, ry] = sh.pitXY, pit = o.hot ? '#ff7a4d' : o.rage ? '#fff1a8' : sh.pit;
   if (!o.neon) {
     g.fillStyle = o.hot ? '#ffe27a' : T.playerSea; sh.body(g);
-    g.fillStyle = T.playerSeaInk; g.beginPath(); g.ellipse(cx, 0, rx, ry, 0, 0, Math.PI * 2); g.fill();
-    if (sh.deco && !o.hot && !o.rage) sh.deco(g, o);
+    if (!sh.noPit) { g.fillStyle = T.playerSeaInk; g.beginPath(); g.ellipse(cx, 0, rx, ry, 0, 0, Math.PI * 2); g.fill(); }
+    if (sh.deco && (sh.noPit || (!o.hot && !o.rage))) sh.deco(g, o);
     return;
   }
   // coque en relief (dessinée à part, voir hullSprite), avec son halo
@@ -3121,6 +3325,7 @@ function drawHull(g, sh, o) {
   glow(o.rage ? '#ff1f3d' : o.hot ? '#ffd23f' : sh.glow, o.rage ? 2 : 1.3);
   g.drawImage(spr, HS_X, HS_Y, HS_W, HS_H);
   noGlow();
+  if (sh.noPit) { if (sh.deco) sh.deco(g, o); return; }
   // cockpit en verre : dégradé, liseré sombre et reflet
   const pg = g.createRadialGradient(cx + rx * .3, -ry * .35, 0, cx, 0, Math.max(rx, ry) * 1.15);
   pg.addColorStop(0, '#ffffff'); pg.addColorStop(.35, pit); pg.addColorStop(1, `rgb(${shadeRgb(pit, .45)})`);
@@ -3669,6 +3874,7 @@ function newcomers() {
     S.shipTip = false;
     if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce ! En échange, pas de Casque ni de Vitesse pour toi, même en super.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
+    if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
     if (SH().key === 'rob') html += `<p class="keys">Blindage : chaque choc l'entame (boule 10 %, onde de choc 5 %…), à 0 % c'est fini. La jauge en haut à droite se répare très lentement quand tu traces. Une seule vie !</p>`;
     if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour miser : retouche la machine dans la seconde pour miser 2 ou 3 jetons. 1 jeton : 30 % de chances de gagner, 2 : 60 %, 3 : 90 %. Perdre ne donne rien… ou parfois un coup dur !</p>';
@@ -4012,7 +4218,7 @@ function testSync() {
 // pouvoirs à plein : frénésie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX;
+  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0;
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }
@@ -4020,7 +4226,7 @@ function testRefill() {
 // keep : le terrain s'efface tout seul à 75 % ; on garde les mêmes ennemis, le score et les pouvoirs.
 function testReset(keep) {
   if (!S.test) return;
-  const kinds = keep ? foes.filter(e => !e.dead && !(e.gen > 0)).map(e => e.kind) : null;
+  const kinds = keep && SH().key !== 'pred' ? foes.filter(e => !e.dead && !(e.gen > 0)).map(e => e.kind) : null;
   if (!keep) { S.score = 0; S.lives = SH().lives; }
   setupLevel(1, true);
   if (kinds) foes = kinds.map(k => makeFoe(k, DIFFS[S.diff].sp));
@@ -4124,7 +4330,7 @@ cv.addEventListener('pointermove', e => {
     touch = { x: e.clientX, y: e.clientY, moved: true };
   }
 });
-cv.addEventListener('pointerup', () => { if (touch && touch.plan) planLaunch(); else if (touch && !touch.moved) setDir('stop'); touch = null; });
+cv.addEventListener('pointerup', () => { if (touch && touch.plan) planLaunch(); else if (touch && !touch.moved) { if (SH().key === 'pred' && S.phase === 'play') usePower(); else setDir('stop'); } touch = null; });
 cv.addEventListener('pointercancel', () => { if (touch && touch.plan) planCancel(); touch = null; });
 ov.addEventListener('pointerup', e => {
   if (e.target.closest('button, details')) return;
