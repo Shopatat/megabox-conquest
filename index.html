@@ -213,10 +213,11 @@ details li b{color:var(--text);font-weight:600}
 .sstats .dots.b i.on{background:var(--ball)}
 .sstats .pwr{font-family:var(--display);font-size:10px}
 .card p.sdesc{font-size:13px;line-height:1.4;color:#c9cdf2;text-align:center;min-height:3.5em}
-.spage{display:flex;justify-content:center;gap:2px}
-.spage button{width:28px;height:22px;padding:0;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.spage{display:flex;justify-content:center;gap:2px;min-width:0;max-width:100%}
+.spage button{flex:0 1 28px;min-width:0;height:22px;padding:0;border:0;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .spage button i{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.25);transition:width .25s var(--ease),background .25s}
-.spage button[aria-current="true"] i{width:22px;background:var(--text)}
+.spage button[aria-current="true"]{flex-basis:34px}
+.spage button[aria-current="true"] i{width:min(22px,100%);background:var(--text)}
 
 /* ---- Pied de page, mode test ---- */
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex:none}
@@ -547,7 +548,7 @@ const SHIPS = [
   // le terrain autour d'elle ; le combo (jusqu'à ×5) l'accélère, rend ses bonds plus brutaux et multiplie le score
   { key: 'pred', name: 'PRÉDATEUR', tag: 'Rien ne lui échappe', lives: 2, bonus: 1, spd: 4, bon: 3, power: 'MORSURE',
     noItems: ['terr', 'sterr'], noPit: true,
-    desc: 'Pas de fil : il chasse. Tap (ou F) pour bondir : ce qu\'il touche pendant le bond est dévoré et le terrain autour est conquis. Hors du bond, un contact le tue. Chaque proie enchaînée l\'accélère, élargit sa morsure et multiplie le score, jusqu\'à ×5. Sa jauge SANG ! se vide sans arrêt : chaque proie la remplit, à sec il perd une vie.',
+    desc: 'Pas de fil : il chasse. Tap pour bondir et dévorer, mais hors du bond un contact le tue. Chaque proie conquiert le terrain autour, remplit sa jauge SANG ! et fait monter le carnage, jusqu\'à ×5.',
     hullA: '#e04460', hullB: '#2a1420', glow: '#ff2a3a', pit: '#ff2a3a', land: '#ff8a9a', flame: '255,60,50', tail: -.5, fw: .12, pitXY: [.1, .1, .1],
     body(g) {
       // épines arrière
