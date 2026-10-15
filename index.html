@@ -407,11 +407,11 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Vaisseaux au choix (idée de Fabien). body() trace et remplit la coque (unités de case, nez vers +x) ;
 // tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
 // Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
-// FR_CELLS cases pour la frénésie, GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
+// GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
 // Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
-const FR_T = 5, FR_CELLS = 300, GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+const GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 // ouverture des mandibules du Prédateur (0 à 1) imposée par le jeu ; null : elles mâchonnent toutes seules
 var jaw = null;
 // regard du Prédateur (angle dans le monde vers la proie la plus proche) ; null : il regarde droit devant
@@ -453,9 +453,9 @@ const SHIPS = [
       g.fillRect(-.42, -.5, .36, .07); g.fillRect(-.42, .43, .36, .07); g.fillRect(-.3, -.04, .26, .08);
       g.fillStyle = f;
     } },
-  { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FRÉNÉSIE',
-    noItems: ['inv', 'sup', 'spd', 'sspd'],
-    desc: 'Frénésie : 5 s d\'invincibilité à +50 % de vitesse, les ennemis ne te font rien. Pour la recharger, trace 300 cases dans la zone à conquérir. Ni Casque ni Vitesse pour lui, même en super.',
+  { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FURIE',
+    noItems: ['spd', 'sspd'],
+    desc: 'Plus rapide que les autres. Conquérir remplit sa FURIE, qui retombe s\'il traîne sur son terrain. Pleine : 15 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -634,7 +634,16 @@ const powMax = {};
 const pm = k => powMax[k] || POWER_T;
 function setPow(k, t) { power[k] = t; powMax[k] = t; }
 // pouvoir du Frénétique : on = temps de frénésie restant, cd = recharge restante
-const ab = { on: 0, cd: 0, beat: 0 };
+// Frénétique (demande de Fabien) : plus rapide que les autres (FRE_SPD). Chaque zone conquise remplit sa jauge FURIE
+// (pleine à FURY_FILL du terrain, ×1,5 pour un MEGA) ; elle retombe (FURY_DRAIN par seconde) s'il traîne plus de
+// FURY_IDLE s sur son terrain. Pleine, elle déclenche la furie : FR_T s à ×FR_SPD (vitesse de base), fil enflammé qui
+// grille les ennemis qui le touchent ; chaque case de fil posée pendant la furie brûle FIRE_T s, même une fois conquise.
+// ab.on : temps de furie restant ; ab.fury : jauge (0 à 1) ; ab.idle : temps passé sur son terrain
+const FR_T = 15, FR_SPD = 3, FRE_SPD = 1.2, FURY_FILL = .3, FURY_IDLE = 3, FURY_DRAIN = .02, FIRE_T = 3;
+const ab = { on: 0, fury: 0, beat: 0, idle: 0 };
+// flammes de la furie : fin de la flamme de chaque case (horloge fireClock), et la liste pour les dessiner
+var fireT = new Float32Array(N);
+var fires = [], fireClock = 0;
 // Prédateur : bond en cours (bite, s), recharge (cd, s), combo (jusqu'à PRED_MAX) et temps restant pour l'entretenir (ct) ;
 // again : une proie vient d'être dévorée, on peut rebondir aussitôt
 const PRED_BITE = .34, PRED_CD = 1.3, PRED_WIN = 6, PRED_MAX = 5, PRED_FEAR = 8;
@@ -695,6 +704,7 @@ const sfx = {
   crackle(){ tone(2400+Math.random()*1600,.025,'sawtooth',.012,-1500); },
   rage(){ tone(70,.7,'sawtooth',.08,90); tone(140,.5,'square',.04,-60,.05); [392,523,784,1047].forEach((f,i)=>tone(f,.09,'sawtooth',.04,0,.08+i*.05)); },
   rageEnd(){ tone(620,.35,'triangle',.04,-420); },
+  burn(){ tone(240,.35,'sawtooth',.05,-170); tone(1300,.25,'triangle',.03,-1000,.02); for(let i=0;i<4;i++) tone(2000+Math.random()*1500,.03,'sawtooth',.015,-1200,.03+i*.05); },
   heart(){ tone(58,.11,'sine',.09); tone(52,.1,'sine',.07,0,.13); },
   ready(){ tone(1320,.06,'sine',.03); tone(1760,.1,'sine',.03,0,.06); },
   guard(){ tone(1900,.28,'triangle',.05,-1300); tone(150,.3,'square',.05,-70); tone(2700,.14,'sine',.03,-1600,.02); },
@@ -1073,7 +1083,7 @@ function makeFoe(kind, sp) {
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
   S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
-  rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; gam.chips = 1;
+  rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = 1; gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -1083,7 +1093,7 @@ function continueGame() {
   if (!sv) return;
   ensureAudio(); S.test = false;
   S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
-  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.cd = pw.cd || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
+  const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
 function setupLevel(L, instant) {
@@ -1102,8 +1112,8 @@ function setupLevel(L, instant) {
   const bf = SH().bonus;
   if (bf !== 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) n += Math.floor(bf) + (Math.random() < bf % 1 ? 1 : 0); S.bonusLeft = n; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
-  // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : recharge de la frénésie, bouclier et jauge conservés
-  ab.on = 0; plan = null; dash = null; slow = 0; superFlash = 0;
+  // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : jauge de furie, bouclier et jauge conservés
+  ab.on = 0; ab.idle = 0; fires = []; fireT.fill(0); fireClock = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
@@ -1176,6 +1186,7 @@ function cancelConquest() {
 function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
   if (helmet() || power.sup > 0 || SH().key === 'fur') return;
+  if (onFire(i)) { burnFoe(e); return; }
   // Flambeur, « fil fragile » de la machine à sous : un ennemi qui touche le fil tue sur le coup
   if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
@@ -1216,7 +1227,7 @@ function setDir(d) {
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
-const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (ab.on > 0 ? 1.5 : 1)
+const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (SH().key === 'fre' ? (ab.on > 0 ? FR_SPD : FRE_SPD) : 1)
   * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
@@ -1251,6 +1262,7 @@ function moveInto(nx, ny) {
     if (SH().key === 'pred') { pickItems(); return; }
     if (!P.drawing) { P.drawing = true; P.start = { x: ox, y: oy }; resetTrailArrays(); sfx.draw(); }
     pushTrail(at(nx, ny)); seaStep();
+    if (ab.on > 0) lightFire(at(nx, ny));
   } else if (P.drawing) {
     if (wave) cancelConquest(); else capture();
     P.drawing = false; P.dir = {x:0,y:0}; P.next = null; P.noFill = false;
@@ -1395,6 +1407,7 @@ function capture() {
 
   const n = cells.length;
   awardCells(n, playerPos(), n >= S.interior * 0.15);
+  furyGain(n, n >= S.interior * 0.15);
   sfx.capture(n);
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
@@ -1506,7 +1519,7 @@ function pulsarHits(e) {
   if (!P || !inSeaNow()) return;
   for (const w of e.waves) {
     for (let k = 0; k < trail.length; k++) {
-      if (erased[k]) continue;
+      if (erased[k] || onFire(trail[k])) continue;
       const i = trail[k], d = Math.hypot(wx(i) - e.x, wy(i) - e.y);
       if (Math.abs(d - w.r) < .55) { onTrailHit(e, i); break; }
     }
@@ -1606,9 +1619,11 @@ function updateFoes(dt) {
     if (P && P.shield) shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
     if (e.kind === 'puls') pulsarHits(e);
+    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9, near = Math.hypot(e.x - pp.x, e.y - pp.y) < r;
+    // flammes de la furie (le contact avec le vaisseau passe avant : lui n'est pas invincible)
+    if (!near && fires.length && e.kind !== 'amph' && fireHits(e)) { burnFoe(e); continue; }
     if (e.hitCd > 0) { e.hitCd -= dt; continue; }
-    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9;
-    if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) hitPlayer(e);
+    if (near) hitPlayer(e);
   }
   if (spawned.length) { foes.push(...spawned); spawned = []; }
   foes = foes.filter(e => !e.dead);
@@ -1695,23 +1710,79 @@ function drawStun(e) {
 
 /* ---------- Pouvoirs des vaisseaux ---------- */
 const frenzyOn = () => ab.on > 0;
-// Casque ou frénésie (invincible) : les ennemis n'ont aucun effet, ni sur le vaisseau ni sur le fil
-const helmet = () => power.inv > 0 || ab.on > 0;
+// Casque : les ennemis n'ont aucun effet, ni sur le vaisseau ni sur le fil
+const helmet = () => power.inv > 0;
 // état des pouvoirs gardé d'un niveau à l'autre (carry) et dans la sauvegarde
 let carry = null;
-const powState = () => ({ cd: ab.cd, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp, chips: gam.chips });
-// Pouvoir du vaisseau (bouton du HUD, F ou E) : frénésie du Frénétique ou rembobinage du Rembobineur
+const powState = () => ({ fury: ab.fury, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp, chips: gam.chips });
+// Jauge de furie : chaque zone conquise la remplit (pas pendant la furie)
+function furyGain(n, big) {
+  if (SH().key !== 'fre' || ab.on > 0 || ab.fury >= 1) return;
+  ab.fury = Math.min(1, ab.fury + n / (S.interior * FURY_FILL) * (big ? 1.5 : 1));
+  if (ab.fury >= 1) {
+    const pp = playerPos();
+    popups.push({ x: pp.x, y: pp.y - 2.4, text: 'FURIE PRÊTE', age: -0.2, color: T.rainbow ? '#ff8a2a' : T.ball });
+    rings.push({ x: pp.x, y: pp.y, r: 0, max: 4, age: 0, color: T.rainbow ? '#ff5a1f' : T.shock });
+    sfx.ready();
+  }
+  pwHud();
+}
+// Fil en feu : tout le fil brûle tant que dure la furie, puis chaque flamme FIRE_T s
+// (sauf la case du vaisseau : la tête du fil, c'est lui, et lui n'est pas invincible)
+const onFire = i => SH().key === 'fre' && !(P && i === at(P.x, P.y)) && fireT[i] > fireClock;
+function lightFire(i) {
+  fireT[i] = fireClock + FIRE_T;
+  fires.push({ i, x: wx(i), y: wy(i), end: fireClock + FIRE_T, ph: Math.random() * 6.3 });
+}
+function updateFires(dt) {
+  fireClock += dt;
+  if (!fires.length) return;
+  // pendant la furie, le fil encore en place continue de brûler
+  if (ab.on > 0) for (const f of fires) if (grid[f.i] === 2) { f.end = fireClock + FIRE_T; fireT[f.i] = f.end; }
+  fires = fires.filter(f => f.end > fireClock);
+  // braises qui s'envolent
+  if (T.glow) for (let k = 0; k < 3; k++) {
+    const f = fires[(Math.random() * fires.length) | 0];
+    if (f && Math.random() < .5) particles.push({ x: f.x + (Math.random() - .5) * .4, y: f.y, vx: (Math.random() - .5) * 1.2, vy: -1.5 - Math.random() * 2, life: 0, max: .4 + Math.random() * .4, color: Math.random() < .5 ? '#ffb02a' : '#ff5a1f' });
+  }
+}
+// un ennemi touche une flamme : cases en feu sous son disque (rayon + un peu)
+function fireHits(e) {
+  const R = (e.r || (e.kind === 'inn' ? R_LAND : R_SEA)) + .3;
+  const x0 = Math.max(0, gc(e.x - R)), x1 = Math.min(GC - 1, gc(e.x + R)), y0 = Math.max(0, gc(e.y - R)), y1 = Math.min(GR - 1, gc(e.y + R));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const i = x + y * GC;
+    if (fireT[i] > fireClock && Math.hypot(wx(i) - e.x, wy(i) - e.y) < R) return true;
+  }
+  return false;
+}
+// l'ennemi grille (le trou noir, lui, ne brûle pas)
+function burnFoe(e) {
+  if (e.dead || e.kind === 'amph') return;
+  e.dead = true;
+  const color = foeColor(e);
+  burst(e.x, e.y, T.rainbow ? '#ff8a2a' : T.shock, 34, 12); burst(e.x, e.y, color, 16, 8); burst(e.x, e.y, T.rainbow ? '#ffe27a' : T.shock, 10, 5);
+  rings.push({ x: e.x, y: e.y, r: 0, max: 4.5, age: 0, color: T.rainbow ? '#ff5a1f' : T.shock });
+  shake = REDUCED ? 0 : .5;
+  const pts = 300 * S.level; S.score += pts;
+  popups.push({ x: e.x, y: e.y - 1.2, text: 'GRILLÉ ! +' + pts, age: 0, color: T.rainbow ? '#ff8a2a' : T.ball });
+  sfx.burn(); hud();
+}
+// Pouvoir du vaisseau (bouton du HUD, F ou E) : furie du Frénétique, rembobinage du Rembobineur…
 function usePower() {
   if (SH().key === 'pred') { predBite(); return; }
   if (SH().key === 'rew') { rewind(); return; }
   if (SH().key === 'gam') { spinSlot(); return; }
-  if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.cd > 0) return;
-  ab.on = FR_T; ab.beat = 0;
+  if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.fury < 1) return;
+  ab.on = FR_T; ab.beat = 0; ab.fury = 0;
+  // le fil déjà tracé prend feu
+  for (let k = 0; k < trail.length; k++) if (!erased[k]) lightFire(trail[k]);
   const pp = playerPos();
   superFlash = .7; superTint = '255,31,61'; shake = REDUCED ? 0 : .6;
   rings.push({ x: pp.x, y: pp.y, r: 0, max: 9, age: 0, color: T.rainbow ? '#ff1f3d' : T.shock, big: true });
   burst(pp.x, pp.y, T.rainbow ? '#ff1f3d' : T.ball, 30, 12); burst(pp.x, pp.y, T.rainbow ? '#ffd0d6' : T.shock, 12, 7);
-  popups.push({ x: pp.x, y: pp.y - 1.6, text: 'FRÉNÉSIE !', age: 0, color: T.rainbow ? '#ff4d5e' : T.ball });
+  popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'FURIE !', age: -0.1, color: T.rainbow ? '#ff4d5e' : T.ball, big: true });
+  burst(pp.x, pp.y, T.rainbow ? '#ffb02a' : T.shock, 20, 9);
   sfx.rage(); powersHud(); pwHud();
 }
 function updateAbility(dt) {
@@ -1719,9 +1790,15 @@ function updateAbility(dt) {
     ab.on = Math.max(0, ab.on - dt);
     // battements de cœur, de plus en plus rapides
     ab.beat -= dt; if (ab.beat <= 0) { ab.beat = .32 + ab.on * .06; sfx.heart(); }
-    if (ab.on === 0) { ab.cd = FR_CELLS; sfx.rageEnd(); powersHud(); }
+    if (ab.on === 0) { sfx.rageEnd(); powersHud(); }
     pwHud();
   }
+  // la furie retombe s'il traîne sur son terrain (pas avant son premier mouvement)
+  if (SH().key === 'fre' && P && !(ab.on > 0)) {
+    if (P.drawing || P.shield) ab.idle = 0;
+    else if ((ab.idle += dt) > FURY_IDLE && ab.fury > 0) { ab.fury = Math.max(0, ab.fury - FURY_DRAIN * dt); pwHud(); }
+  }
+  updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
   if (armor.jolt > 0) armor.jolt -= dt;
   if (armor.cd > 0) armor.cd -= dt;
@@ -1942,11 +2019,10 @@ function flee(e, dt) {
   const turn = Math.min(Math.abs(da), 9 * (1.3 - d / PRED_FEAR) * dt) * (da >= 0 ? 1 : -1), b = a + turn;
   e.vx = Math.cos(b) * v; e.vy = Math.sin(b) * v;
 }
-// Chaque nouvelle case de fil recharge les pouvoirs (frénésie, bouclier, rembobinage)
+// Chaque nouvelle case de fil recharge les pouvoirs (bouclier, rembobinage, blindage)
 function seaStep() {
   const k = SH().key;
   if (k === 'rob' && armor.hp < 1) { armor.hp = Math.min(1, armor.hp + 1 / ARMOR_CELLS / G); pwHud(); }
-  if (k === 'fre' && ab.on === 0 && ab.cd > 0) { ab.cd -= 1 / G; if (ab.cd < 1e-6) { ab.cd = 0; sfx.ready(); } pwHud(); }
   if (k === 'enc' && P.guard > 0) {
     P.guard -= 1 / G; if (P.guard < 1e-6) P.guard = 0;
     if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
@@ -2545,6 +2621,7 @@ function crash() {
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   plan = null; dash = null;
   pred.bite = 0; pred.tail = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false;
+  if (ab.on > 0) { ab.on = 0; }
   powersHud(); pwHud();
   sfx.crash();
 }
@@ -2819,7 +2896,7 @@ function powersHud() {
       + (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
       + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
-      + (frenzyOn() ? `<div class="chip rage"><b></b><span>FRÉNÉSIE</span><div class="t"><i id="trage"></i></div></div>` : '')
+      + (frenzyOn() ? `<div class="chip rage"><b></b><span>FURIE</span><div class="t"><i id="trage"></i></div></div>` : '')
       + (guard ? `<div class="chip guard"><b></b><span>BOUCLIER</span><div class="t"><i id="tguard"></i></div></div>` : '')
       + (power.sup > 0 ? `<div class="chip sup"><b></b><span>SUPER CASQUE</span><div class="t"><i id="tsup"></i></div></div>` : '')
       + (power.inv > 0 ? `<div class="chip inv"><b></b><span>CASQUE</span><div class="t"><i id="tinv"></i></div></div>` : '')
@@ -2843,6 +2920,7 @@ function powersHud() {
 }
 // Bouton de pouvoir du HUD : Frénétique (prêt / actif / recharge) ou Encaisseur (bouclier prêt / en recharge)
 let pwSig = '';
+const FLAME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 C13.2 5.6 18.5 8.4 18.5 14.2 A6.5 6.5 0 0 1 5.5 14.2 C5.5 10.6 7.8 8.8 8.6 6 C10.2 7.9 10.8 9.5 11.1 11 C12.6 8.3 12.8 5 12 1.5 Z"/></svg>';
 const BOLT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg>';
 const REWI = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2 H19 V4 H17.5 C17.5 7.5 15.5 9.6 13.3 12 C15.5 14.4 17.5 16.5 17.5 20 H19 V22 H5 V20 H6.5 C6.5 16.5 8.5 14.4 10.7 12 C8.5 9.6 6.5 7.5 6.5 4 H5 Z M8.6 4 C8.8 6.6 10.2 8.2 12 10 C13.8 8.2 15.2 6.6 15.4 4 Z M9 19.5 H15 C14.6 17.6 13.4 16.4 12 15.2 C10.6 16.4 9.4 17.6 9 19.5 Z" fill-rule="evenodd"/></svg>';
 const FANG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3.5 H21 V7 C19.4 7 18.3 8 17.8 10 L15.6 20.5 L13.6 10.2 C13.2 8.7 12.7 8 12 8 C11.3 8 10.8 8.7 10.4 10.2 L8.4 20.5 L6.2 10 C5.7 8 4.6 7 3 7 Z"/></svg>';
@@ -2856,9 +2934,9 @@ function pwHud() {
   if (!show) { pwSig = ''; return; }
   let cls, p, inner, label;
   if (k === 'fre') {
-    if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = BOLT; label = 'Frénésie active'; }
-    else if (ab.cd > 0) { cls = 'cd'; p = 1 - ab.cd / FR_CELLS; inner = BOLT; label = 'Frénésie en recharge : trace dans la zone à conquérir'; }
-    else { cls = 'ready'; p = 1; inner = BOLT; label = 'Déclencher la frénésie'; }
+    if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = FLAME; label = 'Furie en cours'; }
+    else if (ab.fury < 1) { cls = 'cd'; p = ab.fury; inner = FLAME; label = 'Furie : conquiers du terrain pour remplir la jauge'; }
+    else { cls = 'ready'; p = 1; inner = FLAME; label = 'Déclencher la furie'; }
   } else if (k === 'rob') {
     const hp = armor.hp;
     cls = 'armor'; p = hp; inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
@@ -3000,6 +3078,7 @@ function render() {
 
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
+  if (fires.length) drawFires();
   if (plan && P) drawPlan();
   for (const r of rings) {
     if (r.fill) {
@@ -3241,6 +3320,42 @@ const trailRgb = (L, b) => {
   const u = (b + .5) / TRAIL_NC * 2, k = Math.min(1, u | 0), f = u - k, a = rgbOf(L.c[k]).split(','), c = rgbOf(L.c[k + 1]).split(',');
   return a.map((v, i) => Math.round(+v + (c[i] - v) * f)).join(',');
 };
+// Flammes de la furie : un sprite de flamme par case, qui vacille et s'éteint
+let flameCv = null;
+function drawFires() {
+  if (!T.rainbow) {
+    ctx.fillStyle = T.shock;
+    for (const f of fires) if (Math.sin(time * 20 + f.ph) > -.3) ctx.fillRect(f.x - .2, f.y - .2, .4, .4);
+    return;
+  }
+  if (!flameCv) {
+    flameCv = document.createElement('canvas'); flameCv.width = flameCv.height = 64;
+    const g = flameCv.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, 'rgba(255,248,210,1)'); r.addColorStop(.25, 'rgba(255,200,80,.95)'); r.addColorStop(.55, 'rgba(255,90,30,.55)'); r.addColorStop(1, 'rgba(200,20,10,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  }
+  // deux passes : les flammes en couleur (lisibles même sur le terrain clair), puis la lueur en lumière additive
+  ctx.save();
+  for (const pass of [0, 1]) {
+    ctx.globalCompositeOperation = pass ? 'lighter' : 'source-over';
+    for (const f of fires) {
+      const left = (f.end - fireClock) / FIRE_T, fade = Math.min(1, left * 2.5), fl = Math.sin(time * 17 + f.ph), fl2 = Math.sin(time * 11 + f.ph * 1.7);
+      if (pass) {
+        const glow = 2.2 * (.8 + .2 * fade);
+        ctx.globalAlpha = .3 * fade; ctx.drawImage(flameCv, f.x - glow / 2, f.y - glow / 2, glow, glow);
+        continue;
+      }
+      // cœur, puis deux langues de flamme étirées vers le haut qui vacillent
+      const core = (.8 + .25 * fade) * (1 + .15 * fl);
+      ctx.globalAlpha = .85 * fade; ctx.drawImage(flameCv, f.x - core / 2, f.y - core / 2, core, core);
+      const tw = .75 * (.6 + .4 * fade), th = (1.5 + .6 * fl2) * (.5 + .5 * fade), sway = .12 * Math.sin(time * 7 + f.ph);
+      ctx.globalAlpha = .9 * fade; ctx.drawImage(flameCv, f.x - tw / 2 + sway, f.y - th * .85, tw, th);
+      const t2 = th * .6;
+      ctx.globalAlpha = .7 * fade * (.4 + .6 * Math.max(0, fl)); ctx.drawImage(flameCv, f.x - tw * .3 - sway, f.y - th * .6 - t2 * .7, tw * .6, t2);
+    }
+  }
+  ctx.restore();
+}
 function drawTrail(pp) {
   const dead = S.phase === 'crash';
   const last = trail.length - 1, hs = holes(), runs = [];
@@ -3256,7 +3371,7 @@ function drawTrail(pp) {
   }
   trailXY = [];
   const sup = power.sup > 0 && !dead;
-  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : frenzyOn() && T.rainbow ? '#ff2e4a' : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
+  const tc = dead ? T.danger : sup ? (T.rainbow ? '#ffd23f' : T.trail) : frenzyOn() && T.rainbow ? '#ff6a1f' : power.hyp > 0 && T.rainbow ? '#9ff3ff' : power.inv > 0 && T.rainbow ? '#ffe27a' : T.trail;
   // fil normal du thème couleur : dégradé le long du fil, de l'or (départ) à l'orange puis au rose (vaisseau)
   const grad = T.smooth && T.rainbow && tc === T.trail;
   const tp = new Path2D(), parts = [];
@@ -4053,7 +4168,7 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Frénésie : touche le bouton ⚡ en haut à droite (ou F au clavier). Elle se recharge en traçant dans la zone à conquérir. Pendant la frénésie, tu es invincible : fonce ! En échange, pas de Casque ni de Vitesse pour toi, même en super.</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Furie : chaque zone conquise remplit la jauge du bouton en haut à droite (elle retombe si tu traînes sur ton terrain). Pleine, touche-le (ou F au clavier) : 15 s à toute vitesse, et ton fil prend feu. Les ennemis qui le touchent grillent, et les flammes restent 3 s : un mur de feu. Attention, ton vaisseau, lui, n'est pas invincible.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Attention à ta jauge SANG ! : elle se vide sans arrêt et chaque proie la remplit, d'autant plus que tu enchaînes. À sec, tu perds une vie. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
@@ -4117,7 +4232,7 @@ function showClear() {
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
-  if (ab.on > 0) { ab.on = 0; ab.cd = FR_CELLS; }
+  ab.on = 0;
   carry = { guard: P ? P.guard : 0 };
   powersHud(); pwHud();
   hud();
@@ -4247,7 +4362,7 @@ const HOWTO = `<details><summary>COMMENT JOUER</summary>
         <li><b>Pulsar</b> : il envoie des ondes circulaires qui coupent ton fil. Il s'illumine juste avant.</li>
         <li><b>Bonus</b> (n'importe quand, sans prévenir : sois réactif) : casque (les ennemis n'ont plus d'effet sur toi ni sur ton fil), vitesse (sur ton terrain), vie, territoire, chrono (tout ralentit, toi un peu aussi, et tu peux t'arrêter n'importe où).</li>
         <li><b>Super bonus</b>, très rares : Super Casque (ton fil devient un mur et tu dégommes tout), Super Bombe (30 % du terrain), Super Vitesse (×4), Super Vie (+3), Super Chrono (les ennemis sont presque figés).</li>
-        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (frénésie : 5 s invincible et +50 % de vitesse, mais longue à recharger), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une machine à sous). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
+        <li><b>Vaisseaux</b> : Veinard (le vaisseau d'origine, avec plus de bonus et de super bonus), Blindé (une seule vie, mais un blindage qui encaisse les chocs ; lent, peu de bonus), Frénétique (plus rapide ; sa furie, remplie en conquérant, le fait filer à ×3 avec un fil en feu qui grille les ennemis), Encaisseur (2 vies, un coup l'arrête au lieu de le tuer), Fulgurant (une seule vie, mais il parcourt en un éclair le trajet que tu dessines depuis ton vaisseau), Furtif (les ennemis ne voient pas son fil, mais il se camoufle par moments), Rembobineur (remonte le temps, même au moment d'un crash), Piégeur (referme une petite zone sur des ennemis pour les éliminer), Monarque (rien que des super bonus, mais éphémères), Flambeur (des jetons de casino qui lancent une machine à sous). Les pouvoirs se rechargent en traçant dans la zone à conquérir.</li>
         <li>Glisse pour diriger, tape pour t'arrêter sur ton terrain. Pause avec le bouton en haut.</li>
       </ul>
     </details>`;
@@ -4329,7 +4444,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.cd = 0; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -4384,7 +4499,7 @@ function togglePause() {
     S.pausedFrom = 'play'; S.phase = 'pause';
     showOverlay(`<h2><span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</span>PAUSE</h2>${infoRows(true)}<button class="btn" id="go">REPRENDRE</button><button class="btn ghost" id="pmenu">QUITTER LA PARTIE</button><p class="count">ou touche l'écran pour reprendre</p>`, resume);
     // retour au menu : la partie reste sauvegardée au début du niveau (bouton CONTINUER)
-    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0; ab.on = 0; ab.cd = 0; powersHud(); titleScreen(); });
+    $('pmenu').addEventListener('click', () => { onGo = null; power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0; ab.on = 0; ab.fury = 0; powersHud(); titleScreen(); });
   } else if (S.phase === 'pause') resume();
 }
 function resume() { hideOverlay(); S.phase = 'play'; last = performance.now(); }
@@ -4396,10 +4511,10 @@ function testSync() {
   $('tship').textContent = SH().name;
   $('tcoin').hidden = $('tforce').hidden = SH().key !== 'gam';
 }
-// pouvoirs à plein : frénésie, bouclier, rembobinage, blindage, jetons
+// pouvoirs à plein : furie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.cd = 0; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
+  ab.fury = 1; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }

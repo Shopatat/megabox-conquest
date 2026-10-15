@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -192,20 +192,32 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`blindé : ${g.S.lives} vie, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
   const superShare = ship => { g.newGame(1, 5, ship); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
   console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(2).toFixed(0)} %`);
-  // Frénétique : +50 % de vitesse et invincible pendant la frénésie, recharge en traçant 300 cases
-  const run = fr => { g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
-  const dn = run(false), df = run(true);
-  console.log(`frénésie : ${dn / G} cases sans, ${df / G} avec (x${(df / dn).toFixed(2)})`);
-  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.setDir('down'); step(20); g.usePower();
-  { const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + 2; e.vx = 0; e.vy = -7; g.foes.push(e);
-    const h = g.makeFoe('hunt', 1); h.x = 10.5; h.y = 40.5; g.foes.push(h); }
-  step(60); const inv = g.S.phase, l2 = g.S.lives, trl = g.trail.length; g.setDir('left'); step(5); g.setDir('up'); step(5); g.setDir('right'); step(5);
-  console.log(`frénésie : percuté par une boule ${inv} (play), vies 3 -> ${l2}, fil ${trl > 0 ? 'intact' : 'perdu'} ; croise son fil ${g.S.phase} vies ${g.S.lives}`);
-  g.newGame(1, 1, 2); g.go(); g.foes.length = 0; g.usePower(); step(60 * 5 + 10);
-  const cd = g.ab.cd; g.usePower(); const refused = g.ab.on === 0; step(60 * 20); g.usePower(); const stillOff = g.ab.on === 0;
-  for (let i = 0; i < 299 * G; i++) g.seaStep(); g.usePower(); const early = g.ab.on > 0; for (let i = 0; i < G; i++) g.seaStep(); g.usePower();
-  { g.newGame(1, 5, 2); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`frénésie : bonus tirés ${[...ts].sort().join(' ')} (ni inv, ni sup, ni spd, ni sspd)`); }
-  console.log(`frénésie : pas dispo après 299 cases ${!early} ; finie après 5 s (recharge ${cd} cases), refusée pendant la recharge ${refused}, toujours refusée 20 s plus tard sans tracer ${stillOff}, de nouveau dispo après 300 cases ${g.ab.on > 0}`);
+  // Frénétique : plus rapide de base (×1,2), furie à ×3 ; jauge remplie par la surface conquise ; fil en feu qui grille
+  const FR = 2;
+  const run = (ship, fr) => { g.newGame(1, 1, ship); g.go(); g.foes.length = 0; if (fr) g.ab.fury = 1; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
+  const d0 = run(0, false), dn = run(FR, false), df = run(FR, true);
+  console.log(`furie : vitesse du Frénétique x${(dn / d0).toFixed(2)} (1,2), pendant la furie x${(df / d0).toFixed(2)} (3)`);
+  g.newGame(1, 1, FR); g.go(); g.foes.length = 0;
+  const fz0 = g.ab.fury; g.usePower(); const refused = g.ab.on === 0;
+  g.furyGain(g.S.interior * .15, false); const half = g.ab.fury; g.furyGain(g.S.interior * .15, true); const full = g.ab.fury;
+  g.setDir('left'); step(5); step(60 * 8); const drained = g.ab.fury; g.usePower(); const refused2 = g.ab.on === 0;
+  g.ab.fury = 1; g.usePower();
+  console.log(`furie : jauge au départ ${fz0}, refusée vide ${refused}, 15 % du terrain -> ${half.toFixed(2)}, + MEGA -> ${full}, 8 s sur son terrain -> ${drained.toFixed(2)} (refusée ${refused2}), pleine -> furie de ${g.ab.on} s, jauge ${g.ab.fury}`);
+  // fil en feu : la boule qui le touche grille, pas d'onde de choc
+  g.newGame(1, 1, FR); g.go(); g.foes.length = 0; g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); step(10);
+  { const e = g.makeFoe('out', 1); e.x = PX() + 2; e.y = PY() - 4; e.vx = -7; e.vy = 0; g.foes.push(e); const sc = g.S.score; step(12);
+    console.log(`furie : boule sur le fil en feu grillée ${e.dead}, onde de choc ${!!g.wave}, fil ${g.trail.length > 0 ? 'intact' : 'perdu'}, +${g.S.score - sc} points, flammes ${g.fires.length}`); }
+  // le vaisseau, lui, n'est pas invincible
+  g.newGame(1, 1, FR); g.go(); g.foes.length = 0; g.ab.fury = 1; g.setDir('down'); step(20); g.usePower();
+  { const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + 4; e.vx = 0; e.vy = 0; g.foes.push(e); step(12); console.log(`furie : boule percutée par le vaisseau -> ${g.S.phase} (crash), boule grillée ${e.dead}, furie ${g.ab.on}`); }
+  // les flammes restent FIRE_T s, même hors du fil
+  g.newGame(1, 1, FR); g.go(); g.foes.length = 0;
+  { const cx = 20 * G, cy = 40 * G; g.lightFire(g.at(cx, cy));
+    const put = () => { const e = g.makeFoe('out', 1); e.x = (cx + .5) / G + .3; e.y = (cy + .5) / G; e.vx = 0; e.vy = 0; g.foes.push(e); step(2); return e; };
+    const a = put(); step(60 * 3.2); const b = put(), bAlive = !b.dead;
+    const h = g.makeFoe('amph', 1); h.x = (cx + .5) / G; h.y = (cy + .5) / G; h.vx = h.vy = 0; g.lightFire(g.at(cx, cy)); g.foes.push(h); step(2);
+    console.log(`furie : boule sur une flamme grillée ${a.dead}, 3,2 s plus tard rien ${bAlive}, trou noir sur une flamme intact ${!h.dead}`); }
+  { g.newGame(1, 5, FR); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`furie : bonus tirés ${[...ts].sort().join(' ')} (ni spd, ni sspd)`); }
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   const pyB = g.P.y;
@@ -425,12 +437,12 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
-  g.newGame(1, 1, 2); g.go(); g.ab.cd = 40; g.showClear(); g.setupLevel(2);
-  const cdKept = g.ab.cd;
+  g.newGame(1, 1, 2); g.go(); g.ab.fury = .4; g.showClear(); g.setupLevel(2);
+  const cdKept = g.ab.fury;
   g.newGame(1, 1, 3); g.go(); g.P.guard = 30; g.showClear(); g.setupLevel(2);
   const guardKept = g.P.guard;
   g.newGame(1, 1, 6); g.go(); g.rw.charge = 1.2; g.showClear(); g.setupLevel(2);
-  console.log(`entre deux niveaux : recharge frénésie ${cdKept} (40), bouclier ${guardKept} (30), jauge rembobinage ${g.rw.charge} (1.2)`);
+  console.log(`entre deux niveaux : jauge de furie ${cdKept} (0.4), bouclier ${guardKept} (30), jauge rembobinage ${g.rw.charge} (1.2)`);
 }
 
 // 5q) Prédateur : pas de fil, le bond dévore, combo qui accélère, terrain conquis autour des proies, contact hors bond = crash,
