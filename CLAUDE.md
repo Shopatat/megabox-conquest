@@ -278,6 +278,8 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 ## Pistes pour la suite
 
 ### Divers
+- **Arbres de maîtrise** (demande de Fabien : des compétences permanentes qui se débloquent en jouant beaucoup avec le même vaisseau) : proposition en attente de son avis, https://claude.ai/artifact/64CnHJcakJiiKyuXDGLXKE. XP par vaisseau (1 par case conquise, 200 × (difficulté + 1) par niveau gagné, rien en mode test), 8 niveaux de maîtrise (2 000 à 72 000 XP) = 8 points pour 3 branches de 4 compétences, une seule ultime (4e de branche) à la fois, réinitialisation gratuite entre deux parties, arbre libre en mode test.
+- Nouveaux objets proposés à Fabien (mine, téléporteur, leurre, aimant, score ×2, pièges à éviter, boîte mystère…) : il préfère des compétences permanentes (voir ci-dessus).
 - Équilibrage à affiner en jouant : nouveaux niveaux et nouveaux ennemis (rythme du pulsar, ruée du chasseur, invisibilité du spectre), vaisseaux.
 - Design général à peaufiner (Fabien l'a évoqué sans détailler).
 - Éventuellement l'écran d'intro et les « slides » de crash dessinés, comme prévus dans le doc original.
