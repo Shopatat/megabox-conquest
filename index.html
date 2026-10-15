@@ -101,6 +101,11 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pct small{color:var(--muted);font-size:9px}
 /* rangée de pouvoirs à hauteur fixe, toujours réservée : la faire apparaître ou disparaître changeait
    la hauteur du HUD, donc la taille et la position du terrain (saccade à la fin d'un bonus) */
+.xprow{display:flex;align-items:center;gap:8px;height:12px;font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--muted);font-variant-numeric:tabular-nums}
+.xprow.off{visibility:hidden}
+.xprow .xpb{flex:1;height:4px;border-radius:9px;background:rgba(255,255,255,.07);overflow:hidden}
+.xprow .xpb i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#ffd23f,#ff5f8f);transition:width .4s var(--ease)}
+.xprow.up .xpb i{background:#fff;box-shadow:0 0 10px #ffd23f}
 .powers{display:flex;gap:6px;flex-wrap:nowrap;height:22px;overflow:hidden}
 /* Prédateur : jauge SANG !, son carburant (goutte qui palpite, plus vite pendant le carnage ; grise et clignotante à sec) */
 .blood{flex:1 1 130px;min-width:100px;display:flex;align-items:center;gap:6px;height:22px;padding:0 8px 0 5px;box-sizing:border-box;border:1px solid rgba(255,42,58,.5);border-radius:99px;background:rgba(120,0,20,.28);font-family:var(--title);font-weight:800;font-size:9px;letter-spacing:.08em;color:#ff5a6a;white-space:nowrap}
@@ -371,6 +376,7 @@ details li b{color:var(--text);font-weight:600}
       <div class="pct" id="pct">0%<small>/75</small></div>
     </div>
     <div class="powers" id="powers"></div>
+    <div class="xprow" id="xprow"><span id="xpl">MAÎTRISE 0</span><div class="xpb"><i id="xpf"></i></div><span id="xpn"></span></div>
   </header>
 
   <div class="stage" id="stage">
@@ -660,192 +666,262 @@ const SKILLS = {
       ['chance', 'Coup de chance', 'Le premier bonus de chaque niveau arrive dans les 5 premières secondes.'],
       ['etoile', 'Bonne étoile', '+25 % de bonus par niveau.'],
       ['trouvaille', 'Trouvaille', 'Les bonus apparaissent à moins de 12 cases de toi.'],
-      ['corne', 'Corne d\'abondance', 'Chaque bonus ramassé a une chance sur quatre d\'en faire apparaître un autre aussitôt.']]],
+      ['aimant', 'Aimant à chance', 'Les bonus glissent vers toi quand tu passes à moins de 6 cases.'],
+      ['pluie', 'Pluie de bonus', 'Un bonus de plus par niveau.'],
+      ['corne', 'Corne d\'abondance', 'Chaque bonus ramassé a une chance sur deux d\'en faire apparaître un autre aussitôt.']]],
     ['FER À CHEVAL', 'de meilleurs bonus', [
       ['precoce', 'Précoce', 'Super bonus possibles dès le niveau 1 (au lieu du 3).'],
       ['veine', 'Veine', 'Super bonus encore 50 % plus fréquents.'],
       ['ecrin', 'Écrin', 'Les super bonus ne disparaissent pas tant que tu traces.'],
-      ['groslot', 'Gros lot', 'Les effets des super bonus durent 50 % plus longtemps.']]],
+      ['eclat', 'Éclat', 'Chaque super bonus ramassé rapporte aussi 2 000 × niveau.'],
+      ['entree', 'Entrée royale', 'Le premier bonus de chaque niveau est toujours un super bonus.'],
+      ['groslot', 'Gros lot', 'Les effets des super bonus durent deux fois plus longtemps.']]],
     ['MIRACULÉ', 'la chance face au danger', [
       ['ouf', 'Ouf', '10 % de chances qu\'un coup d\'ennemi te rate (« OUF ! »).'],
       ['baraka', 'Baraka', '20 % de chances au lieu de 10 %.'],
       ['ange', 'Ange gardien', '3 s d\'invulnérabilité après une réapparition, au lieu de 1.'],
-      ['trefle', 'Trèfle à quatre feuilles', 'Une fois par niveau, ton premier crash est annulé. Le trèfle du cockpit fane.']]]],
+      ['porteb', 'Porte-bonheur', 'Une onde de choc qui te rattrape a une chance sur trois de s\'éteindre juste avant.'],
+      ['frole', 'Frôlé', 'Un ennemi qui te frôle de justesse rapporte 300 × niveau.'],
+      ['trefle', 'Trèfle à quatre feuilles', 'Deux fois par niveau, un crash est annulé. Le trèfle du cockpit fane petit à petit.']]]],
   rob: [
     ['BLINDAGE', 'encaisser', [
       ['plaques', 'Plaques renforcées', 'Tous les chocs abîment 10 % de moins.'],
       ['soudeur', 'Soudeur', 'Réparation deux fois plus rapide (2 500 cases pour 100 %).'],
       ['reactives', 'Plaques réactives', 'Sous 30 % de blindage, les chocs abîment 25 % de moins.'],
-      ['forteresse', 'Forteresse', 'Blindage jusqu\'à 150 %.']]],
+      ['lourd', 'Blindage lourd', 'Les ondes de choc ne l\'abîment plus (le fil est quand même effacé).'],
+      ['nanites', 'Nanites', 'Il se répare aussi tout seul : 1 % toutes les 4 s.'],
+      ['forteresse', 'Forteresse', 'Blindage jusqu\'à 200 %.']]],
     ['MOTEUR', 'le poids comme arme', [
       ['moteur', 'Moteur révisé', '10 % plus lent seulement, au lieu de 20 %.'],
       ['masse', 'Masse', 'Un choc ne le ralentit plus du tout.'],
       ['belier', 'Bélier', 'Les ennemis qu\'il percute sont assommés 2 s.'],
-      ['rouleau', 'Rouleau compresseur', 'Les ennemis qu\'il percute en traçant sont détruits. Le choc abîme quand même le blindage.']]],
+      ['turbo', 'Turbo', 'Sur son terrain, il va 30 % plus vite.'],
+      ['charge', 'Charge', 'Percuter un ennemi en traçant n\'abîme que la moitié du blindage.'],
+      ['rouleau', 'Rouleau compresseur', 'Les ennemis qu\'il percute en traçant sont écrasés, sans abîmer son blindage.']]],
     ['ATELIER', 'réparer', [
       ['maint', 'Maintenance', '+5 % de blindage à chaque fin de niveau.'],
       ['pieces', 'Pièces détachées', 'Les bonus Vie apparaissent pour lui et réparent 40 %.'],
       ['recup', 'Récupération', 'Chaque zone de plus de 10 % refermée répare 3 %.'],
-      ['coque', 'Seconde coque', 'Une fois par partie, à 0 %, il repart avec 25 % au lieu d\'exploser.']]]],
+      ['revision', 'Révision', '+10 % de blindage en fin de niveau au lieu de 5 %.'],
+      ['parechoc', 'Pare-chocs', 'Le premier choc de chaque niveau ne l\'abîme pas.'],
+      ['coque', 'Seconde coque', 'Une fois par niveau, à 0 %, il repart avec 50 % au lieu d\'exploser.']]]],
   fre: [
     ['BRASIER', 'le feu', [
       ['braises', 'Braises', 'Les flammes restent 4 s au lieu de 3.'],
       ['bbq', 'Barbecue', 'Les ennemis grillés rapportent deux fois plus.'],
       ['meche', 'Mèche', 'Hors furie, les 10 dernières cases du fil brûlent toujours.'],
-      ['murfeu', 'Mur de feu', 'Flammes de 6 s, et plus larges : elles grillent à une case de distance.']]],
+      ['etincelles', 'Étincelles', 'Un ennemi grillé explose et grille ceux à moins de 2 cases.'],
+      ['cendres', 'Cendres', 'Chaque ennemi grillé conquiert 1 % de terrain autour de lui.'],
+      ['murfeu', 'Mur de feu', 'Flammes de 8 s, et plus larges : elles grillent à une case et demie.']]],
     ['RAGE', 'la jauge', [
       ['colere', 'Colérique', 'Jauge pleine à 50 % du terrain au lieu de 60 %.'],
       ['rancune', 'Rancune', 'Chaque ennemi grillé remplit 8 % de la prochaine furie.'],
       ['horslui', 'Hors de lui', 'Furie de 12 s au lieu de 10.'],
-      ['sansfin', 'Furie sans fin', 'Chaque ennemi grillé prolonge la furie de 1,5 s.']]],
+      ['adrenaline', 'Adrénaline', 'Les zones refermées pendant la furie remplissent déjà la suivante (à moitié).'],
+      ['rugissement', 'Rugissement', 'Déclencher la furie assomme 2 s les ennemis à moins de 8 cases.'],
+      ['sansfin', 'Furie sans fin', 'Chaque ennemi grillé prolonge la furie de 2 s.']]],
     ['NERFS', 'survivre à ×3', [
       ['sangfroid', 'Sang-froid', 'La jauge ne retombe plus quand il traîne sur son terrain.'],
       ['reflexes', 'Réflexes', 'Pendant la furie, le temps ralentit un instant quand un ennemi frôle le vaisseau.'],
       ['retombee', 'Retombée', 'À la fin de la furie, 2 s d\'invincibilité.'],
-      ['phenix', 'Phénix', 'Une fois par niveau, un crash pendant la furie est annulé : il renaît en flammes et grille tout autour.']]]],
+      ['freins', 'Freins', 'Pendant la furie, un tap l\'arrête net, même dans la zone à conquérir.'],
+      ['secondsouffle', 'Second souffle', 'Quand la furie se termine, la jauge repart à 25 %.'],
+      ['phenix', 'Phénix', 'Une fois par niveau, un crash pendant la furie est annulé : il renaît en flammes, grille tout à moins de 8 cases et reste intouchable 3 s.']]]],
   enc: [
     ['BOUCLIER', 'tenir', [
       ['rechrap', 'Recharge rapide', 'Bouclier en 65 cases au lieu de 80.'],
       ['pret', 'Prêt à tout', 'Bouclier plein au début de chaque niveau.'],
       ['ondeb', 'Onde de bouclier', 'Encaisser un coup repousse les ennemis proches.'],
-      ['double', 'Double bouclier', 'Deux charges de bouclier.']]],
+      ['rechecl', 'Recharge éclair', 'Bouclier en 50 cases.'],
+      ['miroir', 'Bouclier miroir', 'Tant que le bouclier est prêt, un ennemi qui touche le fil rebondit sans onde de choc.'],
+      ['double', 'Double bouclier', 'Deux charges de bouclier, et la deuxième se recharge deux fois plus vite.']]],
     ['RIPOSTE', 'rendre les coups', [
       ['sonne', 'Sonné', 'L\'ennemi qui frappe le bouclier est assommé 3 s.'],
       ['prime', 'Prime', 'Chaque ennemi assommé rapporte 200 × niveau.'],
       ['elan', 'Élan', 'Encaisser ne t\'arrête plus net : tu continues ta route.'],
-      ['renvoi', 'Renvoi', 'L\'ennemi qui frappe le bouclier est détruit.']]],
+      ['contre', 'Contre-attaque', 'Après un coup encaissé, 3 s pendant lesquelles les ennemis qu\'il touche sont assommés.'],
+      ['riposte', 'Onde de riposte', 'Encaisser un coup assomme 2 s les ennemis à moins de 6 cases.'],
+      ['renvoi', 'Renvoi', 'L\'ennemi qui frappe le bouclier est détruit, et ceux à moins de 4 cases avec lui.']]],
     ['RÉSILIENCE', 'se relever', [
       ['souffle', 'Souffle', 'Répit de 1,5 s après un coup, au lieu de 1.'],
       ['rafist', 'Rafistolage', 'Après une onde de choc encaissée, le bout de fil referme quand même les zones.'],
       ['apres', 'Après-coup', 'Après un coup encaissé, ton fil ne déclenche plus d\'onde de choc pendant 3 s.'],
-      ['inebr', 'Inébranlable', '3 vies au départ au lieu de 2.']]]],
+      ['meditation', 'Méditation', 'Immobile sur son terrain, son bouclier se recharge tout seul.'],
+      ['intact', 'Intact', 'Un niveau gagné sans perdre de vie rend une vie.'],
+      ['inebr', 'Inébranlable', '4 vies au départ au lieu de 2.']]]],
   ful: [
     ['ÉCLAIR', 'la foudre', [
       ['portee', 'Longue portée', 'Trajet éclair 25 % plus long.'],
       ['tension', 'Haute tension', 'Éclair à 200 cases/s au lieu de 150.'],
       ['arc', 'Arc électrique', 'Les ennemis frôlés par l\'éclair (à moins de 1,5 case) sont assommés 2 s.'],
-      ['chaine', 'Foudre en chaîne', 'À la fin de chaque éclair, la foudre frappe et détruit l\'ennemi le plus proche (toutes les 10 s au plus).']]],
+      ['sillage', 'Sillage électrique', 'Le trajet de l\'éclair reste électrifié 2 s : les ennemis qui le touchent sont assommés.'],
+      ['surcharge', 'Surcharge', 'Une zone refermée par un éclair de plus de 60 cases rapporte ×1,5.'],
+      ['chaine', 'Foudre en chaîne', 'À la fin de chaque éclair, la foudre frappe et détruit les deux ennemis les plus proches (toutes les 6 s au plus).']]],
     ['CONCENTRATION', 'viser', [
       ['suspendu', 'Temps suspendu', 'Pendant que tu dessines, le monde ralentit de moitié.'],
       ['transe', 'Transe', 'Le monde ralentit à 30 % au lieu de 50 %.'],
       ['premon', 'Prémonition', 'Les trajectoires des ennemis s\'affichent pendant que tu dessines.'],
-      ['fige', 'Instant figé', 'Le monde est figé pendant que tu dessines (3 s au plus).']]],
+      ['calme', 'Calme', 'Après un éclair, le monde reste ralenti de moitié pendant 1 s.'],
+      ['cyclone', 'Œil du cyclone', 'Pendant que tu dessines, les ennemis à moins de 3 cases du vaisseau sont repoussés.'],
+      ['fige', 'Instant figé', 'Le monde est figé pendant que tu dessines (5 s au plus).']]],
     ['SURVIE', 'une vie, mais', [
       ['paraton', 'Paratonnerre', 'La première onde de choc qui te rattrape dans chaque niveau est absorbée.'],
       ['reflexe', 'Réflexe', 'Un ennemi sur le point de te toucher déclenche un ralenti d\'une demi-seconde.'],
       ['court', 'Court-circuit', 'Une fois par partie, un crash est annulé.'],
-      ['survolte', 'Survolté', '2 vies au maximum au lieu d\'une.']]]],
+      ['fusible', 'Fusible', 'Une fois par niveau, un crash pendant l\'éclair est annulé.'],
+      ['terre', 'Mise à la terre', 'L\'anneau du pulsar ne te touche plus.'],
+      ['survolte', 'Survolté', '3 vies au maximum au lieu d\'une, et tu commences avec les 3.']]]],
   fur: [
     ['CAMOUFLAGE', 'de défaut à outil', [
       ['reglage', 'Réglage optique', 'Camouflages plus courts (1,5 à 2,5 s au lieu de 2,5 à 4).'],
       ['manuel', 'Commande manuelle', 'Plus de camouflage au hasard : un bouton le déclenche (4 s, recharge en 100 cases).'],
       ['invis', 'Invisible', 'Camouflé, les ennemis ne te voient plus non plus : ils te traversent.'],
-      ['assassin', 'Ombre assassine', 'Camouflé, toucher un ennemi le détruit.']]],
+      ['optique', 'Optique avancée', 'Camouflage de 6 s au lieu de 4.'],
+      ['camoflash', 'Recharge rapide', 'Camouflage rechargé en 60 cases au lieu de 100.'],
+      ['assassin', 'Ombre assassine', 'Camouflé, toucher un ennemi le détruit, pour trois fois plus de points.']]],
     ['SILENCE', 'hors des radars', [
       ['discret', 'Discret', 'Le chasseur ne te repère qu\'à 14 cases au lieu de 22.'],
       ['sansmasse', 'Sans masse', 'Le trou noir n\'aspire plus le vaisseau.'],
       ['horsphase', 'Hors phase', 'L\'anneau du pulsar ne te touche plus.'],
-      ['dispar', 'Disparition', 'Une fois par niveau, un coup fatal te rend invisible 3 s au lieu de te tuer.']]],
+      ['brouillage', 'Brouillage', 'Les gardiens ne te touchent plus sur ton terrain.'],
+      ['indetect', 'Indétectable', 'Le chasseur ne te repère plus du tout.'],
+      ['dispar', 'Disparition', 'Deux fois par niveau, un coup fatal te rend invisible 3 s au lieu de te tuer.']]],
     ['INFILTRATION', 'le travail propre', [
       ['payante', 'Discrétion payante', '+20 % de points sur les cases conquises.'],
       ['embuscade', 'Embuscade', 'Une zone refermée sans ennemi à moins de 10 cases du vaisseau rapporte ×1,5.'],
       ['coupbas', 'Coup bas', 'Un ennemi enfermé dans une zone de moins de 5 % du terrain est éliminé.'],
-      ['infiltre', 'Infiltré', 'Points ×2 tant que tu n\'as pas été touché dans le niveau.']]]],
+      ['precision', 'Précision', 'Un MEGA rapporte ×3 au lieu de ×2.'],
+      ['pickpocket', 'Pickpocket', 'Chaque bonus ramassé camouflé rapporte 2 000 × niveau.'],
+      ['infiltre', 'Infiltré', 'Points ×3 tant que tu n\'as pas été touché dans le niveau.']]]],
   rew: [
     ['SABLIER', 'la jauge', [
       ['grand', 'Grand sablier', 'Jauge de 4 s au lieu de 3.'],
       ['sablefin', 'Sable fin', 'Recharge en 90 cases au lieu de 120.'],
       ['geant', 'Sablier géant', 'Jauge de 5 s.'],
-      ['boucle', 'Boucle', 'Une fois par niveau, un rembobinage complet gratuit, qui ne vide pas la jauge.']]],
+      ['remontee', 'Remontée', 'Chaque zone de plus de 10 % refermée rend 0,5 s de jauge.'],
+      ['titan', 'Sablier titanesque', 'Jauge de 7 s.'],
+      ['boucle', 'Boucle', 'Deux fois par niveau, un rembobinage complet gratuit, qui ne vide pas la jauge.']]],
     ['PARADOXE', 'changer le passé', [
       ['hesit', 'Hésitation', '4 s pour décider au crash, au lieu de 3.'],
       ['lecon', 'Leçon', 'Rembobiner après un crash rend 1 s de jauge.'],
       ['echo', 'Écho', 'En rembobinant, ton fantôme laisse un sillage qui assomme les ennemis 2 s.'],
-      ['paradoxe', 'Paradoxe', 'Les ennemis que ton fantôme traverse en rembobinant sont effacés.']]],
+      ['dejavu', 'Déjà-vu', 'Après un rembobinage, 2 s pendant lesquelles rien ne peut te toucher.'],
+      ['secondechance', 'Seconde chance', 'Rembobiner après un crash ne coûte pas de jauge.'],
+      ['paradoxe', 'Paradoxe', 'Les ennemis que ton fantôme traverse en rembobinant sont effacés, pour 500 × niveau chacun.']]],
     ['MAÎTRISE', 'le bon moment', [
       ['ralenti', 'Ralenti fin', 'Rembobinage encore plus lent, pour s\'arrêter pile.'],
       ['arret', 'Arrêt sur image', 'Pendant le rembobinage, un tap fige tout 2 s pour viser ta reprise.'],
       ['prudence', 'Prudence', '3 vies au maximum au lieu de 2.'],
-      ['prescience', 'Prescience', 'Après un rembobinage, les trajectoires des ennemis s\'affichent 2 s : tu sais ce qui va arriver.']]]],
+      ['bulle', 'Bulle temporelle', 'Après un rembobinage, les ennemis restent ralentis de moitié 3 s.'],
+      ['flashback', 'Flashback', 'Une fois par niveau, un crash sans jauge peut quand même être rembobiné (1 s).'],
+      ['prescience', 'Prescience', 'Après un rembobinage, les trajectoires des ennemis s\'affichent 4 s et le monde ralentit pendant ce temps.']]]],
   trap: [
     ['MÂCHOIRES', 'la taille du piège', [
       ['large', 'Large', 'Pièges jusqu\'à 15 % du terrain au lieu de 12 %.'],
       ['tlarge', 'Très large', 'Jusqu\'à 18 %.'],
       ['gibier', 'Gros gibier', 'Le trou noir se piège aussi (zone de moins de 8 %).'],
-      ['geant', 'Piège géant', 'Pièges jusqu\'à 25 % du terrain.']]],
+      ['acier', 'Mâchoires d\'acier', 'Pièges jusqu\'à 21 % du terrain.'],
+      ['fermeture', 'Fermeture éclair', 'Refermer un piège ralentit de moitié tous les autres ennemis pendant 3 s.'],
+      ['geant', 'Piège géant', 'Pièges jusqu\'à 30 % du terrain.']]],
     ['TROPHÉES', 'ce que ça rapporte', [
       ['prime', 'Prime', 'Ennemi piégé : points ×1,5.'],
       ['double', 'Coup double', 'Piéger deux ennemis d\'un coup fait apparaître un bonus.'],
       ['depouille', 'Dépouille', 'Chaque ennemi piégé conquiert aussi 2 % de terrain autour de la zone.'],
-      ['tableau', 'Tableau de chasse', 'Piéger tous les ennemis de la zone à conquérir d\'un niveau donne +1 vie.']]],
+      ['collection', 'Collection', 'Chaque nouvelle sorte d\'ennemi piégée dans le niveau rapporte 2 000 × niveau.'],
+      ['trophee', 'Trophée de vie', 'Tous les 6 ennemis piégés dans la partie, +1 vie.'],
+      ['tableau', 'Tableau de chasse', 'Piéger tous les ennemis de la zone à conquérir d\'un niveau donne +2 vies et 5 000 × niveau.']]],
     ['APPÂTS', 'amener la proie', [
       ['collet', 'Collet', 'Un ennemi qui touche ton fil est ralenti 2 s.'],
       ['filet', 'Filet', 'Les ondes de choc avancent 25 % moins vite.'],
       ['leurre', 'Leurre', 'Sur ton terrain, les ennemis proches sont légèrement attirés vers toi.'],
+      ['glu', 'Glu', 'Un ennemi qui touche ton fil reste collé 1 s.'],
+      ['cage', 'Cage', 'Les ondes de choc s\'éteignent au bout de 15 cases de fil.'],
       ['nasse', 'Nasse', 'Une zone qui ne contient qu\'un seul ennemi se piège quelle que soit sa taille (sauf la plus grande).']]]],
   mon: [
     ['COURONNE', 'garder le meilleur', [
       ['patience', 'Patience royale', 'Les super bonus restent 25 % plus longtemps avant de disparaître.'],
       ['majeste', 'Majesté', '50 % plus longtemps au lieu de 25 %.'],
       ['tresor', 'Trésor', 'La couronne garde un super bonus en réserve, à déclencher quand tu veux.'],
-      ['divin', 'Droit divin', 'Chaque super bonus est choisi parmi deux proposés.']]],
+      ['coffret', 'Coffret royal', 'La couronne garde deux super bonus au lieu d\'un.'],
+      ['joyau', 'Joyau', 'Déclencher un trésor donne aussi 3 s d\'invincibilité.'],
+      ['divin', 'Droit divin', 'Chaque super bonus est choisi parmi trois proposés.']]],
     ['COUR', 'ses serviteurs', [
       ['heraut', 'Héraut', 'Un signal annonce l\'endroit du prochain super bonus 3 s avant son apparition.'],
       ['garde', 'Garde royale', 'Un gardien de moins par niveau.'],
       ['tribut', 'Tribut', 'Chaque tranche de 10 % de terrain conquis rapporte 1 000 × niveau.'],
-      ['couronne', 'Couronnement', '6 vies au maximum au lieu de 4.']]],
+      ['emissaire', 'Émissaire', 'Les super bonus apparaissent à moins de 15 cases de toi.'],
+      ['courtisans', 'Courtisans', 'Deux gardiens de moins par niveau au lieu d\'un.'],
+      ['couronne', 'Couronnement', '7 vies au maximum au lieu de 4, et une de plus au départ.']]],
     ['FASTE', 'des effets plus forts', [
       ['apparat', 'Apparat', 'Effets des super bonus : +2 s.'],
       ['splendeur', 'Splendeur', '+4 s au lieu de +2.'],
       ['magnif', 'Magnificence', 'Ramasser un super bonus détruit l\'ennemi le plus proche.'],
-      ['prodig', 'Prodigalité', 'Un super bonus de plus par niveau, et ils arrivent deux fois plus vite.']]]],
+      ['cortege', 'Cortège', 'Un super bonus ramassé a une chance sur quatre de donner aussi une vie.'],
+      ['rayonnement', 'Rayonnement', 'Pendant un effet de super bonus, les ennemis à moins de 5 cases sont ralentis de moitié.'],
+      ['prodig', 'Prodigalité', 'Deux super bonus de plus par niveau, et ils arrivent deux fois plus vite.']]]],
   gam: [
     ['MISE', 'les jetons', [
       ['bourse', 'Grosse bourse', '6 jetons au maximum au lieu de 5.'],
       ['depart', 'Mise de départ', 'Un jeton offert au début de chaque niveau.'],
       ['coffre', 'Coffre', '8 jetons au maximum.'],
-      ['flambe', 'Flambe', 'Mise de 4 jetons possible : gain garanti, gros lots plus fréquents.']]],
+      ['pot', 'Pot commun', 'Un jeton ramassé quand la bourse est pleine rapporte 1 000 × niveau.'],
+      ['banque', 'Banque', '10 jetons au maximum.'],
+      ['flambe', 'Flambe', 'Mise de 4 jetons possible : gain garanti, gros lots trois fois plus fréquents.']]],
     ['CHANCE', 'la machine est gentille', [
       ['fer', 'Fer à cheval', 'Coups durs 30 % moins fréquents.'],
       ['main', 'Main chaude', '+5 % de chances de gagner à chaque mise.'],
       ['assurance', 'Assurance', 'Un coup dur rend les jetons misés.'],
-      ['sept', 'Sept chanceux', 'Le 777 trois fois plus fréquent.']]],
+      ['serie', 'Série', 'Après un gain, le tirage suivant a 10 % de chances de gagner en plus.'],
+      ['talisman', 'Talisman', 'Plus de Tête de mort.'],
+      ['sept', 'Sept chanceux', 'Le 777 cinq fois plus fréquent.']]],
     ['TRICHE', 'la machine obéit', [
       ['huile', 'Rouleaux huilés', 'La machine tourne 30 % plus vite.'],
       ['rejoue', 'Rejoue', '« Rejoue X2 » deux fois plus fréquent.'],
       ['lynx', 'Œil de lynx', 'Le premier rouleau s\'affiche avant de miser.'],
-      ['tricheur', 'Tricheur', 'Un tap arrête le dernier rouleau pile au moment voulu : à toi de viser.']]]],
+      ['aimantjeton', 'Jetons aimantés', 'Les jetons apparaissent deux fois plus souvent.'],
+      ['manche', 'Carte dans la manche', 'Une fois par niveau, un tirage perdu est rejoué gratuitement.'],
+      ['tricheur', 'Tricheur', 'Un appui au bon moment pendant que le dernier rouleau tourne force un gain.']]]],
   pred: [
     ['CARNAGE', 'le combo', [
       ['acharne', 'Acharnement', 'Le combo tient 7 s au lieu de 6.'],
       ['boucherie', 'Boucherie', 'Combo jusqu\'à ×6.'],
       ['dechaine', 'Déchaîné', 'À partir de ×4, le bond n\'a plus de recharge.'],
-      ['chaine', 'Réaction en chaîne', 'À ×5, chaque proie explose et tue les ennemis à moins de 3 cases.']]],
+      ['brutal', 'Brutalité', 'Les points du carnage ×1,5.'],
+      ['hurlement', 'Hurlement', 'Atteindre ×5 assomme 1,5 s les ennemis à moins de 10 cases.'],
+      ['chaine', 'Réaction en chaîne', 'À ×5, chaque proie explose et emporte les ennemis à moins de 4 cases.']]],
     ['SANG', 'la jauge', [
       ['grosseveine', 'Grosse veine', 'Jauge pleine à 36 s au lieu de 30.'],
       ['metab', 'Métabolisme', 'La jauge se vide 15 % moins vite.'],
       ['festin', 'Festin', 'Chaque proie donne 2 s de sang de plus.'],
-      ['souffle', 'Dernier souffle', 'Une fois par niveau, à sec, il récupère 10 s au lieu de mourir.']]],
+      ['reserve', 'Réserve', 'Sous 25 %, la jauge se vide deux fois moins vite.'],
+      ['ivresse', 'Ivresse', 'Un doublé (ou mieux) dans un même bond remplit la jauge à fond.'],
+      ['souffle', 'Dernier souffle', 'Deux fois par niveau, à sec, il récupère 20 s au lieu de mourir.']]],
     ['CHASSE', 'la traque', [
       ['machoires', 'Mâchoires', 'Portée de morsure +0,3 case.'],
       ['ressort', 'Ressort', 'Recharge du bond en 1 s au lieu de 1,3.'],
       ['terreur', 'Terreur', 'Les ennemis qui ont peur ralentissent de 30 %.'],
+      ['grandbond', 'Grand bond', 'Bonds 30 % plus longs.'],
+      ['paralysie', 'Paralysie', 'Les ennemis terrorisés à moins de 3 cases se figent.'],
       ['apex', 'Apex', 'Le trou noir devient mangeable : énorme gerbe, 5 000 × niveau.']]]]
 };
-const MASTERY = [2000, 6000, 12000, 20000, 30000, 42000, 56000, 72000];
+// palier n : 1 500 × n² XP (15 paliers, le dernier vers 337 500 XP, environ cinq parties complètes) ; l'ultime (6e rang)
+// coûte ULT_COST points et demande la maîtrise ULT_LV
+const MASTERY = Array.from({ length: 15 }, (_, i) => 1500 * (i + 1) * (i + 1)), ULT_COST = 3, ULT_LV = 10, ULT_R = 5;
+const skCost = list => list.reduce((a, id) => a + (isUlt(id) ? ULT_COST : 1), 0);
+const isUlt = id => Object.values(SKILLS).some(br => br.some(b => b[2][ULT_R][0] === id));
 var mxp = store.get('mxp', {});
 const mLevel = k => MASTERY.filter(v => (mxp[k] || 0) >= v).length;
 const skAll = test => store.get(test ? 'sktest' : 'sk', {});
 // arbre d'un vaisseau, remis en ordre (ordre des branches, une seule ultime, pas plus de points que la maîtrise)
 function skBuild(k, test) {
   const list = skAll(test)[k] || [], out = [];
-  let ult = false;
-  for (const br of SKILLS[k] || []) for (let r = 0; r < 4; r++) {
-    const id = br[2][r][0];
+  let ult = false, pts = 0;
+  for (const br of SKILLS[k] || []) for (let r = 0; r <= ULT_R; r++) {
+    const id = br[2][r][0], u = r === ULT_R, cost = u ? ULT_COST : 1;
     if (!list.includes(id)) break;
-    if (!test && (r === 3 && ult || out.length >= mLevel(k))) break;
-    if (r === 3) ult = true;
-    out.push(id);
+    if (!test && (u && (ult || mLevel(k) < ULT_LV) || pts + cost > mLevel(k))) break;
+    if (u) ult = true;
+    pts += cost; out.push(id);
   }
   return out;
 }
@@ -856,9 +932,28 @@ const sk = id => skills.has(id);
 function loadSkills() { skills = new Set(skBuild(SH().key, S.test)); }
 function gainXp(n) {
   if (S.test || !(n > 0)) return;
-  const k = SH().key;
+  const k = SH().key, lv0 = mLevel(k);
   mxp[k] = (mxp[k] || 0) + n; S.xp = (S.xp || 0) + n;
   store.set('mxp', mxp);
+  // nouveau palier en pleine partie : grand titre et petite fanfare
+  if (mLevel(k) > lv0 && S.phase === 'play') {
+    popups.push({ x: COLS / 2, y: ROWS / 2 + 6, text: 'MAÎTRISE ' + mLevel(k) + ' !', age: -.2, color: T.rainbow ? '#ffd23f' : T.ball, big: true, hue: true });
+    sfx.guardUp(); xpUp = 1.2;
+  }
+  xpHud();
+}
+// barre d'expérience du HUD : progression vers le prochain palier de maîtrise du vaisseau en cours
+var xpUp = 0;
+function xpHud() {
+  const row = $('xprow'); if (!row) return;
+  const off = S.test || S.phase === 'title';
+  if (row.classList.contains('off') !== off) row.classList.toggle('off', off);
+  if (off) return;
+  const k = SH().key, lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv];
+  $('xpl').textContent = 'MAÎTRISE ' + lv;
+  $('xpf').style.width = (hi ? (x - lo) / (hi - lo) * 100 : 100).toFixed(1) + '%';
+  $('xpn').textContent = hi ? fmt(Math.floor(x)) + ' / ' + fmt(hi) : 'MAX';
+  if (row.classList.contains('up') !== xpUp > 0) row.classList.toggle('up', xpUp > 0);
 }
 
 const $ = id => document.getElementById(id);
@@ -2173,6 +2268,7 @@ function updateAbility(dt) {
   updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
   if (S.safe > 0) S.safe -= dt;
+  if (xpUp > 0 && (xpUp -= dt) <= 0) xpHud();
   if (S.noWave > 0) S.noWave -= dt;
   if (S.chainCd > 0) S.chainCd -= dt;
   if (S.presT > 0) S.presT -= dt;
@@ -4767,6 +4863,7 @@ function tweenScore(dt) {
   $('score').textContent = fmt(Math.round(scoreShown));
 }
 function hud() {
+  xpHud();
   $('lab').textContent = S.phase === 'title' ? 'SPACE CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
     : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL} · ${DIFFS[S.diff].name.toUpperCase()}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
@@ -4904,7 +5001,7 @@ function showClear() {
 function masteryRow() {
   if (S.test) return '';
   const k = SH().key, lv = mLevel(k), up = lv > (S.mlv0 ?? lv);
-  const free = lv - skBuild(k, false).length;
+  const free = lv - skCost(skBuild(k, false));
   return `<div class="mrow${up ? ' up' : ''}"><span>Maîtrise ${SH().name}</span><b>+${fmt(Math.round(S.xp || 0))} XP</b>${up ? `<em>MAÎTRISE ${lv} ! ${lv - S.mlv0 > 1 ? lv - S.mlv0 + ' points' : 'Un point'} à placer dans son arbre</em>` : ''}${free > 0 && S.phase === 'clear' ? `<button class="mini mtree" id="ctree">COMPÉTENCES<b>${free}</b></button>` : ''}</div>`;
 }
 function endScreen(title, sub) {
@@ -5124,9 +5221,9 @@ function showShips(test) {
 }
 // barre de maîtrise sous la description du vaisseau, et le bouton de son arbre (avec les points à placer)
 function masteryBar(k, test) {
-  const lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv], free = (test ? 12 : lv) - skBuild(k, test).length;
+  const lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv], free = test ? 0 : lv - skCost(skBuild(k, test));
   const p = hi ? (x - lo) / (hi - lo) : 1;
-  return `<div class="smast"><span class="k">${test ? 'ARBRE LIBRE' : 'MAÎTRISE ' + lv}</span>
+  return `<div class="smast"><span class="k">${test ? 'ARBRE LIBRE' : 'MAÎTRISE ' + lv + (hi ? '' : ' MAX')}</span>
     <span class="mbar"><i style="width:${test ? 100 : (p * 100).toFixed(1)}%"></i></span>
     <button class="mini mtree" id="stree">COMPÉTENCES${!test && free > 0 ? `<b>${free}</b>` : ''}</button></div>`;
 }
@@ -5134,23 +5231,23 @@ function masteryBar(k, test) {
 // mode : absent depuis l'écran du vaisseau ; 'game' depuis la barre du mode test ; 'run' entre deux niveaux (demande de
 // Fabien : placer ses points sans attendre la fin de la partie ; ce qui était déjà pris reste pris jusqu'à la fin)
 function showTree(test, mode) {
-  const sh = SHIPS[menuShip], k = sh.key, tree = SKILLS[k], max = test ? 12 : mLevel(k), inGame = mode === 'game', run = mode === 'run';
+  const sh = SHIPS[menuShip], k = sh.key, tree = SKILLS[k], max = test ? 99 : mLevel(k), inGame = mode === 'game', run = mode === 'run';
   let list = skBuild(k, test);
   const kept = new Set(run ? list : []);
   const render = msg => {
-    const set = new Set(list), ult = tree.some(b => set.has(b[2][3][0]));
+    const set = new Set(list), ult = tree.some(b => set.has(b[2][ULT_R][0])), used = skCost(list);
     showOverlay(`
       <div class="shead">
         <button class="back" id="tback" aria-label="Retour">${ARROW('M15 5 L8 12 L15 19')}</button>
-        <h2><span>${test ? 'MODE TEST · ARBRE LIBRE' : 'MAÎTRISE ' + max + ' / 8 · ' + (MASTERY[max] ? fmt(Math.floor(mxp[k] || 0)) + ' / ' + fmt(MASTERY[max]) + ' XP' : 'MAXIMUM')}</span>${sh.name}</h2>
+        <h2><span>${test ? 'MODE TEST · ARBRE LIBRE' : 'MAÎTRISE ' + max + ' / ' + MASTERY.length + ' · ' + (MASTERY[max] ? fmt(Math.floor(mxp[k] || 0)) + ' / ' + fmt(MASTERY[max]) + ' XP' : 'MAXIMUM')}</span>${sh.name}</h2>
       </div>
-      <div class="tpts" style="--sc:${sh.glow}"><span class="pips">${Array.from({ length: test ? 0 : 8 }, (_, i) => `<i class="${i < list.length ? 'on' : i < max ? 'av' : ''}"></i>`).join('')}</span>
-        <span>${test ? list.length + ' compétence' + (list.length > 1 ? 's' : '') : (max - list.length) + ' point' + (max - list.length > 1 ? 's' : '') + ' à placer'}</span>${run ? '' : '<button class="mini" id="treset2">RÉINITIALISER</button>'}</div>
+      <div class="tpts" style="--sc:${sh.glow}"><span class="pips">${Array.from({ length: test ? 0 : MASTERY.length }, (_, i) => `<i class="${i < used ? 'on' : i < max ? 'av' : ''}"></i>`).join('')}</span>
+        <span>${test ? list.length + ' compétence' + (list.length > 1 ? 's' : '') : (max - used) + ' point' + (max - used > 1 ? 's' : '') + ' à placer'}</span>${run ? '' : '<button class="mini" id="treset2">RÉINITIALISER</button>'}</div>
       ${run ? '<p class="tnote">En cours de partie, tu peux placer tes points ; pour en reprendre, il faudra attendre la fin de la partie.</p>' : ''}
       ${max === 0 && !test ? '<p class="tnote">Gagne un niveau avec ce vaisseau pour obtenir ton premier point.</p>' : ''}
       <div class="tree" style="--sc:${sh.glow}">${tree.map(([bn, th, nodes], bi) => `<div class="tbr"><div class="tbh"><b>${bn}</b><span>${th}</span></div>${nodes.map(([id, n, d], r) => {
         const on = set.has(id), reach = r === 0 || set.has(nodes[r - 1][0]);
-        return `<button class="tnode${r === 3 ? ' ult' : ''}${on ? ' on' : ''}${!on && !reach ? ' lock' : ''}" data-b="${bi}" data-r="${r}" aria-pressed="${on}"><i>${r === 3 ? '◆' : r + 1}</i><span>${r === 3 ? '<em>ULTIME</em>' : ''}<b>${n}</b><small>${d}</small></span></button>`;
+        return `<button class="tnode${r === ULT_R ? ' ult' : ''}${on ? ' on' : ''}${!on && !reach ? ' lock' : ''}" data-b="${bi}" data-r="${r}" aria-pressed="${on}"><i>${r === ULT_R ? '◆' : r + 1}</i><span>${r === ULT_R ? `<em>ULTIME · ${ULT_COST} POINTS · MAÎTRISE ${ULT_LV}</em>` : ''}<b>${n}</b><small>${d}</small></span></button>`;
       }).join('')}</div>`).join('')}</div>
       <p class="tmsg" aria-live="polite">${msg || ''}</p>
       <button class="btn" id="go">${inGame || run ? 'REPRENDRE' : 'VALIDER'}</button>`, back);
@@ -5162,8 +5259,9 @@ function showTree(test, mode) {
       if (set.has(id) && kept.has(id)) return render('Déjà prise pour cette partie : tu pourras la rendre entre deux parties.');
       if (set.has(id)) { const drop = nodes.slice(r).map(x => x[0]); list = list.filter(x => !drop.includes(x)); }
       else if (r > 0 && !set.has(nodes[r - 1][0])) return render('Débloque d\'abord la compétence au-dessus.');
-      else if (!test && list.length >= max) return render(max ? 'Plus de point : rends une compétence ou réinitialise.' : 'Pas encore de point : gagne un niveau avec ce vaisseau.');
-      else if (!test && r === 3 && ult) return render('Une seule ultime à la fois.');
+      else if (!test && r === ULT_R && max < ULT_LV) return render('L\'ultime demande la maîtrise ' + ULT_LV + '.');
+      else if (!test && used + (r === ULT_R ? ULT_COST : 1) > max) return render(max ? (r === ULT_R ? 'L\'ultime coûte ' + ULT_COST + ' points.' : 'Plus de point : rends une compétence ou réinitialise.') : 'Pas encore de point : gagne un niveau avec ce vaisseau.');
+      else if (!test && r === ULT_R && ult) return render('Une seule ultime à la fois.');
       else { list.push(id); sfx.ready(); }
       skSave(k, list, test); render();
     }));

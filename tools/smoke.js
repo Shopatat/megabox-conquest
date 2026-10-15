@@ -445,16 +445,19 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   const x1 = g.mxp.cla; g.showClear(); const x2 = g.mxp.cla;
   console.log(`maîtrise : ${nodes} compétences pour ${Object.keys(g.SKILLS).length} vaisseaux ; zone refermée +${(x1 - x0).toFixed(0)} XP (${(g.S.filled / G / G).toFixed(0)} cases), niveau gagné +${x2 - x1} (400 en Confirmé)`);
   const c = ids('cla');
-  g.mxp.cla = 6000; g.skSave('cla', [c[0], c[1], c[2], c[4]], false);
+  g.mxp.cla = 6000; g.skSave('cla', [c[0], c[1], c[2], c[6]], false);
   const b1 = g.skBuild('cla', false).length;
-  g.mxp.cla = 80000; g.skSave('cla', [c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]], false);
-  const b2 = g.skBuild('cla', false), ults = b2.filter(id => [c[3], c[7], c[11]].includes(id)).length;
+  // maîtrise 15 : une branche jusqu'à l'ultime (5 + 3 points), la 2e branche s'arrête avant son ultime (une seule)
+  g.mxp.cla = 400000; g.skSave('cla', c.slice(0, 12), false);
+  const b2 = g.skBuild('cla', false), ults = b2.filter(id => [c[5], c[11], c[17]].includes(id)).length;
+  // maîtrise 9 : l'ultime n'est pas encore accessible
+  g.mxp.cla = 125000; g.skSave('cla', c.slice(0, 6), false); const b5 = g.skBuild('cla', false).length;
   g.skSave('cla', [c[1], c[2]], false); const b3 = g.skBuild('cla', false).length;
   g.skSave('cla', c, true); const b4 = g.skBuild('cla', true).length;
-  g.skSave('cla', [c[0], c[4]], false); g.newGame(1, 1, 0); const on = g.sk(c[0]) && g.sk(c[4]) && !g.sk(c[1]);
+  g.mxp.cla = 6000; g.skSave('cla', [c[0], c[6]], false); g.newGame(1, 1, 0); const on = g.sk(c[0]) && g.sk(c[6]) && !g.sk(c[1]);
   g.showTree(false); g.showShips(false);
   g.mxp.cla = 6000; g.newGame(1, 1, 0); g.go(); g.showClearX(); g.showTree(false, 'run'); g.S.reshow(); const reshow = g.S.phase;
-  console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 8 -> ${b2.length} dont ${ults} ultime ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; arbre entre deux niveaux puis retour ${reshow} ; paliers ${g.MASTERY.join(' ')}`);
+  console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 15 -> ${b2.length} dont ${ults} ultime ; maîtrise 9, ultime refusée -> ${b5} ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; arbre entre deux niveaux puis retour ${reshow} ; paliers ${g.MASTERY.join(' ')}`);
   g.skSave('cla', [], false); g.skSave('cla', [], true); g.mxp.cla = 0; g.newGame(1, 1, 0);
 }
 // 5s) Compétences, vaisseau par vaisseau (withSk : nouvelle partie avec ces compétences, niveau L)
