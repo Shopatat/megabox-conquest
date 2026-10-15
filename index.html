@@ -461,7 +461,7 @@ const SHIPS = [
     } },
   { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FURIE',
     noItems: ['spd', 'sspd'],
-    desc: 'Plus rapide que les autres. Conquérir remplit lentement sa FURIE, qui retombe s\'il traîne sur son terrain ; pleine, elle attend. Pleine : 15 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
+    desc: 'Plus rapide que les autres. Conquérir remplit lentement sa FURIE, qui retombe s\'il traîne sur son terrain ; pleine, elle attend. Pleine : 10 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -645,7 +645,7 @@ function setPow(k, t) { power[k] = t; powMax[k] = t; }
 // FURY_IDLE s sur son terrain, sauf une fois pleine : elle attend alors sans limite qu'on la déclenche. Pleine, elle déclenche la furie : FR_T s à ×FR_SPD (vitesse de base), fil enflammé qui
 // grille les ennemis qui le touchent ; chaque case de fil posée pendant la furie brûle FIRE_T s, même une fois conquise.
 // ab.on : temps de furie restant ; ab.fury : jauge (0 à 1) ; ab.idle : temps passé sur son terrain
-const FR_T = 15, FR_SPD = 3, FRE_SPD = 1.2, FURY_FILL = .6, FURY_IDLE = 3, FURY_DRAIN = .02, FIRE_T = 3;
+const FR_T = 10, FR_SPD = 3, FRE_SPD = 1.2, FURY_FILL = .6, FURY_IDLE = 3, FURY_DRAIN = .02, FIRE_T = 3;
 const ab = { on: 0, fury: 0, beat: 0, idle: 0 };
 // flammes de la furie : fin de la flamme de chaque case (horloge fireClock), et la liste pour les dessiner
 var fireT = new Float32Array(N);
@@ -4222,7 +4222,7 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Furie : chaque zone conquise remplit la jauge du bouton en haut à droite (elle retombe si tu traînes sur ton terrain). Pleine, elle t'attend aussi longtemps que tu veux : touche le bouton (ou F au clavier) : 15 s à toute vitesse, et ton fil prend feu. Les ennemis qui le touchent grillent, et les flammes restent 3 s : un mur de feu. Attention, ton vaisseau, lui, n'est pas invincible.</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Furie : chaque zone conquise remplit la jauge du bouton en haut à droite (elle retombe si tu traînes sur ton terrain). Pleine, elle t'attend aussi longtemps que tu veux : touche le bouton (ou F au clavier) : 10 s à toute vitesse, et ton fil prend feu. Les ennemis qui le touchent grillent, et les flammes restent 3 s : un mur de feu. Attention, ton vaisseau, lui, n'est pas invincible.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Attention à ta jauge SANG ! : elle se vide sans arrêt et chaque proie la remplit, d'autant plus que tu enchaînes. À sec, tu perds une vie. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;
