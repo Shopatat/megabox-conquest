@@ -452,7 +452,7 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
-const GUARD_CELLS = 80, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+const GUARD_CELLS = 80, guardCells = () => sk('rechrap') ? 65 : GUARD_CELLS, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 // ouverture des mandibules du Prédateur (0 à 1) imposée par le jeu ; null : elles mâchonnent toutes seules
 var jaw = null;
 // regard du Prédateur (angle dans le monde vers la proie la plus proche) ; null : il regarde droit devant
@@ -626,7 +626,9 @@ const SHIPS = [
     } }
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
-const maxLives = () => SH().maxLives || 9;
+// vies au maximum (Survolté, Prudence, Couronnement) et au départ (Inébranlable, Survolté)
+const maxLives = () => (SH().maxLives || 9) + (sk('survolte') ? 1 : 0) + (sk('prudence') ? 1 : 0) + (sk('couronne') ? 2 : 0);
+const startLives = () => SH().lives + (sk('inebr') ? 1 : 0) + (sk('survolte') ? 1 : 0);
 
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
@@ -1339,7 +1341,7 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; S.usedGame = {}; loadSkills();
+  S.diff = d; S.ship = ship; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives();
   rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
@@ -1375,6 +1377,9 @@ function setupLevel(L, instant) {
   // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : jauge de furie, bouclier et jauge conservés
   ab.on = 0; ab.idle = 0; fires = []; fireT.fill(0); fireClock = 0; plan = null; dash = null; slow = 0; superFlash = 0;
   if (carry) { P.guard = carry.guard; carry = null; }
+  // Encaisseur : Prêt à tout (bouclier plein à chaque niveau), Double bouclier (deuxième charge)
+  if (SH().key === 'enc' && sk('pret')) P.guard = 0;
+  P.g2 = sk('double'); P.g2cd = 0; S.noWave = 0;
   rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
@@ -1447,6 +1452,8 @@ function onTrailHit(e, i) {
   if (S.phase !== 'play' || !P.drawing) return;
   if (helmet() || power.sup > 0 || SH().key === 'fur') return;
   if (onFire(i)) { burnFoe(e); return; }
+  // Encaisseur, Après-coup : juste après un coup encaissé, le fil ne déclenche plus d'onde de choc
+  if (S.noWave > 0) return;
   // Flambeur, « fil fragile » de la machine à sous : un ennemi qui touche le fil tue sur le coup
   if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
@@ -2120,6 +2127,7 @@ function updateAbility(dt) {
   updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
   if (S.safe > 0) S.safe -= dt;
+  if (S.noWave > 0) S.noWave -= dt;
   if (armor.jolt > 0) armor.jolt -= dt;
   if (armor.cd > 0) armor.cd -= dt;
   // Blindé abîmé : il fume, puis crache des étincelles
@@ -2343,6 +2351,9 @@ function flee(e, dt) {
 function seaStep() {
   const k = SH().key;
   if (k === 'rob' && armor.hp < armorMax()) { armor.hp = Math.min(armorMax(), armor.hp + 1 / armorCells() / G); pwHud(); }
+  if (k === 'enc' && !(P.guard > 0) && sk('double') && !P.g2) {
+    P.g2cd -= 1 / G; if (P.g2cd < 1e-6) { P.g2 = true; sfx.guardUp(); }
+  }
   if (k === 'enc' && P.guard > 0) {
     P.guard -= 1 / G; if (P.guard < 1e-6) P.guard = 0;
     if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
@@ -2426,10 +2437,24 @@ function updateRewind(dt) {
 // Renvoie true si le coup est encaissé (1 s de répit juste après, pour que le même ennemi ne frappe pas deux fois).
 function absorb(e) {
   if (P.grace > 0) return true;
-  if (P.guard > 0) return false;
-  P.guard = GUARD_CELLS; P.grace = 1;
-  P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y;
+  if (P.guard > 0 && !P.g2) return false;
+  if (!(P.guard > 0)) P.guard = guardCells(); else { P.g2 = false; P.g2cd = guardCells(); }
+  P.grace = sk('souffle') ? 1.5 : 1;
+  // Élan : il ne s'arrête plus net
+  if (!sk('elan')) { P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y; }
+  // Après-coup : 3 s sans onde de choc
+  if (sk('apres')) S.noWave = 3;
   const pp = playerPos();
+  // Onde de bouclier : les ennemis proches sont repoussés
+  if (sk('ondeb')) for (const f of foes) {
+    const dx = f.x - pp.x, dy = f.y - pp.y, d = Math.hypot(dx, dy);
+    if (f.dead || f === e || d > 5 || f.kind === 'amph' || f.kind === 'inn') continue;
+    const nx = dx / (d || 1), ny = dy / (d || 1), v = Math.max(4, Math.hypot(f.vx, f.vy));
+    f.vx = nx * v; f.vy = ny * v; f.x += nx * .6; f.y += ny * .6;
+  }
+  // Renvoi : l'ennemi est détruit ; Sonné : assommé 3 s (Prime : il rapporte)
+  if (e && sk('renvoi') && killFoe(e, 'RENVOYÉ !', T.rainbow ? '#5dffb0' : T.shock)) e = null;
+  else if (e && sk('sonne') && e.kind !== 'amph') { stunBy(e, 3); if (sk('prime')) { const p = 200 * S.level; S.score += p; popups.push({ x: e.x, y: e.y - 1.2, text: 'SONNÉ +' + fmt(p), age: 0, color: T.rainbow ? '#5dffb0' : T.ball }); hud(); } }
   if (e) {
     // l'ennemi est renvoyé dans l'autre sens
     const dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d, dot = e.vx * nx + e.vy * ny;
@@ -2451,7 +2476,7 @@ function waveStop() {
   if (P.drawing) {
     const ci = at(P.x, P.y);
     if (grid[ci] === 0) pushTrail(ci);
-    P.start = { x: P.x, y: P.y }; P.noFill = true;
+    P.start = { x: P.x, y: P.y }; P.noFill = !sk('rafist');
   }
 }
 
@@ -2978,8 +3003,8 @@ function updateCrash(dt) {
     clearTrail();
     const [rx, ry] = respawnCell(crashPos.x, crashPos.y);
     // le bouclier de l'Encaisseur ne se recharge pas en mourant : il faut toujours retracer pour le récupérer
-    const guard = P.guard;
-    P = newPlayer(rx, ry); P.guard = guard;
+    const guard = P.guard, g2 = P.g2, g2cd = P.g2cd;
+    P = newPlayer(rx, ry); P.guard = guard; P.g2 = g2; P.g2cd = g2cd;
     // Prédateur : il repart avec la jauge de sang au moins à moitié
     pred.blood = Math.max(pred.blood, BLOOD_MAX / 2);
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
@@ -3256,7 +3281,7 @@ function powersHud() {
     if (bloodBt !== bt) { bloodBt = bt; bd.style.setProperty('--bt', bt); }
   }
   // bouclier de l'Encaisseur : la barre se remplit pendant les 10 s où un 2e coup coûterait une vie
-  const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / GUARD_CELLS) * 100) + '%';
+  const gd = $('tguard'); if (gd && P) gd.style.width = ((1 - P.guard / guardCells()) * 100) + '%';
 }
 // Bouton de pouvoir du HUD : Frénétique (prêt / actif / recharge) ou Encaisseur (bouclier prêt / en recharge)
 let pwSig = '';
@@ -3295,7 +3320,7 @@ function pwHud() {
     else { cls = 'cd'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
   } else {
     const g = P ? P.guard : 0;
-    if (g > 0) { cls = 'hurt'; p = 1 - g / GUARD_CELLS; inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
+    if (g > 0) { cls = 'hurt'; p = 1 - g / guardCells(); inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
     else { cls = 'guard'; p = 1; inner = SHIELDI; label = 'Bouclier prêt'; }
   }
   b.style.setProperty('--p', p.toFixed(3));
@@ -3850,8 +3875,10 @@ function drawPlayer(pp) {
     } else if (!(P.guard < 12 && Math.floor(time * 8) % 2 === 0)) {
       const a0 = -Math.PI / 2;
       ctx.strokeStyle = T.rainbow ? 'rgba(255,92,138,0.8)' : T.shock; ctx.lineWidth = .08;
-      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, a0, a0 + (1 - P.guard / GUARD_CELLS) * Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, .98, a0, a0 + (1 - P.guard / guardCells()) * Math.PI * 2); ctx.stroke();
     }
+    // Double bouclier : deuxième anneau, plus large
+    if (P.g2) { ctx.strokeStyle = T.rainbow ? 'rgba(93,255,176,0.5)' : T.shock; ctx.lineWidth = .06; ctx.setLineDash([.2, .26]); ctx.lineDashOffset = time * 1.4; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.25, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
   }
   if (sup && !(power.sup < 2 && Math.floor(time * 10) % 2 === 0)) {
     ctx.save(); ctx.translate(pp.x, pp.y); ctx.rotate(-time * 2);
@@ -4843,7 +4870,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; S.usedGame = {}; loadSkills(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = CHIPS_MAX; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -4967,7 +4994,7 @@ function testRefill() {
 function testReset(keep) {
   if (!S.test) return;
   const kinds = keep && SH().key !== 'pred' ? foes.filter(e => !e.dead && !(e.gen > 0)).map(e => e.kind) : null;
-  if (!keep) { S.score = 0; S.lives = SH().lives; }
+  if (!keep) { S.score = 0; S.lives = startLives(); }
   setupLevel(1, true);
   if (kinds) foes = kinds.map(k => makeFoe(k, DIFFS[S.diff].sp));
   else testRefill();

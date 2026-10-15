@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -508,6 +508,28 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(F, ['phenix']); g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); { const e = g.makeFoe('out', 1); e.x = PX() + 3; e.y = PY(); g.foes.push(e); g.crash(); var ph = g.S.phase + ', voisin grillé ' + e.dead; } g.S.safe = 0; g.crash(); const ph2 = g.S.phase;
   console.log(`frénétique : flammes (à 1,1 / dessus / 3,4 s après / 5,4 s après) ${fire([])} ; braises ${fire(['braises'])} ; mur de feu ${fire(['murfeu'])} ; grillé +${pts([])}, barbecue +${pts(['bbq'])}`);
   console.log(`frénétique : 30 % du terrain -> jauge ${fill([])}, colérique ${fill(['colere'])} ; furie ${dur([])} s, hors de lui ${dur(['horslui'])} s ; rancune +${ranc} ; furie sans fin +${sf} s ; mèche, flammes hors furie ${meche} ; sang-froid, jauge après 6 s sur son terrain ${sfr} ; retombée, invincible après la furie ${ret} ; réflexes, ralenti ${refl} ; phénix : ${ph}, 2e crash -> ${ph2}`);
+}
+// Encaisseur
+{
+  const E = SHIPI('enc');
+  const hitBy = (list, setup) => { withSk(E, list); g.P.shield = false; g.setDir('down'); step(20); if (setup) setup(); const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + .6; e.vx = 0; e.vy = -5; g.foes.push(e); g.hitPlayer(e); return e; };
+  let e = hitBy([]); const base = { guard: g.P.guard, moving: !!(g.P.dir.x || g.P.dir.y), grace: g.P.grace };
+  e = hitBy(['rechrap']); const rr = g.P.guard;
+  withSk(E, ['pret']); g.P.guard = 50; g.setupLevel(2); const pret = g.P.guard;
+  e = hitBy(['sonne']); const sonne = e.stun;
+  const s0 = (() => { const x = hitBy(['sonne', 'prime']); return g.S.score; })();
+  e = hitBy(['elan']); const elan = !!(g.P.dir.x || g.P.dir.y);
+  e = hitBy(['renvoi']); const renvoi = e.dead;
+  e = hitBy(['souffle']); const souffle = g.P.grace;
+  // deuxième charge : deux coups encaissés, le troisième tue
+  withSk(E, ['double']); g.P.shield = false; g.setDir('down'); step(20);
+  const ph = []; for (let k = 0; k < 3; k++) { g.P.grace = 0; g.S.phase = 'play'; const f = g.makeFoe('out', 1); f.x = PX(); f.y = PY() + .5; g.foes.push(f); g.hitPlayer(f); ph.push(g.S.phase); }
+  // onde de bouclier : voisin repoussé
+  e = hitBy(['ondeb'], () => { const n = g.makeFoe('out', 1); n.x = PX() + 2; n.y = PY(); n.vx = -3; n.vy = 0; g.foes.push(n); g.__n = n; }); const pushed = g.__n.vx > 0;
+  // après-coup : pas d'onde de choc juste après
+  hitBy(['apres']); { const f = g.makeFoe('out', 1); g.foes.push(f); g.onTrailHitX(f, g.trail[0]); } const noWave = !g.wave;
+  g.mxp.enc = 80000; g.skSave('enc', ['souffle', 'rafist', 'apres', 'inebr'], false); g.newGame(1, 1, E); const lives = g.S.lives; g.skSave('enc', [], false); g.mxp.enc = 0;
+  console.log(`encaisseur : coup encaissé -> recharge ${base.guard}, arrêté ${!base.moving}, répit ${base.grace} s ; recharge rapide ${rr} ; prêt à tout ${pret} ; sonné ${sonne} s ; prime +${s0} ; élan, continue ${elan} ; renvoi, détruit ${renvoi} ; souffle ${souffle} s ; double bouclier ${ph.join(' / ')} ; onde de bouclier, voisin repoussé ${pushed} ; après-coup, pas d'onde ${noWave} ; inébranlable ${lives} vies`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
