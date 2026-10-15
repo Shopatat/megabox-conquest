@@ -459,9 +459,9 @@ const SHIPS = [
       g.fillRect(-.42, -.5, .36, .07); g.fillRect(-.42, .43, .36, .07); g.fillRect(-.3, -.04, .26, .08);
       g.fillStyle = f;
     } },
-  { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FURIE',
-    noItems: ['spd', 'sspd'],
-    desc: 'Plus rapide que les autres. Conquérir remplit lentement sa FURIE, qui retombe s\'il traîne sur son terrain ; pleine, elle attend. Pleine : 10 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
+  { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 2, bonus: .75, spd: 4, bon: 2, power: 'FURIE',
+    noItems: ['spd', 'sspd', 'sup', 'sterr', 'schr', 'slife'],
+    desc: 'Plus rapide que les autres. Conquérir remplit lentement sa FURIE (elle retombe s\'il traîne sur son terrain). Pleine : 10 s à ×3 et un fil en feu qui grille les ennemis, flammes 3 s. Moins de bonus, ni Vitesse ni super bonus.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -2693,7 +2693,7 @@ function pickType() {
     pool.push(['sup', 0.45 * k], ['sterr', 0.35 * k], ['sspd', 0.35 * k], ['schr', 0.35 * k]);
     if (S.lives < maxLives()) pool.push(['slife', 0.3 * k]);
   }
-  // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse ; Frénétique : ni casque ni vitesse)
+  // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse ; Frénétique : ni vitesse ni super bonus)
   const no = SH().noItems;
   if (no) pool = pool.filter(([t]) => !no.includes(t));
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;

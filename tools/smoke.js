@@ -186,12 +186,13 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 // 5f) Vaisseaux
 {
   // Robuste : 4 vies, 25 % de bonus en moins ; Veinard : 50 % de bonus en plus et deux fois plus de super bonus
-  // (référence : le Frénétique, sans particularité sur les bonus)
+  // (référence : l'Encaisseur, sans particularité sur les bonus)
   let n0 = 0, n1 = 0, nv = 0;
-  for (let k = 0; k < 600; k++) { g.newGame(1, 2, 2); n0 += g.S.bonusLeft; g.newGame(1, 2, 0); nv += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
+  for (let k = 0; k < 600; k++) { g.newGame(1, 2, 3); n0 += g.S.bonusLeft; g.newGame(1, 2, 0); nv += g.S.bonusLeft; g.newGame(1, 2, 1); n1 += g.S.bonusLeft; }
   console.log(`blindé : ${g.S.lives} vie, ${(n1 / 600).toFixed(2)} bonus par niveau contre ${(n0 / 600).toFixed(2)} (attendu -25 %)`);
   const superShare = ship => { g.newGame(1, 5, ship); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
-  console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(2).toFixed(0)} %`);
+  console.log(`veinard : ${(nv / 600).toFixed(2)} bonus par niveau (attendu +50 %), super bonus ${superShare(0).toFixed(0)} % contre ${superShare(3).toFixed(0)} %`);
+  { let n = 0; for (let k = 0; k < 600; k++) { g.newGame(1, 2, 2); n += g.S.bonusLeft; } console.log(`frénétique : ${g.S.lives} vies, ${(n / 600).toFixed(2)} bonus par niveau (attendu -25 %)`); }
   // Frénétique : plus rapide de base (×1,2), furie à ×3 ; jauge remplie par la surface conquise ; fil en feu qui grille
   const FR = 2;
   const run = (ship, fr) => { g.newGame(1, 1, ship); g.go(); g.foes.length = 0; if (fr) g.ab.fury = 1; g.setDir('down'); step(3); if (fr) g.usePower(); const y = g.P.y; step(30); return g.P.y - y; };
@@ -217,7 +218,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
     const a = put(); step(60 * 3.2); const b = put(), bAlive = !b.dead;
     const h = g.makeFoe('amph', 1); h.x = (cx + .5) / G; h.y = (cy + .5) / G; h.vx = h.vy = 0; g.lightFire(g.at(cx, cy)); g.foes.push(h); step(2);
     console.log(`furie : boule sur une flamme grillée ${a.dead}, 3,2 s plus tard rien ${bAlive}, trou noir sur une flamme intact ${!h.dead}`); }
-  { g.newGame(1, 5, FR); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`furie : bonus tirés ${[...ts].sort().join(' ')} (ni spd, ni sspd)`); }
+  { g.newGame(1, 5, FR); const ts = new Set(); for (let k = 0; k < 4000; k++) ts.add(g.pickType()); console.log(`furie : bonus tirés ${[...ts].sort().join(' ')} (ni vitesse ni super bonus)`); }
   // Encaisseur : 2 vies, un coup l'arrête net, un 2e coup dans les 10 s le tue
   g.newGame(1, 1, 3); g.go(); g.foes.length = 0; g.setDir('down'); step(40);
   const pyB = g.P.y;
