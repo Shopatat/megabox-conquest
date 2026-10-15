@@ -227,6 +227,8 @@ details li b{color:var(--text);font-weight:600}
 .mrow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:12px;color:var(--muted)}
 .mrow b{font-family:var(--display);color:var(--text);font-variant-numeric:tabular-nums}
 .mrow em{grid-column:1/-1;font-style:normal;font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.06em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mrow .mtree{grid-column:1/-1;justify-self:start;display:inline-flex;align-items:center;gap:6px;margin-top:4px}
+.mrow .mtree b{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--grad);color:#fff;font-size:11px;line-height:18px;text-align:center;-webkit-text-fill-color:#fff}
 .mrow.up{border-color:rgba(255,154,77,.55);box-shadow:0 0 16px rgba(255,92,138,.25)}
 
 /* ---- Choix du vaisseau ---- */
@@ -4883,7 +4885,8 @@ function showClear() {
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
   store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame });
-  showOverlay(`
+  // réaffiché au retour de l'arbre
+  S.reshow = () => { showOverlay(`
     <h2><span>${D.name.toUpperCase()}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
     <div class="rows">
       <div><span>Terrain</span><span>${Math.floor(pct * 100)} %</span></div>
@@ -4893,12 +4896,16 @@ function showClear() {
     </div>
     ${masteryRow()}
     <button class="btn" id="go">NIVEAU SUIVANT</button>`, () => setupLevel(S.level + 1));
+    const ct = $('ctree'); if (ct) ct.addEventListener('click', () => { menuShip = S.ship; showTree(false, 'run'); });
+  };
+  S.reshow();
 }
 // fin de niveau et fin de partie : expérience gagnée avec ce vaisseau, et nouveau palier de maîtrise
 function masteryRow() {
   if (S.test) return '';
   const k = SH().key, lv = mLevel(k), up = lv > (S.mlv0 ?? lv);
-  return `<div class="mrow${up ? ' up' : ''}"><span>Maîtrise ${SH().name}</span><b>+${fmt(Math.round(S.xp || 0))} XP</b>${up ? `<em>MAÎTRISE ${lv} ! ${lv - S.mlv0 > 1 ? lv - S.mlv0 + ' points' : 'Un point'} à placer dans son arbre</em>` : ''}</div>`;
+  const free = lv - skBuild(k, false).length;
+  return `<div class="mrow${up ? ' up' : ''}"><span>Maîtrise ${SH().name}</span><b>+${fmt(Math.round(S.xp || 0))} XP</b>${up ? `<em>MAÎTRISE ${lv} ! ${lv - S.mlv0 > 1 ? lv - S.mlv0 + ' points' : 'Un point'} à placer dans son arbre</em>` : ''}${free > 0 && S.phase === 'clear' ? `<button class="mini mtree" id="ctree">COMPÉTENCES<b>${free}</b></button>` : ''}</div>`;
 }
 function endScreen(title, sub) {
   const key = 'best' + S.diff, best = store.get(key, 0), rec = S.score > best;
@@ -5123,10 +5130,13 @@ function masteryBar(k, test) {
     <span class="mbar"><i style="width:${test ? 100 : (p * 100).toFixed(1)}%"></i></span>
     <button class="mini mtree" id="stree">COMPÉTENCES${!test && free > 0 ? `<b>${free}</b>` : ''}</button></div>`;
 }
-// Arbre du vaisseau choisi : trois branches, on touche une compétence pour la prendre ou la rendre (avec celles en dessous)
-function showTree(test, inGame) {
-  const sh = SHIPS[menuShip], k = sh.key, tree = SKILLS[k], max = test ? 12 : mLevel(k);
+// Arbre du vaisseau choisi : trois branches, on touche une compétence pour la prendre ou la rendre (avec celles en dessous).
+// mode : absent depuis l'écran du vaisseau ; 'game' depuis la barre du mode test ; 'run' entre deux niveaux (demande de
+// Fabien : placer ses points sans attendre la fin de la partie ; ce qui était déjà pris reste pris jusqu'à la fin)
+function showTree(test, mode) {
+  const sh = SHIPS[menuShip], k = sh.key, tree = SKILLS[k], max = test ? 12 : mLevel(k), inGame = mode === 'game', run = mode === 'run';
   let list = skBuild(k, test);
+  const kept = new Set(run ? list : []);
   const render = msg => {
     const set = new Set(list), ult = tree.some(b => set.has(b[2][3][0]));
     showOverlay(`
@@ -5135,19 +5145,21 @@ function showTree(test, inGame) {
         <h2><span>${test ? 'MODE TEST · ARBRE LIBRE' : 'MAÎTRISE ' + max + ' / 8 · ' + (MASTERY[max] ? fmt(Math.floor(mxp[k] || 0)) + ' / ' + fmt(MASTERY[max]) + ' XP' : 'MAXIMUM')}</span>${sh.name}</h2>
       </div>
       <div class="tpts" style="--sc:${sh.glow}"><span class="pips">${Array.from({ length: test ? 0 : 8 }, (_, i) => `<i class="${i < list.length ? 'on' : i < max ? 'av' : ''}"></i>`).join('')}</span>
-        <span>${test ? list.length + ' compétence' + (list.length > 1 ? 's' : '') : (max - list.length) + ' point' + (max - list.length > 1 ? 's' : '') + ' à placer'}</span><button class="mini" id="treset2">RÉINITIALISER</button></div>
+        <span>${test ? list.length + ' compétence' + (list.length > 1 ? 's' : '') : (max - list.length) + ' point' + (max - list.length > 1 ? 's' : '') + ' à placer'}</span>${run ? '' : '<button class="mini" id="treset2">RÉINITIALISER</button>'}</div>
+      ${run ? '<p class="tnote">En cours de partie, tu peux placer tes points ; pour en reprendre, il faudra attendre la fin de la partie.</p>' : ''}
       ${max === 0 && !test ? '<p class="tnote">Gagne un niveau avec ce vaisseau pour obtenir ton premier point.</p>' : ''}
       <div class="tree" style="--sc:${sh.glow}">${tree.map(([bn, th, nodes], bi) => `<div class="tbr"><div class="tbh"><b>${bn}</b><span>${th}</span></div>${nodes.map(([id, n, d], r) => {
         const on = set.has(id), reach = r === 0 || set.has(nodes[r - 1][0]);
         return `<button class="tnode${r === 3 ? ' ult' : ''}${on ? ' on' : ''}${!on && !reach ? ' lock' : ''}" data-b="${bi}" data-r="${r}" aria-pressed="${on}"><i>${r === 3 ? '◆' : r + 1}</i><span>${r === 3 ? '<em>ULTIME</em>' : ''}<b>${n}</b><small>${d}</small></span></button>`;
       }).join('')}</div>`).join('')}</div>
       <p class="tmsg" aria-live="polite">${msg || ''}</p>
-      <button class="btn" id="go">${inGame ? 'REPRENDRE' : 'VALIDER'}</button>`, back);
+      <button class="btn" id="go">${inGame || run ? 'REPRENDRE' : 'VALIDER'}</button>`, back);
     ov.querySelector('.card').classList.add('trees');
     $('tback').addEventListener('click', back);
-    $('treset2').addEventListener('click', () => { list = []; skSave(k, list, test); sfx.cancel(); render(); });
+    if ($('treset2')) $('treset2').addEventListener('click', () => { list = []; skSave(k, list, test); sfx.cancel(); render(); });
     ov.querySelectorAll('.tnode').forEach(b => b.addEventListener('click', () => {
       const bi = +b.dataset.b, r = +b.dataset.r, nodes = tree[bi][2], id = nodes[r][0];
+      if (set.has(id) && kept.has(id)) return render('Déjà prise pour cette partie : tu pourras la rendre entre deux parties.');
       if (set.has(id)) { const drop = nodes.slice(r).map(x => x[0]); list = list.filter(x => !drop.includes(x)); }
       else if (r > 0 && !set.has(nodes[r - 1][0])) return render('Débloque d\'abord la compétence au-dessus.');
       else if (!test && list.length >= max) return render(max ? 'Plus de point : rends une compétence ou réinitialise.' : 'Pas encore de point : gagne un niveau avec ce vaisseau.');
@@ -5156,7 +5168,15 @@ function showTree(test, inGame) {
       skSave(k, list, test); render();
     }));
   };
-  const back = () => { if (inGame) { hideOverlay(); loadSkills(); testReset(true); S.phase = 'play'; last = performance.now(); } else showShips(test); };
+  const back = () => {
+    if (inGame) { hideOverlay(); loadSkills(); testReset(true); S.phase = 'play'; last = performance.now(); }
+    else if (run) {
+      // compétences prises en cours de partie : elles s'appliquent tout de suite (vies de départ comprises)
+      const before = new Set(skills); loadSkills();
+      for (const id of ['inebr', 'survolte']) if (sk(id) && !before.has(id)) S.lives = Math.min(maxLives(), S.lives + 1);
+      hud(); pwHud(); S.reshow();
+    } else showShips(test);
+  };
   render();
 }
 // Aperçu du vaisseau choisi : il file vers le haut au milieu d'étoiles qui défilent
@@ -5277,7 +5297,7 @@ $('tprev').addEventListener('click', () => testShip(-1));
 $('tnext').addEventListener('click', () => testShip(1));
 $('tship').addEventListener('click', () => testShip(1));
 $('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
-$('ttree').addEventListener('click', () => { if (!S.test || S.phase === 'title') return; menuShip = S.ship; S.phase = 'pause'; showTree(true, true); });
+$('ttree').addEventListener('click', () => { if (!S.test || S.phase === 'title') return; menuShip = S.ship; S.phase = 'pause'; showTree(true, 'game'); });
 const tforce = $('tforce');
 tforce.innerHTML = '<option value="">MACHINE : AU HASARD</option><option value="none">MACHINE : PERDU (RIEN)</option>' + SLOT.map(w => `<option value="${w.k}">MACHINE : ${w.txt}</option>`).join('');
 tforce.addEventListener('change', () => { gam.force = tforce.value; tforce.blur(); });

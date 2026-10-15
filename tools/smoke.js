@@ -453,7 +453,8 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.skSave('cla', c, true); const b4 = g.skBuild('cla', true).length;
   g.skSave('cla', [c[0], c[4]], false); g.newGame(1, 1, 0); const on = g.sk(c[0]) && g.sk(c[4]) && !g.sk(c[1]);
   g.showTree(false); g.showShips(false);
-  console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 8 -> ${b2.length} dont ${ults} ultime ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; paliers ${g.MASTERY.join(' ')}`);
+  g.mxp.cla = 6000; g.newGame(1, 1, 0); g.go(); g.showClearX(); g.showTree(false, 'run'); g.S.reshow(); const reshow = g.S.phase;
+  console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 8 -> ${b2.length} dont ${ults} ultime ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; arbre entre deux niveaux puis retour ${reshow} ; paliers ${g.MASTERY.join(' ')}`);
   g.skSave('cla', [], false); g.skSave('cla', [], true); g.mxp.cla = 0; g.newGame(1, 1, 0);
 }
 // 5s) Compétences, vaisseau par vaisseau (withSk : nouvelle partie avec ces compétences, niveau L)
