@@ -62,6 +62,12 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw .in{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#1a1d3d;color:#c9cdf2;font-family:var(--display);font-size:14px}
 .pw svg{width:20px;height:20px;fill:currentColor}
 .pw:active{transform:scale(.9)}
+/* Frénétique, furie prête : braise au centre, flamme dorée, mur de flammes animé autour (canvas #furycv, drawFury) */
+.pw{position:relative}
+#furycv{position:absolute;left:-13px;top:-26px;width:72px;height:76px;pointer-events:none;z-index:2}
+.pw.fury{--c:#ff8a2a;animation:none;box-shadow:0 0 0 2px rgba(255,170,60,.35),0 0 24px rgba(255,90,20,.8)}
+.pw.fury .in{position:relative;z-index:1;background:radial-gradient(circle at 50% 62%,#7a1a06 0,#3a0a08 55%,#170608 100%);color:#ffd27a}
+.pw.fury svg{width:22px;height:22px;filter:drop-shadow(0 0 4px #ff8a2a) drop-shadow(0 0 1px #fff3c4)}
 .pw.ready{box-shadow:0 0 0 3px rgba(255,154,77,.2),0 0 18px rgba(255,92,138,.6);animation:pwpulse 1.6s ease-in-out infinite}
 .pw.ready .in{background:var(--grad);color:#fff}
 .pw.on{--c:#ffd0d6;box-shadow:0 0 22px rgba(255,31,61,.75)}
@@ -320,7 +326,7 @@ details li b{color:var(--text);font-weight:600}
         <span class="lives" id="lives" aria-label="Vies"></span>
       </div>
       <canvas class="slotcv" id="slotcv" hidden aria-hidden="true"></canvas>
-      <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span></button>
+      <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span><canvas id="furycv" width="144" height="152" aria-hidden="true" hidden></canvas></button>
       <button class="pbtn" id="pz" aria-label="Pause"><i></i><i></i></button>
     </div>
     <div class="meterRow">
@@ -455,7 +461,7 @@ const SHIPS = [
     } },
   { key: 'fre', name: 'FRÉNÉTIQUE', tag: 'Tout ou rien', lives: 3, bonus: 1, spd: 4, bon: 3, power: 'FURIE',
     noItems: ['spd', 'sspd'],
-    desc: 'Plus rapide que les autres. Conquérir remplit sa FURIE, qui retombe s\'il traîne sur son terrain. Pleine : 15 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
+    desc: 'Plus rapide que les autres. Conquérir remplit lentement sa FURIE, qui retombe s\'il traîne sur son terrain ; pleine, elle attend. Pleine : 15 s à ×3 et un fil en feu qui grille les ennemis (les flammes restent 3 s). Pas de bonus Vitesse.',
     hullA: '#ffc2b0', hullB: '#ff5c3d', glow: '#ff7a5c', pit: '#ffd23f', land: '#ffb3a3', tail: -.4, fw: .12, pitXY: [.24, .18, .07],
     body(g) {
       g.beginPath(); g.moveTo(.88, 0); g.lineTo(.12, -.17); g.lineTo(-.5, -.6); g.lineTo(-.3, -.14); g.lineTo(-.42, 0);
@@ -636,10 +642,10 @@ function setPow(k, t) { power[k] = t; powMax[k] = t; }
 // pouvoir du Frénétique : on = temps de frénésie restant, cd = recharge restante
 // Frénétique (demande de Fabien) : plus rapide que les autres (FRE_SPD). Chaque zone conquise remplit sa jauge FURIE
 // (pleine à FURY_FILL du terrain, ×1,5 pour un MEGA) ; elle retombe (FURY_DRAIN par seconde) s'il traîne plus de
-// FURY_IDLE s sur son terrain. Pleine, elle déclenche la furie : FR_T s à ×FR_SPD (vitesse de base), fil enflammé qui
+// FURY_IDLE s sur son terrain, sauf une fois pleine : elle attend alors sans limite qu'on la déclenche. Pleine, elle déclenche la furie : FR_T s à ×FR_SPD (vitesse de base), fil enflammé qui
 // grille les ennemis qui le touchent ; chaque case de fil posée pendant la furie brûle FIRE_T s, même une fois conquise.
 // ab.on : temps de furie restant ; ab.fury : jauge (0 à 1) ; ab.idle : temps passé sur son terrain
-const FR_T = 15, FR_SPD = 3, FRE_SPD = 1.2, FURY_FILL = .3, FURY_IDLE = 3, FURY_DRAIN = .02, FIRE_T = 3;
+const FR_T = 15, FR_SPD = 3, FRE_SPD = 1.2, FURY_FILL = .6, FURY_IDLE = 3, FURY_DRAIN = .02, FIRE_T = 3;
 const ab = { on: 0, fury: 0, beat: 0, idle: 0 };
 // flammes de la furie : fin de la flamme de chaque case (horloge fireClock), et la liste pour les dessiner
 var fireT = new Float32Array(N);
@@ -1796,7 +1802,7 @@ function updateAbility(dt) {
   // la furie retombe s'il traîne sur son terrain (pas avant son premier mouvement)
   if (SH().key === 'fre' && P && !(ab.on > 0)) {
     if (P.drawing || P.shield) ab.idle = 0;
-    else if ((ab.idle += dt) > FURY_IDLE && ab.fury > 0) { ab.fury = Math.max(0, ab.fury - FURY_DRAIN * dt); pwHud(); }
+    else if ((ab.idle += dt) > FURY_IDLE && ab.fury > 0 && ab.fury < 1) { ab.fury = Math.max(0, ab.fury - FURY_DRAIN * dt); pwHud(); }
   }
   updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
@@ -2936,7 +2942,7 @@ function pwHud() {
   if (k === 'fre') {
     if (ab.on > 0) { cls = 'on'; p = ab.on / FR_T; inner = FLAME; label = 'Furie en cours'; }
     else if (ab.fury < 1) { cls = 'cd'; p = ab.fury; inner = FLAME; label = 'Furie : conquiers du terrain pour remplir la jauge'; }
-    else { cls = 'ready'; p = 1; inner = FLAME; label = 'Déclencher la furie'; }
+    else { cls = 'ready fury'; p = 1; inner = FLAME; label = 'Déclencher la furie'; }
   } else if (k === 'rob') {
     const hp = armor.hp;
     cls = 'armor'; p = hp; inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
@@ -2963,6 +2969,53 @@ function pwHud() {
   if (sig === pwSig) return;
   pwSig = sig;
   b.className = 'pw ' + cls; $('pwi').innerHTML = inner; b.setAttribute('aria-label', label);
+  furyCv.hidden = !/fury/.test(cls);
+}
+// Mur de flammes autour du bouton quand la furie est prête : des langues de feu tout autour du cercle, couchées
+// vers le haut comme une vraie flamme, en deux couches (rouge derrière, or devant), et des braises qui montent
+var furyCv = $('furycv'), furyG = furyCv.getContext('2d');
+let embers = [];
+function drawFury(dt) {
+  const g = furyG, W = 144, H = 152, cx = 72, cy = 98, R = 44, t = REDUCED ? 0 : time;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+  g.globalCompositeOperation = 'lighter';
+  // halo de braise
+  const hg = g.createRadialGradient(cx, cy, R * .7, cx, cy, R * 1.5);
+  hg.addColorStop(0, 'rgba(255,90,20,.45)'); hg.addColorStop(1, 'rgba(255,40,10,0)');
+  g.fillStyle = hg; g.fillRect(0, 0, W, H);
+  const layers = [[18, 34, 15, ['rgba(255,60,20,0)', 'rgba(255,50,20,.75)', 'rgba(200,20,10,0)'], 1, 0], [24, 22, 10, ['rgba(255,240,180,0)', 'rgba(255,190,70,.9)', 'rgba(255,90,20,0)'], 1.4, .14]];
+  for (const [n, len, wid, cols, sp, off] of layers) {
+    for (let k = 0; k < n; k++) {
+      const a = k / n * Math.PI * 2 + off, ox = Math.cos(a), oy = Math.sin(a);
+      // les flammes du haut sont plus hautes, celles du bas lèchent le bord
+      const up = .5 - oy * .5, fl = .65 + .35 * Math.sin(t * 9 * sp + k * 2.3) * Math.sin(t * 5.3 + k * 1.1);
+      const L = len * (.45 + .75 * up) * fl, x0 = cx + ox * (R - 3), y0 = cy + oy * (R - 3);
+      let dx = ox, dy = oy - 1.3; const m = Math.hypot(dx, dy); dx /= m; dy /= m;
+      const sway = Math.sin(t * 7 + k) * .35, tx = x0 + (dx + sway * .3) * L, ty = y0 + dy * L, w = wid * (.7 + .3 * fl);
+      const gr = g.createLinearGradient(x0, y0, tx, ty);
+      gr.addColorStop(0, cols[0]); gr.addColorStop(.25, cols[1]); gr.addColorStop(1, cols[2]);
+      g.fillStyle = gr; g.beginPath();
+      g.moveTo(x0 - dy * w / 2, y0 + dx * w / 2);
+      g.quadraticCurveTo(x0 + dx * L * .5 - dy * w * .4 + sway * 6, y0 + dy * L * .5 + dx * w * .4, tx, ty);
+      g.quadraticCurveTo(x0 + dx * L * .5 + dy * w * .4 + sway * 6, y0 + dy * L * .5 - dx * w * .4, x0 + dy * w / 2, y0 - dx * w / 2);
+      g.closePath(); g.fill();
+    }
+  }
+  // anneau en fusion : le bord du bouton brûle, des points chauds qui ondulent tout autour
+  g.globalCompositeOperation = 'source-over'; g.lineWidth = 6;
+  for (let k = 0; k < 64; k++) {
+    const a0 = k / 64 * Math.PI * 2, h = .5 + .5 * Math.sin(t * 6 + k * .56) * Math.sin(t * 3.7 - k * .31);
+    g.strokeStyle = `rgb(255,${70 + 170 * h | 0},${20 + 120 * h * h | 0})`;
+    g.beginPath(); g.arc(cx, cy, R - 3, a0, a0 + Math.PI * 2 / 64 + .03); g.stroke();
+  }
+  // le centre reste net (la braise et la flamme du bouton)
+  g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(cx, cy, R - 6, 0, Math.PI * 2); g.fill();
+  g.globalCompositeOperation = 'lighter';
+  // braises qui s'envolent
+  if (!REDUCED && Math.random() < dt * 14) { const a = Math.random() * Math.PI * 2; embers.push({ x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R * .6 - 10, vx: (Math.random() - .5) * 20, vy: -30 - Math.random() * 40, life: 0, max: .6 + Math.random() * .6 }); }
+  embers = embers.filter(e => (e.life += dt) < e.max);
+  for (const e of embers) { e.x += e.vx * dt; e.y += e.vy * dt; const a = 1 - e.life / e.max; g.fillStyle = `rgba(255,${150 + 80 * a | 0},70,${a.toFixed(2)})`; g.beginPath(); g.arc(e.x, e.y, 1.6 + a * 1.4, 0, Math.PI * 2); g.fill(); }
+  g.globalCompositeOperation = 'source-over';
 }
 
 /* ---------- Effets ---------- */
@@ -4108,6 +4161,7 @@ function frame(now) {
   if (scale > 0 && cv.width) { update(dt); render(); }
   if (shipPick) drawPreview();
   if (!slotCv.hidden) drawSlot();
+  if (!furyCv.hidden && S.phase !== 'title') drawFury(dt);
   if (foePics.length) drawFoePics(dt);
   requestAnimationFrame(frame);
 }
@@ -4168,7 +4222,7 @@ function newcomers() {
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
-    if (SH().key === 'fre') html += `<p class="keys">Furie : chaque zone conquise remplit la jauge du bouton en haut à droite (elle retombe si tu traînes sur ton terrain). Pleine, touche-le (ou F au clavier) : 15 s à toute vitesse, et ton fil prend feu. Les ennemis qui le touchent grillent, et les flammes restent 3 s : un mur de feu. Attention, ton vaisseau, lui, n'est pas invincible.</p>`;
+    if (SH().key === 'fre') html += `<p class="keys">Furie : chaque zone conquise remplit la jauge du bouton en haut à droite (elle retombe si tu traînes sur ton terrain). Pleine, elle t'attend aussi longtemps que tu veux : touche le bouton (ou F au clavier) : 15 s à toute vitesse, et ton fil prend feu. Les ennemis qui le touchent grillent, et les flammes restent 3 s : un mur de feu. Attention, ton vaisseau, lui, n'est pas invincible.</p>`;
     if (SH().key === 'ful') html += `<p class="keys">Tracé éclair : pose le doigt sur ton vaisseau (sur ton terrain ou en plein vol) et dessine ton trajet, il le parcourt en un éclair au lâcher. Au clavier : Maj, les flèches, puis Maj ou Entrée. Une seule vie !</p>`;
     if (SH().key === 'pred') html += `<p class="keys">Prédateur : pas de fil, tu chasses. Tap sur le terrain (ou F) pour bondir : ce que tu touches pendant le bond est dévoré et le terrain autour est à toi. Hors du bond, un contact te tue. Enchaîne les proies pour accélérer et multiplier le score, jusqu'à ×5. Massacre-les toutes et toute la zone est conquise. Attention à ta jauge SANG ! : elle se vide sans arrêt et chaque proie la remplit, d'autant plus que tu enchaînes. À sec, tu perds une vie. Le trou noir est indestructible, et le spectre ne se mord que s'il est visible.</p>`;
     if (SH().key === 'fur') html += `<p class="keys">Les ennemis ne voient pas ton fil. Mais par moments, ton vaisseau passe en camouflage optique : garde un œil sur le bout de ton fil !</p>`;

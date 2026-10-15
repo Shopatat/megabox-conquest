@@ -199,10 +199,10 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`furie : vitesse du Frénétique x${(dn / d0).toFixed(2)} (1,2), pendant la furie x${(df / d0).toFixed(2)} (3)`);
   g.newGame(1, 1, FR); g.go(); g.foes.length = 0;
   const fz0 = g.ab.fury; g.usePower(); const refused = g.ab.on === 0;
-  g.furyGain(g.S.interior * .15, false); const half = g.ab.fury; g.furyGain(g.S.interior * .15, true); const full = g.ab.fury;
-  g.setDir('left'); step(5); step(60 * 8); const drained = g.ab.fury; g.usePower(); const refused2 = g.ab.on === 0;
+  g.furyGain(g.S.interior * .3, false); const half = g.ab.fury; g.furyGain(g.S.interior * .2, true); const full = g.ab.fury;
+  g.setDir('left'); step(5); step(60 * 8); const fkept = g.ab.fury; g.ab.fury = .5; step(60 * 8); const drained = g.ab.fury; g.usePower(); const refused2 = g.ab.on === 0;
   g.ab.fury = 1; g.usePower();
-  console.log(`furie : jauge au départ ${fz0}, refusée vide ${refused}, 15 % du terrain -> ${half.toFixed(2)}, + MEGA -> ${full}, 8 s sur son terrain -> ${drained.toFixed(2)} (refusée ${refused2}), pleine -> furie de ${g.ab.on} s, jauge ${g.ab.fury}`);
+  console.log(`furie : jauge au départ ${fz0}, refusée vide ${refused}, 30 % du terrain -> ${half.toFixed(2)}, + 20 % en MEGA -> ${full}, pleine 8 s sur son terrain -> ${fkept} (elle attend), à moitié 8 s -> ${drained.toFixed(2)} (refusée ${refused2}), pleine -> furie de ${g.ab.on} s, jauge ${g.ab.fury}`);
   // fil en feu : la boule qui le touche grille, pas d'onde de choc
   g.newGame(1, 1, FR); g.go(); g.foes.length = 0; g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); step(10);
   { const e = g.makeFoe('out', 1); e.x = PX() + 2; e.y = PY() - 4; e.vx = -7; e.vy = 0; g.foes.push(e); const sc = g.S.score; step(12);
