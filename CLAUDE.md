@@ -313,6 +313,9 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 
 ## Pistes pour la suite
 
+### Prochaine grosse étape : les mondes
+- Demande de Fabien (octobre 2026) : passer à des **mondes**, avec bien plus que 25 niveaux. Rien n'est encore décidé ni proposé (structure, nombre de mondes et de niveaux, thèmes, mécaniques propres à chaque monde, carte, boss, sauvegarde par monde, effet sur la courbe de maîtrise calée sur des parties de 25 niveaux) : à proposer au début de la prochaine conversation.
+
 ### Divers
 - Nouveaux objets proposés à Fabien (mine, téléporteur, leurre, aimant, score ×2, pièges à éviter, boîte mystère…) : il a préféré des compétences permanentes (les arbres de maîtrise).
 - Arbres de maîtrise : Fabien « verra en jouant » ; l'équilibrage des 198 compétences reste à faire. Page de référence à jour : https://claude.ai/artifact/64CnHJcakJiiKyuXDGLXKE.
