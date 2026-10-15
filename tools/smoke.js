@@ -664,7 +664,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`prédateur : combo tenu ${win} s, maximum ×${mx} ; sang ${bm} s ; portée ${reach} ; recharge du bond ${cd([], 0)} s, ressort ${cd(['ressort'], 0)} s, à ×4 ${cd([], 4)} s -> déchaîné ${cd(['dechaine'], 4)} s`);
   console.log(`prédateur : 10 s de jeu, sang perdu ${drain([])} -> métabolisme ${drain(['grosseveine', 'metab'])} ; une proie +${gain([])} s -> festin +${gain(['grosseveine', 'metab', 'festin'])} s ; dernier souffle : ${ds}, puis ${ds2} ; trou noir mangé ${apex.dead} (sans apex ${apexNo.dead}, ${g.S.phase}) ; réaction en chaîne, voisin emporté ${chain} ; proie effrayée parcourt ${fear([])} -> terreur ${fear(['terreur'])}`);
 }
-// Endurance : chaque vaisseau avec ses 12 compétences à la fois, parties au hasard sur plusieurs niveaux
+// Endurance : chaque vaisseau avec toutes ses compétences à la fois, parties au hasard sur plusieurs niveaux
 {
   const out = [];
   g.SHIPS.forEach((sh, i) => {
@@ -686,7 +686,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
     }
     out.push(sh.name.toLowerCase() + ' ' + crashes + ' crash(s)');
   });
-  console.log('endurance, 12 compétences à la fois : ' + out.join(', '));
+  console.log('endurance, toutes les compétences à la fois : ' + out.join(', '));
 }
 // Rangs 4 et 5 : Veinard, Blindé, Frénétique
 {
