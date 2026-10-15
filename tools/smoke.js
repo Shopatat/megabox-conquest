@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -560,6 +560,24 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(FT, ['dispar']); g.P.shield = false; g.crash(); const d1 = g.S.phase + ' camouflé ' + (g.camo.on > 0); g.S.safe = 0; g.crash(); const d2 = g.S.phase;
   console.log(`furtif : camouflage auto ${auto}, réglage ${reg}, manuel sans bouton ${man} ; bouton ${m1} s, puis refusé ${m2 === 0}, rechargé après 100 cases ${m3 > 0} ; touché camouflé : ${touch([])}, invisible ${touch(['invis'])}, ombre assassine ${touch(['invis', 'assassin'])}`);
   console.log(`furtif : discret, chasseur à 18 cases le voit ${seen} ; trou noir aspire ${pull([])}, sans masse ${pull(['sansmasse'])} ; 100 cases +${pts([])}, discrétion payante +${pts(['payante'])}, infiltré +${pts(['infiltre'])} (touché +${touchedPts}) ; disparition : ${d1}, puis ${d2}`);
+}
+// Rembobineur
+{
+  const R = SHIPI('rew');
+  const span = list => { withSk(R, list); return g.rwSpan(); };
+  const refill = list => { withSk(R, list); g.rw.charge = 0; let n = 0; while (g.rw.charge < 3 - 1e-6 && n < 1000 * G) { g.seaStep(); n++; } return Math.round(n / G); };
+  // rembobinage d'une seconde : durée réelle (ralenti), jauge consommée
+  const play = (list, setup) => { withSk(R, list); g.P.shield = false; g.setDir('down'); step(90); if (setup) setup(); const c0 = g.rw.charge; g.rewind(); let n = 0; while (g.rw.play && n < 60 * 30) { step(1); n++; if (n === 120) g.rewind(); } return { frames: n, used: +(c0 - g.rw.charge).toFixed(2) }; };
+  const a = play([]), b = play(['ralenti']), loop = play(['boucle'], () => { g.rw.charge = 0; });
+  // écho / paradoxe : une boule immobile au bord du chemin, que le fantôme frôle en rembobinant
+  const ghost2 = list => { withSk(R, list); g.P.shield = false; const e = g.makeFoe('out', 1); e.x = PX() + 1.25; e.y = PY() + 3; e.vx = e.vy = 0; g.foes.push(e); g.setDir('down'); step(20); g.rewind(); for (let i = 0; i < 60 * 20 && g.rw.play; i++) step(1); const f = g.foes.find(x => x.kind === 'out'); return !f || f.dead ? 'effacé' : f.stun > 0 ? 'assommé' : 'rien'; };
+  withSk(R, ['hesit']); const win = g.rwWin();
+  withSk(R, ['lecon']); g.P.shield = false; g.setDir('down'); step(90); g.crash(); step(40); g.rw.charge = 1.5; const lc0 = g.rw.charge; g.rewind(); for (let i = 0; i < 60 * 20 && g.rw.play; i++) { step(1); if (i === 60) g.rewind(); } const lecon = +(g.rw.charge - lc0).toFixed(2);
+  withSk(R, ['arret']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const y0 = g.P.y; step(60); const frozen = g.P.y === y0; step(90); const thawed = g.P.y !== y0;
+  withSk(R, ['prescience']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const pres = g.S.presT > 0;
+  g.mxp.rew = 80000; g.skSave('rew', ['ralenti', 'arret', 'prudence'], false); g.newGame(1, 1, R); const pr = g.maxLives(); g.skSave('rew', [], false); g.mxp.rew = 0;
+  console.log(`rembobineur : jauge ${span([])} s, grand ${span(['grand'])}, géant ${span(['grand', 'geant'])} ; recharge complète ${refill([])} cases, sable fin ${refill(['sablefin'])} ; rembobinage arrêté après 2 s : ${a.used} s remontées, ralenti fin ${b.used} s ; boucle, jauge vide, rembobine quand même ${loop.used === 0 && loop.frames > 1} ; hésitation ${win} s`);
+  console.log(`rembobineur : leçon +${lecon} s de jauge ; arrêt sur image, figé ${frozen}, puis repart ${thawed} ; prescience ${pres} ; prudence ${pr} vies max ; écho ${ghost2(['echo'])}, paradoxe ${ghost2(['paradoxe'])}, sans ${ghost2([])}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {

@@ -1342,7 +1342,7 @@ function makeFoe(kind, sp) {
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
   S.diff = d; S.ship = ship; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives();
-  rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
+  rw.charge = rwSpan(); ab.fury = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -1380,7 +1380,7 @@ function setupLevel(L, instant) {
   // Encaisseur : Prêt à tout (bouclier plein à chaque niveau), Double bouclier (deuxième charge)
   if (SH().key === 'enc' && sk('pret')) P.guard = 0;
   P.g2 = sk('double'); P.g2cd = 0; S.noWave = 0;
-  rw.hist = []; rw.t = 0; rw.play = null; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
+  rw.hist = []; rw.t = 0; rw.play = null; S.freezeT = 0; S.presT = 0; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(CHIPS_MAX, gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
   pred.bite = 0; pred.tail = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false; pred.heat = 0; pred.beat = 0; pred.blood = BLOOD_START; pred.kills = 0; stains = []; drops = [];
@@ -2145,6 +2145,7 @@ function updateAbility(dt) {
   if (S.safe > 0) S.safe -= dt;
   if (S.noWave > 0) S.noWave -= dt;
   if (S.chainCd > 0) S.chainCd -= dt;
+  if (S.presT > 0) S.presT -= dt;
   if (sk('reflexe') && P && P.drawing && !((S.refCd -= dt) > 0)) {
     const pp = playerPos();
     if (foes.some(e => !e.dead && !(e.stun > 0) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .9)) { slow = Math.max(slow, .5); S.refCd = 2; }
@@ -2381,7 +2382,7 @@ function seaStep() {
     pwHud();
   }
   if (k === 'fur' && camo.cd > 0 && !(camo.on > 0)) { camo.cd = Math.max(0, camo.cd - 1 / G); if (!camo.cd) sfx.ready(); pwHud(); }
-  if (k === 'rew' && rw.charge < RW_SPAN) { rw.charge = Math.min(RW_SPAN, rw.charge + RW_SPAN / RW_CELLS / G); if (rw.charge === RW_SPAN) sfx.ready(); pwHud(); }
+  if (k === 'rew' && rw.charge < rwSpan()) { rw.charge = Math.min(rwSpan(), rw.charge + RW_SPAN / rwCells() / G); if (rw.charge === rwSpan()) sfx.ready(); pwHud(); }
 }
 // Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
 const camo = { on: 0, next: 5, cd: 0 };
@@ -2397,7 +2398,11 @@ function updateCamo(dt) {
 // secondes. Le pouvoir les rejoue à l'envers (effet VHS) tant qu'on ne rappuie pas, et chaque photo rejouée consomme
 // RW_SNAP s de la jauge (rw.charge, en secondes). Au crash, le jeu laisse RW_WIN s pour décider de rembobiner.
 const rw = { charge: RW_SPAN, hist: [], t: 0, play: null };
-const canRewind = () => SH().key === 'rew' && rw.charge >= RW_SNAP - 1e-6 && rw.hist.length > 0;
+const rwSpan = () => sk('geant') ? 5 : sk('grand') ? 4 : RW_SPAN, rwCells = () => sk('sablefin') ? 90 : RW_CELLS;
+const rwStep = () => sk('ralenti') ? 5 / 60 : RW_STEP, rwWin = () => sk('hesit') ? 4 : RW_WIN;
+// Boucle : une fois par niveau, un rembobinage complet gratuit
+const boucleReady = () => sk('boucle') && !(S.used && S.used.boucle);
+const canRewind = () => SH().key === 'rew' && (rw.charge >= RW_SNAP - 1e-6 || boucleReady()) && rw.hist.length > 0;
 function snap() {
   const gi = grab ? foes.indexOf(grab.e) : -1;
   return { grid: grid.slice(), trail: trail.slice(), erased: erased.slice(), P: structuredClone(P), foes: structuredClone(foes),
@@ -2420,14 +2425,16 @@ function recordRewind(dt) {
   rw.t += dt;
   if (rw.t < RW_SNAP * .9) return;
   rw.t = Math.max(0, rw.t - RW_SNAP); rw.hist.push(snap());
-  if (rw.hist.length > RW_SPAN / RW_SNAP + 1) rw.hist.shift();
+  if (rw.hist.length > rwSpan() / RW_SNAP + 1) rw.hist.shift();
 }
 // 1er appui : le temps remonte ; 2e appui : il s'arrête là (le reste de la jauge est économisé)
 function rewind() {
   if (rw.play) { rw.play.stop = true; return; }
   if (!canRewind()) return;
-  if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < RW_WIN)) return;
-  rw.play = { t: RW_STEP, n: 0, stop: false };
+  if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < rwWin())) return;
+  // free : rembobinage offert par Boucle ; fromCrash : pour Leçon ; path : le chemin du fantôme (Écho, Paradoxe)
+  rw.play = { t: rwStep(), n: 0, stop: false, free: boucleReady(), fromCrash: S.phase === 'crash', path: [] };
+  if (rw.play.free) { S.used.boucle = 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'BOUCLE', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
   S.phase = 'rewind'; S.exploded = false; cv.style.filter = ''; plan = null; dash = null;
   sfx.rewind(); pwHud();
 }
@@ -2435,16 +2442,17 @@ function updateRewind(dt) {
   const r = rw.play;
   r.t += dt;
   // au moins une photo est rejouée, même si on rappuie tout de suite
-  while (r.t >= RW_STEP && (!r.stop || r.n === 0)) {
-    r.t -= RW_STEP;
-    if (!rw.hist.length || rw.charge < RW_SNAP - 1e-6) { r.stop = true; break; }
-    unsnap(rw.hist.pop()); rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
+  while (r.t >= rwStep() && (!r.stop || r.n === 0)) {
+    r.t -= rwStep();
+    if (!rw.hist.length || (!r.free && rw.charge < RW_SNAP - 1e-6)) { r.stop = true; break; }
+    unsnap(rw.hist.pop()); if (!r.free) rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
+    if (r.n % 2 === 0) r.path.push(playerPos());
     // positions de départ pour glisser vers la photo suivante (plus ancienne) entre deux pas
     r.base = { vox: P.vox, voy: P.voy, pp: playerPos(), foes: foes.map(e => [e.x, e.y]) };
     if (!muted && r.n % 3 === 0) tone(1300 - (r.n % 24) * 30, .04, 'square', .02, 400);
   }
   // au ralenti, chaque photo dure plusieurs images : vaisseau et ennemis glissent vers la photo suivante
-  const nx = rw.hist[rw.hist.length - 1], f = Math.min(1, r.t / RW_STEP);
+  const nx = rw.hist[rw.hist.length - 1], f = Math.min(1, r.t / rwStep());
   if (r.base && nx && !r.stop) {
     const q = nx.P, qf = (q.dir.x || q.dir.y) ? Math.min(1, q.acc / stepTime()) : 1;
     const bx = (q.px + (q.x - q.px) * qf + .5) / G + q.vox, by = (q.py + (q.y - q.py) * qf + .5) / G + q.voy;
@@ -2454,7 +2462,21 @@ function updateRewind(dt) {
     });
   }
   hud(); pwHud();
-  if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); }
+  if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); rewindEnd(r); }
+}
+// fin du rembobinage : Leçon (une seconde de jauge rendue après un crash), Écho / Paradoxe (le sillage du fantôme assomme ou
+// efface les ennemis qu'il a traversés), Arrêt sur image (2 s figées pour viser), Prescience (2 s de trajectoires prévues)
+function rewindEnd(r) {
+  if (r.fromCrash && sk('lecon')) rw.charge = Math.min(rwSpan(), rw.charge + 1);
+  if ((sk('echo') || sk('paradoxe')) && r.path.length) {
+    for (const e of foes) {
+      if (e.dead || e.kind === 'amph' || !r.path.some(p => Math.hypot(p.x - e.x, p.y - e.y) < 1.6)) continue;
+      if (sk('paradoxe')) killFoe(e, 'EFFACÉ !', T.rainbow ? '#ffb84d' : T.shock); else stunBy(e, 2);
+    }
+  }
+  if (sk('arret')) { S.freezeT = 2; const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 2, text: 'ARRÊT SUR IMAGE', age: 0, color: T.rainbow ? '#ffb84d' : T.ball }); }
+  if (sk('prescience')) S.presT = 2.5;
+  pwHud();
 }
 // Encaisseur : le premier coup l'arrête net au lieu de le tuer ; un 2e coup avant d'avoir retracé 80 cases coûte une vie.
 // Renvoie true si le coup est encaissé (1 s de répit juste après, pour que le même ennemi ne frappe pas deux fois).
@@ -3056,7 +3078,7 @@ function updateCrash(dt) {
     sfx.boom();
   }
   // Rembobineur avec du pouvoir : le crash reste en suspens RW_WIN s, le temps de décider de rembobiner
-  if (t >= (canRewind() ? RW_WIN : 2.1)) {
+  if (t >= (canRewind() ? rwWin() : 2.1)) {
     if (S.lives <= 0) { gameOver(); return; }
     clearTrail();
     const [rx, ry] = respawnCell(crashPos.x, crashPos.y);
@@ -3378,9 +3400,9 @@ function pwHud() {
     else if (pred.cd > 0) { cls = 'cd'; p = 1 - pred.cd / PRED_CD; inner = FANG; label = 'Bond en recharge'; }
     else { cls = 'ready'; p = 1; inner = FANG; label = 'Bondir'; }
   } else if (k === 'rew') {
-    if (rw.play) { cls = 'on'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Arrêter le rembobinage'; }
-    else if (rw.charge >= RW_SNAP - 1e-6) { cls = 'ready'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Remonter le temps'; }
-    else { cls = 'cd'; p = rw.charge / RW_SPAN; inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
+    if (rw.play) { cls = 'on'; p = rw.charge / rwSpan(); inner = REWI; label = 'Arrêter le rembobinage'; }
+    else if (rw.charge >= RW_SNAP - 1e-6 || boucleReady()) { cls = 'ready'; p = boucleReady() ? 1 : rw.charge / rwSpan(); inner = REWI; label = 'Remonter le temps'; }
+    else { cls = 'cd'; p = rw.charge / rwSpan(); inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
   } else {
     const g = P ? P.guard : 0;
     if (g > 0) { cls = 'hurt'; p = 1 - g / guardCells(); inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
@@ -3451,6 +3473,7 @@ function burst(x, y, color, n, sp) {
 /* ---------- Boucle ---------- */
 function update(dt) {
   time += dt;
+  if (S.phase === 'play' && S.freezeT > 0) { S.freezeT -= dt; if (P && P.next) S.freezeT = 0; dt = 0; }
   tweenScore(dt);
   const ph = S.phase;
   if (ph === 'play') {
@@ -3554,6 +3577,10 @@ function render() {
 
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
+  if (rw.play && rw.play.path.length > 1 && (sk('echo') || sk('paradoxe'))) {
+    ctx.save(); glowOn('#ffb84d', 1.5); ctx.strokeStyle = T.rainbow ? 'rgba(255,184,77,0.7)' : T.shock; ctx.lineWidth = .35; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.setLineDash([.5, .35]); ctx.lineDashOffset = time * 4; ctx.beginPath(); rw.play.path.forEach((q, k) => k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke(); ctx.restore(); glowOff();
+  }
   if (fires.length) drawFires();
   if (P && ((plan && sk('premon')) || S.presT > 0)) drawPremon();
   if (plan && P) drawPlan();
@@ -3650,7 +3677,7 @@ function drawFx() {
     if (canRewind()) {
       ctx.globalAlpha = Math.floor(time * 4) % 2 ? 1 : .55;
       ctx.font = '700 2.2px "Exo 2", "Trebuchet MS", sans-serif';
-      const msg = 'REMBOBINER ? ' + Math.max(1, Math.ceil(RW_WIN - S.crashT)), w = ctx.measureText(msg).width, hx = COLS/2 - w/2 - 1.6, hy = ROWS/2 + 9;
+      const msg = 'REMBOBINER ? ' + Math.max(1, Math.ceil(rwWin() - S.crashT)), w = ctx.measureText(msg).width, hx = COLS/2 - w/2 - 1.6, hy = ROWS/2 + 9;
       ctx.fillStyle = T.textShadow; ctx.fillText(msg, COLS/2 + 1 + .15, hy + .15);
       ctx.fillStyle = T.rainbow ? '#ffd27a' : T.shock; ctx.fillText(msg, COLS/2 + 1, hy);
       // petit sablier qui se retourne
@@ -4935,7 +4962,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = CHIPS_MAX; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives(); rw.charge = rwSpan(); ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -5050,7 +5077,7 @@ function testSync() {
 // pouvoirs à plein : furie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.fury = 1; rw.charge = RW_SPAN; armor.hp = armorMax(); gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
+  ab.fury = 1; rw.charge = rwSpan(); armor.hp = armorMax(); gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }
