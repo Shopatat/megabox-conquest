@@ -579,6 +579,35 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`rembobineur : jauge ${span([])} s, grand ${span(['grand'])}, géant ${span(['grand', 'geant'])} ; recharge complète ${refill([])} cases, sable fin ${refill(['sablefin'])} ; rembobinage arrêté après 2 s : ${a.used} s remontées, ralenti fin ${b.used} s ; boucle, jauge vide, rembobine quand même ${loop.used === 0 && loop.frames > 1} ; hésitation ${win} s`);
   console.log(`rembobineur : leçon +${lecon} s de jauge ; arrêt sur image, figé ${frozen}, puis repart ${thawed} ; prescience ${pres} ; prudence ${pr} vies max ; écho ${ghost2(['echo'])}, paradoxe ${ghost2(['paradoxe'])}, sans ${ghost2([])}`);
 }
+// Piégeur (et Coup bas du Furtif) : zones de plus en plus grandes refermées sur une boule
+{
+  const TR = SHIPI('trap');
+  // descend jusqu'à la ligne « depth », puis file à gauche jusqu'au bord : zone d'environ 23 × (depth - 2) cases
+  const zone = (ship, list, depth, foesAt, far = true) => {
+    withSk(ship, list); g.P.shield = false;
+    const fs_ = foesAt.map(([x, y, k]) => { const e = g.makeFoe(k || 'out', 1); e.x = x; e.y = y; e.vx = 0; e.vy = 0; g.foes.push(e); return e; });
+    if (far) { const b = g.makeFoe('out', 1); b.x = 40.5; b.y = 58.5; g.foes.push(b); }
+    const f0 = g.S.filled, s0 = g.S.score, l0 = g.S.lives, i0 = g.items.length;
+    g.setDir('down'); let n = 0; while (g.P.y < depth * G && n++ < 400) step();
+    g.setDir('left'); n = 0; while (g.P.drawing && n++ < 400) step();
+    step(60);
+    return { dead: fs_.every(e => e.dead || !g.foes.includes(e)), pct: (g.S.filled - f0) / g.S.interior * 100, pts: g.S.score - s0, lives: g.S.lives - l0, items: g.items.length - i0 };
+  };
+  const tag = r => (r.dead ? 'piégé' : 'libre') + ' (' + r.pct.toFixed(0) + ' %)';
+  const one = [[10.5, 8.5]];
+  console.log(`piégeur : zone de 14 % ${tag(zone(TR, [], 19, one))}, large ${tag(zone(TR, ['large'], 19, one))} ; 17 % ${tag(zone(TR, ['large'], 22, one))}, très large ${tag(zone(TR, ['large', 'tlarge'], 22, one))} ; 22 % ${tag(zone(TR, ['large', 'tlarge'], 29, one))}, géant ${tag(zone(TR, ['large', 'tlarge', 'geant'], 29, one))} ; 31 % avec un seul ennemi, nasse ${tag(zone(TR, ['nasse'], 40, one))}`);
+  const hole = zone(TR, ['gibier'], 11, [[11, 6.5, 'amph']]), holeNo = zone(TR, [], 11, [[11, 6.5, 'amph']]);
+  const p0 = zone(TR, [], 16, one).pts, p1 = zone(TR, ['prime'], 16, one).pts;
+  const dbl = zone(TR, ['double'], 16, [[8.5, 8.5], [14.5, 10.5]]);
+  const dep0 = zone(TR, [], 16, one).pct, dep1 = zone(TR, ['depouille'], 16, one).pct;
+  const tab = zone(TR, ['tableau'], 16, one, false);
+  const fur = SHIPI('fur'), cb = zone(fur, ['coupbas'], 8, [[10.5, 5.5]]), cbNo = zone(fur, [], 8, [[10.5, 5.5]]);
+  console.log(`piégeur : trou noir dans 6 % -> gros gibier ${tag(hole)}, sans ${tag(holeNo)} ; points ${p0} -> prime ${p1} ; coup double, bonus apparu ${dbl.items > 0} ; dépouille +${(dep1 - dep0).toFixed(1)} % ; tableau de chasse +${tab.lives} vie ; furtif, coup bas dans 5 % ${tag(cb)}, sans ${tag(cbNo)}`);
+  withSk(TR, ['collet']); g.P.shield = false; g.setDir('down'); step(20); { const e = g.makeFoe('out', 1); g.foes.push(e); g.onTrailHitX(e, g.trail[0]); var collet = e.slowT; }
+  const wv = list => { withSk(TR, list); g.P.shield = false; g.setDir('down'); step(20); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); return g.wave_.speed / G; };
+  withSk(TR, ['leurre']); g.P.shield = false; g.setDir('left'); step(4); g.setDir('stop'); { const e = g.makeFoe('out', 1); e.x = PX() + 3; e.y = PY() + 8; e.vx = 6; e.vy = 0; g.foes.push(e); step(30); var lure = e.vx < 5.5 && e.vy < 0; }
+  console.log(`piégeur : collet, ralenti ${collet} s ; onde ${wv([])} cases/s, filet ${wv(['filet'])} ; leurre, la boule vire vers lui ${lure}`);
+}
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
   g.newGame(1, 1, 2); g.go(); g.ab.fury = .4; g.showClear(); g.setupLevel(2);

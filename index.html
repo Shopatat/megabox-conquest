@@ -1459,11 +1459,12 @@ function onTrailHit(e, i) {
   const k = trailPos[i];
   if (k < 0) return;
   const fast = e.kind === 'perf';
+  if (sk('collet')) e.slowT = 2;
   // Le vaisseau n'est pas figé : s'il regagne son terrain avant que l'onde le rattrape, il survit (conquête annulée)
-  if (!wave) { wave = { lo: k, hi: k, kills: true, fast, speed: (fast ? 65 : 30) * G }; sfx.shock(); }
+  if (!wave) { wave = { lo: k, hi: k, kills: true, fast, speed: (fast ? 65 : 30) * G * (sk('filet') ? .75 : 1) }; sfx.shock(); }
   else {
     wave.lo = Math.min(wave.lo, k); wave.hi = Math.max(wave.hi, k);
-    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65 * G; }
+    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65 * G * (sk('filet') ? .75 : 1); }
   }
   eraseK(k);
   if (e.kind === 'div') divSplit(e);
@@ -1683,9 +1684,23 @@ function capture() {
   furyGain(n, n >= S.interior * 0.15);
   if (SH().key === 'rob' && sk('recup') && n >= S.interior * .1) { armor.hp = Math.min(armorMax(), armor.hp + .03); pwHud(); }
   sfx.capture(n);
+  // Piégeur, Dépouille : 2 % de terrain de plus par ennemi piégé, autour du point où il a refermé
+  if (S.depouille) { for (const [x, y] of S.depouille) claimNear(x, y, Math.round(S.interior * .02)); S.depouille = null; }
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
   checkGoal();
+}
+// conquiert les n cases à conquérir les plus proches de (x, y) (monde), avec la vague de révélation
+function claimNear(x, y, n) {
+  const cand = [];
+  for (let i = 0; i < N; i++) if (grid[i] === 0) cand.push([Math.hypot(wx(i) - x, wy(i) - y), i]);
+  cand.sort((a, b) => a[0] - b[0]);
+  const take = cand.slice(0, n);
+  if (!take.length) return;
+  for (const [, i] of take) grid[i] = 1;
+  const d0 = take[0][0];
+  startReveal(take.map(([d, i]) => ({ i, t: (d - d0) * .03 })));
+  awardCells(take.length, { x, y }, false);
 }
 function startReveal(list) {
   if (reveal) for (let r = reveal.k; r < reveal.list.length; r++) paintCellIdx(reveal.list[r].i);
@@ -1875,7 +1890,9 @@ function moveFoe(e, dt) {
     return;
   }
   unstick(e);
+  if (e.slowT > 0) { e.slowT -= dt; dt *= .5; }
   if (SH().key === 'pred') flee(e, dt);
+  else if (sk('leurre')) lure(e, dt);
   if (e.kind === 'hunt') huntAI(e, dt);
   else if (e.kind === 'puls') pulsarTick(e, dt);
   else if (e.kind === 'ghost') e.gt += dt;
@@ -2358,6 +2375,17 @@ function predConquer(x, y, c) {
   checkGoal();
 }
 // Les proies fuient le Prédateur : elles virent pour s'éloigner, d'autant plus vite qu'il est près (même vitesse)
+function lure(e, dt) {
+  if (!isSea(e) || !P || P.drawing || P.shield || S.phase !== 'play') return;
+  const pp = playerPos(), dx = pp.x - e.x, dy = pp.y - e.y, d = Math.hypot(dx, dy), v = Math.hypot(e.vx, e.vy);
+  if (d > 14 || d < .01 || v < .05) return;
+  const a = Math.atan2(e.vy, e.vx);
+  let da = Math.atan2(dy, dx) - a;
+  while (da > Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  const b = a + Math.min(Math.abs(da), 1.1 * dt) * (da >= 0 ? 1 : -1);
+  e.vx = Math.cos(b) * v; e.vy = Math.sin(b) * v;
+}
 function flee(e, dt) {
   if (e.kind === 'amph' || e.kind === 'hunt' || !P || P.shield || S.phase !== 'play') return;
   const pp = playerPos(), dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy), v = Math.hypot(e.vx, e.vy);
@@ -2667,11 +2695,22 @@ function trapFoes(max = trapMax()) {
   if (sizes.length < 2) return;
   let big = 0; sizes.forEach((n, k) => { if (n > sizes[big]) big = k; });
   let caught = 0;
+  // Nasse : nombre d'ennemis par zone (une zone qui n'en contient qu'un se piège quelle que soit sa taille)
+  const count = new Map();
+  for (const e of foes) if (!e.dead && isSea(e)) { const c = comp[at(gc(e.x), gc(e.y))]; count.set(c, (count.get(c) || 0) + 1); }
   for (const e of foes) {
-    if (e.dead || !isSea(e)) continue;
+    const hole = e.kind === 'amph' && sk('gibier') && SH().key === 'trap';
+    if (e.dead || (!isSea(e) && !hole)) continue;
     const c = comp[at(gc(e.x), gc(e.y))];
-    if (c < 0 || c === big || sizes[c] > S.interior * max) continue;
+    if (c < 0 || c === big) continue;
+    if (sizes[c] > S.interior * (hole ? .08 : max) && !(sk('nasse') && !hole && count.get(c) === 1)) continue;
     trapFoe(e); caught++;
+    if (sk('depouille')) (S.depouille || (S.depouille = [])).push([e.x, e.y]);
+  }
+  if (caught >= 2 && sk('double')) spawnItem();
+  if (caught && sk('tableau') && !S.used.tableau && !seaSeeds().length) {
+    S.used.tableau = 1; S.lives = Math.min(maxLives(), S.lives + 1); hud(); sfx.lifeUp();
+    popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'TABLEAU DE CHASSE ! +1 VIE', age: -.2, color: T.rainbow ? '#b6ff5c' : T.ball, big: true });
   }
   if (caught) {
     const pp = playerPos();
@@ -2681,10 +2720,10 @@ function trapFoes(max = trapMax()) {
 }
 function trapFoe(e) {
   e.dead = true;
-  const color = foeColor(e);
+  const color = foeColor(e), prime = sk('prime') ? 1.5 : 1;
   burst(e.x, e.y, color, 36, 12); burst(e.x, e.y, T.rainbow ? '#e4ff9a' : T.shock, 16, 7);
   rings.push({ x: e.x, y: e.y, r: 3, max: 3, age: 0, color: T.rainbow ? '#b6ff5c' : T.shock });
-  const pts = 300 * S.level; S.score += pts;
+  const pts = Math.round(300 * S.level * prime * (e.kind === 'amph' ? 5 : 1)); S.score += pts;
   popups.push({ x: e.x, y: e.y - 1.2, text: '+' + pts, age: -0.2, color });
   hud();
 }
