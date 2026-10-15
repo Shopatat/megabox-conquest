@@ -1472,7 +1472,7 @@ function setupLevel(L, instant) {
   items = []; S.herald = null; S.bonusLeft = C.bonus ? bonusCount() + (sk('prodig') ? 2 : 0) + (sk('pluie') ? 1 : 0) : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
   // facteur de bonus du vaisseau : Blindé ×0,75 (chaque bonus prévu a 3 chances sur 4 d'apparaître), Veinard ×1,5
   // (chaque bonus prévu a 1 chance sur 2 d'en amener un deuxième)
-  const bf = SH().bonus * (sk('etoile') ? 1.25 : 1);
+  const bf = SH().bonus * (sk('etoile') ? 1.25 : 1) * (sk('aimantjeton') ? 2 : 1);
   if (bf !== 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) n += Math.floor(bf) + (Math.random() < bf % 1 ? 1 : 0); S.bonusLeft = n; }
   // Veinard, Coup de chance : le premier bonus du niveau arrive dans les 5 premières secondes
   if (sk('chance') && C.bonus) { S.bonusLeft = Math.max(1, S.bonusLeft); S.bonusWait = 1 + Math.random() * 4; }
@@ -2006,6 +2006,7 @@ function moveFoe(e, dt) {
   if (e.slowT > 0) { e.slowT -= dt; dt *= .5; }
   if (sk('rayonnement') && P && (power.sup > 0 || power.hyp > 0 || power.schr > 0) && Math.hypot(e.x - playerPos().x, e.y - playerPos().y) < 5) dt *= .5;
   if (sk('terreur') && P && e.kind !== 'hunt' && e.kind !== 'amph' && Math.hypot(e.x - playerPos().x, e.y - playerPos().y) < PRED_FEAR) dt *= .7;
+  if (SH().key === 'pred' && sk('paralysie') && P && !P.shield && e.kind !== 'hunt' && e.kind !== 'amph' && Math.hypot(e.x - playerPos().x, e.y - playerPos().y) < 3) return;
   if (SH().key === 'pred') flee(e, dt);
   else if (sk('leurre')) lure(e, dt);
   if (e.kind === 'hunt') huntAI(e, dt);
@@ -2340,14 +2341,14 @@ function predBite() {
   dropShield();
   if (!P.dir.x && !P.dir.y) { P.dir = { x: P.face.x, y: P.face.y }; P.acc = 0; }
   pred.again = false; pred.kills = 0;
-  pred.bite = PRED_BITE / (1 + .25 * pred.combo);
+  pred.bite = PRED_BITE / (1 + .25 * pred.combo) * (sk('grandbond') ? 1.3 : 1);
   shake = REDUCED ? 0 : Math.max(shake, .2 + pred.combo * .12);
   sfx.lunge(pred.combo); pwHud();
 }
 function updatePred(dt) {
   // SANG ! : la jauge se vide (une fois le vaisseau parti), plus vite avec le niveau ; à sec, il meurt (EXSANGUE !)
   if (S.phase === 'play' && P && !P.shield) {
-    pred.blood = Math.max(0, pred.blood - dt * (1 + .5 * (S.level - 1) / (MAX_LEVEL - 1)) * (sk('metab') ? .85 : 1));
+    pred.blood = Math.max(0, pred.blood - dt * (1 + .5 * (S.level - 1) / (MAX_LEVEL - 1)) * (sk('metab') ? .85 : 1) * (sk('reserve') && pred.blood < bloodMax() * BLOOD_LOW ? .5 : 1));
     if (pred.blood <= 0) { exsangue(); if (S.phase !== 'play') return; }
   }
   // presque à sec : cœur lent et lourd
@@ -2376,8 +2377,8 @@ const bloodLow = () => SH().key === 'pred' && S.phase !== 'title' ? Math.max(0, 
 function exsangue() {
   if (helmet() || power.sup > 0) return;
   const pp = playerPos();
-  if (sk('souffle') && !S.used.souffle) {
-    S.used.souffle = 1; pred.blood = 10;
+  if (sk('souffle') && (S.used.souffle || 0) < 2) {
+    S.used.souffle = (S.used.souffle || 0) + 1; pred.blood = 20;
     popups.push({ x: COLS / 2, y: ROWS / 2 - 4, text: 'DERNIER SOUFFLE', age: 0, color: T.rainbow ? '#ff2a3a' : T.ball, big: true });
     burst(pp.x, pp.y, T.rainbow ? '#ff2a3a' : T.shock, 24, 8); sfx.heavyHeart(); powersHud();
     return;
@@ -2403,7 +2404,9 @@ function devour(e) {
   if (e.dead) return true;
   if ((e.kind === 'amph' && !sk('apex')) || (e.kind === 'ghost' && ghostAlpha(e) < .35)) return false;
   if (e.kind === 'div' && e.cd > 0) return true;
+  const c0 = pred.combo;
   pred.combo = Math.min(predMax(), pred.combo + 1); pred.ct = predWin(); pred.cd = 0; pred.again = true;
+  if (sk('hurlement') && c0 < 5 && pred.combo >= 5) { const pp = playerPos(); for (const f of foes) if (f !== e && Math.hypot(f.x - pp.x, f.y - pp.y) < 10) stunBy(f, 1.5); popups.push({ x: pp.x, y: pp.y - 3, text: 'HURLEMENT', age: -.1, color: T.rainbow ? '#ff2a3a' : T.ball }); }
   const c = pred.combo, x = e.x, y = e.y, split = e.kind === 'div' && e.gen < 2;
   pred.sw = PRED_SWALLOW;
   // il garde l'élan : le bond se prolonge, ou l'élan repart pour une proie mangée sur sa lancée
@@ -2412,12 +2415,13 @@ function devour(e) {
   if (pred.bite > 0) pred.kills++;
   const multi = pred.bite > 0 && pred.kills >= 2, gain = 4 + 2 * c + (multi ? 4 : 0) + (sk('festin') ? 2 : 0);
   pred.blood = Math.min(bloodMax(), pred.blood + gain);
+  if (multi && sk('ivresse')) pred.blood = bloodMax();
   popups.push({ x, y: y - 2.8, text: (multi ? (pred.kills === 2 ? 'DOUBLÉ ! ' : pred.kills === 3 ? 'TRIPLÉ ! ' : 'RAFLE ! ') : '') + '+' + gain + ' S DE SANG', age: 0, color: '#ff2a3a' });
   if (split) divSplit(e); else e.dead = true;
   gore(x, y, foeColor(e), c);
   const apex = e.kind === 'amph';
   if (apex) { gore(x, y, '#2a0a3a', c + 3); shake = REDUCED ? 0 : 1.6; popups.push({ x: COLS / 2, y: ROWS / 2 + 2, text: 'APEX !', age: -.1, color: T.rainbow ? '#ff2a3a' : T.ball, big: true }); }
-  const pts = (apex ? 5000 : 300 * c) * S.level; S.score += pts;
+  const pts = Math.round((apex ? 5000 : 300 * c * (sk('brutal') ? 1.5 : 1)) * S.level); S.score += pts;
   popups.push({ x, y: y - 1.3, text: (c > 1 ? 'CARNAGE ×' + c + ' ' : 'DÉVORÉ ') + '+' + pts, age: 0, color: T.rainbow ? '#ff4d5e' : T.ball });
   // grand titre du combo : le nouveau remplace le précédent
   if (c >= 2) {
@@ -2427,7 +2431,7 @@ function devour(e) {
   sfx.crunch(c);
   // Réaction en chaîne : à ×5 et plus, la proie explose et emporte ce qui l'entoure
   if (sk('chaine') && c >= 5) for (const f of foes) {
-    if (f === e || f.dead || f.kind === 'amph' || Math.hypot(f.x - x, f.y - y) > 3) continue;
+    if (f === e || f.dead || f.kind === 'amph' || Math.hypot(f.x - x, f.y - y) > 4) continue;
     gore(f.x, f.y, foeColor(f), 2); killFoe(f, 'RÉACTION', T.rainbow ? '#ff2a3a' : T.shock);
   }
   if (!split && isSea(e)) predConquer(x, y, c);
@@ -2957,7 +2961,7 @@ function armorHit(src) {
 // La machine tourne en fond, à la place du jeton dans le HUD : le jeu continue à vitesse normale (une première version,
 // une roue de la fortune au milieu de l'écran, cachait le terrain et ralentissait tout).
 const CHIPS_MAX = 5;
-const chipsMax = () => CHIPS_MAX + (sk('coffre') ? 3 : sk('bourse') ? 1 : 0);
+const chipsMax = () => CHIPS_MAX + (sk('banque') ? 5 : sk('coffre') ? 3 : sk('bourse') ? 1 : 0);
 // mise maximale (Flambe : 4 jetons, gain garanti) ; arrêt des rouleaux (Rouleaux huilés : 30 % plus vite)
 const maxBet = () => sk('flambe') ? 4 : 3, huile = () => sk('huile') ? .7 : 1;
 const slotStop = r => SLOT_STOP[r] * huile();
@@ -2996,7 +3000,8 @@ const SLOT_BET = 1.1, SLOT_STOP = [1.3, 2.4, 3.9], SLOT_SLOW = 1.1, SLOT_SHOW = 
 function gainChip(it) {
   const full = gam.chips >= chipsMax();
   gam.chips = Math.min(chipsMax(), gam.chips + 1);
-  if (full) popups.push({ x: it.x, y: it.y - 2.6, text: 'MAX', age: 0, color: T.items.coin });
+  if (full && sk('pot')) { const p = 1000 * S.level; S.score += p; popups.push({ x: it.x, y: it.y - 2.6, text: 'POT +' + fmt(p), age: 0, color: T.items.coin }); hud(); }
+  else if (full) popups.push({ x: it.x, y: it.y - 2.6, text: 'MAX', age: 0, color: T.items.coin });
   sfx.coin(); pwHud();
 }
 // Bouton du jeton (ou F), puis la machine elle-même : 1er appui, on mise un jeton ; chaque appui dans la seconde qui
@@ -3028,12 +3033,13 @@ function betSound(n) { if (!muted) { tone(1046 * Math.pow(1.26, n - 1), .07, 'sq
 const slotPick = list => { let r = Math.random() * list.reduce((a, x) => a + x.ww, 0); for (const x of list) if ((r -= x.ww) < 0) return SLOT.indexOf(x.s); return SLOT.indexOf(list[0].s); };
 // poids des gains selon les compétences (Sept chanceux, Rejoue) et la mise (Flambe : gros lots trois fois plus fréquents)
 function slotPrize(bet) {
-  return slotPick(SLOT.filter(s => !s.bad).map(s => ({ s, ww: s.w * (s.k === 'jack' && sk('sept') ? 3 : 1) * (s.k === 'again' && sk('rejoue') ? 2 : 1) * (bet >= 4 && s.gold ? 3 : 1) })));
+  return slotPick(SLOT.filter(s => !s.bad).map(s => ({ s, ww: s.w * (s.k === 'jack' && sk('sept') ? 5 : 1) * (s.k === 'again' && sk('rejoue') ? 2 : 1) * (bet >= 4 && s.gold ? 3 : 1) })));
 }
 function slotDraw(bet, prize = -1) {
-  const win = bet >= 4 ? 1 : Math.min(1, SLOT_WIN[bet - 1] + (sk('main') ? .05 : 0));
+  const win = bet >= 4 ? 1 : Math.min(1, SLOT_WIN[bet - 1] + (sk('main') ? .05 : 0) + (gam.serie ? .1 : 0));
+  gam.serie = false;
   if (Math.random() < win) return prize >= 0 ? prize : slotPrize(bet);
-  return Math.random() < SLOT_BAD * (sk('fer') ? .7 : 1) ? slotPick(SLOT.filter(s => s.bad).map(s => ({ s, ww: s.w }))) : -1;
+  return Math.random() < SLOT_BAD * (sk('fer') ? .7 : 1) ? slotPick(SLOT.filter(s => s.bad && !(s.k === 'skull' && sk('talisman'))).map(s => ({ s, ww: s.w }))) : -1;
 }
 // fenêtre du Tricheur : la machine s'illumine par instants pendant que le dernier rouleau tourne
 const cheatLit = m => Math.sin(m.t * 7) > .7;
@@ -3089,12 +3095,14 @@ function seaNear() {
 function slotWin(s) {
   const pp = playerPos(), gold = T.rainbow ? '#ffd23f' : T.shock;
   if (!s) {
+    if (sk('manche') && !S.used.manche) { S.used.manche = 1; gam.free++; popups.push({ x: pp.x, y: pp.y - 2.2, text: 'CARTE DANS LA MANCHE !', age: 0, color: T.rainbow ? '#ffd23f' : T.ball }); return; }
     popups.push({ x: pp.x, y: pp.y - 2.2, text: 'PERDU', age: 0, color: T.rainbow ? '#8f95c6' : T.ball });
     if (!muted) { tone(330, .18, 'triangle', .03, -60); tone(247, .3, 'triangle', .03, -50, .16); }
     return;
   }
   popups.push({ x: pp.x, y: pp.y - 2.2, text: s.txt, age: 0, color: s.bad ? T.danger : (T.rainbow ? '#ffd23f' : T.ball), hue: !!s.gold });
   rings.push({ x: pp.x, y: pp.y, r: 0, max: s.bad ? 6 : 10, age: 0, color: s.bad ? T.danger : gold, big: !s.bad });
+  if (!s.bad && sk('serie')) gam.serie = true;
   if (s.bad) { sfx.lose(); flash = Math.max(flash, .3); shake = REDUCED ? 0 : .6; if (sk('assurance') && slot && !slot.free) { gam.chips = Math.min(chipsMax(), gam.chips + slot.bet); popups.push({ x: pp.x, y: pp.y - 3.2, text: 'ASSURÉ : +' + slot.bet + ' JETON' + (slot.bet > 1 ? 'S' : ''), age: -.2, color: T.rainbow ? '#ffd23f' : T.ball }); } }
   else if (s.k === 'jack') sfx.jackpot();
   else if (!s.gold) sfx.win();

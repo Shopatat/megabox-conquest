@@ -772,6 +772,26 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(M, ['divin'], 3); g.items.length = 0; g.spawnItem(); const three = g.items.length; g.collect(g.items[0]); const gone = g.items.filter(x => x.done).length;
   console.log(`monarque 4-5 : coffret, deux trésors ${two}, il en reste un après usage ${left} ; joyau, invincible ${joy} ; émissaire, loin ${far}/30 ; gardiens niveau 21 : ${inn([])}, garde + courtisans ${inn(['garde', 'courtisans'])} ; cortège, vie ${(cor / 4).toFixed(0)} % ; droit divin, ${three} proposés, ${gone} retirés`);
 }
+// Rangs 4 et 5 : Flambeur, Prédateur
+{
+  const FL = SHIPI('gam'), PD = SHIPI('pred');
+  withSk(FL, ['pot']); g.gam.chips = g.chipsMax(); g.items.length = 0; g.spawnItem(); let s0 = g.S.score; g.collect(g.items[0]); const pot = g.S.score - s0;
+  withSk(FL, ['bourse', 'coffre', 'banque']); const bq = g.chipsMax();
+  const winRate = (list, serie) => { withSk(FL, list); let w = 0; for (let k = 0; k < 4000; k++) { g.gam.serie = serie; const i = g.slotDraw(1); if (i >= 0 && !g.SLOT[i].bad) w++; } return (w / 40).toFixed(0); };
+  const skulls = list => { withSk(FL, list); let n = 0; for (let k = 0; k < 6000; k++) { const i = g.slotDraw(1); if (i >= 0 && g.SLOT[i].k === 'skull') n++; } return n; };
+  let ch0 = 0, ch1 = 0; for (let k = 0; k < 300; k++) { withSk(FL, []); ch0 += g.S.bonusLeft; withSk(FL, ['aimantjeton']); ch1 += g.S.bonusLeft; }
+  const manche = list => { withSk(FL, list); g.S.test = true; g.gam.force = 'none'; g.gam.chips = 3; g.spinSlot(); let n = 0, spins = 0, was = ''; while (g.slot && n++ < 900) { step(1); const st = g.slot ? g.slot.st : ''; if (st === 'spin' && was !== 'spin') spins++; was = st; } g.S.test = false; g.gam.force = ''; return spins; };
+  console.log(`flambeur 4-5 : pot commun +${pot} ; banque ${bq} jetons ; 1 jeton gagne ${winRate([], false)} %, après un gain (série) ${winRate(['serie'], true)} % ; têtes de mort ${skulls([])} -> talisman ${skulls(['talisman'])} ; jetons ${(ch0 / 300).toFixed(2)} -> aimantés ${(ch1 / 300).toFixed(2)} ; tirage perdu : ${manche([])} tour, carte dans la manche ${manche(['manche'])} tours`);
+  const bite = (list, kind = 'out', setup) => { withSk(PD, list); g.P.shield = false; g.setDir('down'); step(20); const e = g.makeFoe(kind, 1); e.x = PX(); e.y = PY() + 2.2; e.vx = e.vy = 0; g.foes.push(e); if (setup) setup(); g.usePower(); step(20); return e; };
+  const pts = list => { let s1; bite(list, 'out', () => { s1 = g.S.score; }); return g.S.score - s1; };
+  let far; bite(['hurlement'], 'out', () => { g.pred.combo = 4; far = g.makeFoe('out', 1); far.x = PX() + 7; far.y = PY() + 4; far.vx = far.vy = 0; g.foes.push(far); });
+  const drain = list => { withSk(PD, list); g.P.shield = false; g.setDir('left'); step(4); g.pred.blood = 6; step(120); return +(6 - g.pred.blood).toFixed(2); };
+  bite(['ivresse'], 'out', () => { g.pred.blood = 5; const f = g.makeFoe('out', 1); f.x = PX(); f.y = PY() + 3.4; f.vx = f.vy = 0; g.foes.push(f); }); const ivr = +g.pred.blood.toFixed(1);
+  const bl = list => { withSk(PD, list); g.P.shield = false; g.setDir('down'); step(10); g.usePower(); return +g.pred.bite.toFixed(3); };
+  withSk(PD, ['paralysie']); g.P.shield = false; { const e = g.makeFoe('out', 1); e.x = PX() + 2; e.y = PY() + 2; e.vx = 5; e.vy = 0; g.foes.push(e); const x0 = e.x; step(10); var par = e.x === x0; }
+  withSk(PD, ['souffle']); g.P.shield = false; g.setDir('left'); step(4); const ds = []; for (let k = 0; k < 3; k++) { g.pred.blood = .05; step(10); ds.push(g.S.phase === 'play' ? Math.round(g.pred.blood) : g.S.phase); }
+  console.log(`prédateur 4-5 : une proie +${pts([])}, brutalité +${pts(['brutal'])} ; hurlement, ennemi à 8 cases assommé ${far.stun > 0} ; 2 s sous 25 % : -${drain([])} s, réserve -${drain(['reserve'])} s ; ivresse, doublé -> ${ivr} s ; bond ${bl([])} s, grand bond ${bl(['grandbond'])} s ; paralysie, figé ${par} ; dernier souffle ${ds.join(' / ')}`);
+}
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
   g.newGame(1, 1, 2); g.go(); g.ab.fury = .4; g.showClear(); g.setupLevel(2);
