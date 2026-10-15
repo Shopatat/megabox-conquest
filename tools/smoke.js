@@ -533,7 +533,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   e = hitBy(['ondeb'], () => { const n = g.makeFoe('out', 1); n.x = PX() + 2; n.y = PY(); n.vx = -3; n.vy = 0; g.foes.push(n); g.__n = n; }); const pushed = g.__n.vx > 0;
   // après-coup : pas d'onde de choc juste après
   hitBy(['apres']); { const f = g.makeFoe('out', 1); g.foes.push(f); g.onTrailHitX(f, g.trail[0]); } const noWave = !g.wave;
-  g.mxp.enc = 80000; g.skSave('enc', ['souffle', 'rafist', 'apres', 'inebr'], false); g.newGame(1, 1, E); const lives = g.S.lives; g.skSave('enc', [], false); g.mxp.enc = 0;
+  withSk(E, ['inebr']); const lives = g.startLives();
   console.log(`encaisseur : coup encaissé -> recharge ${base.guard}, arrêté ${!base.moving}, répit ${base.grace} s ; recharge rapide ${rr} ; prêt à tout ${pret} ; sonné ${sonne} s ; prime +${s0} ; élan, continue ${elan} ; renvoi, détruit ${renvoi} ; souffle ${souffle} s ; double bouclier ${ph.join(' / ')} ; onde de bouclier, voisin repoussé ${pushed} ; après-coup, pas d'onde ${noWave} ; inébranlable ${lives} vies`);
 }
 // Fulgurant
@@ -547,7 +547,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(FU, ['paraton']); g.P.shield = false; g.setDir('down'); step(30); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); step(60); const pt1 = g.S.phase; g.S.safe = 0; g.setDir('down'); step(20); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); step(90); const pt2 = g.S.phase;
   withSk(FU, ['premon']); g.P.shield = false; { const e = g.makeFoe('out', 1); g.foes.push(e); } g.planStart(); step(10);
   withSk(FU, ['court']); g.P.shield = false; g.crash(); const c1 = g.S.phase; g.setupLevel(2); g.go(); g.S.safe = 0; g.P.shield = false; g.crash(); const c2 = g.S.phase;
-  g.mxp.ful = 80000; g.skSave('ful', ['paraton', 'reflexe', 'court', 'survolte'], false); g.newGame(1, 1, FU); const sv = g.S.lives + ' / ' + g.maxLives(); g.skSave('ful', [], false); g.mxp.ful = 0;
+  withSk(FU, ['survolte']); const sv = g.startLives() + ' / ' + g.maxLives();
   console.log(`fulgurant : trajet max ${maxLen([])} cases, longue portée ${maxLen(['portee'])} ; éclair ${speed([]).toFixed(0)} cases/s, haute tension ${speed(['tension']).toFixed(0)} ; monde pendant le dessin : ${slowW([])}, suspendu ${slowW(['suspendu'])}, transe ${slowW(['transe'])}, figé ${slowW(['fige'])}`);
   console.log(`fulgurant : arc électrique, frôlé assommé ${arc} ; foudre en chaîne ${chain} ; paratonnerre, 1re onde -> ${pt1}, 2e -> ${pt2} ; court-circuit ${c1}, puis ${c2} ; survolté ${sv} vies`);
 }
@@ -580,7 +580,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(R, ['lecon']); g.P.shield = false; g.setDir('down'); step(90); g.crash(); step(40); g.rw.charge = 1.5; const lc0 = g.rw.charge; g.rewind(); for (let i = 0; i < 60 * 20 && g.rw.play; i++) { step(1); if (i === 60) g.rewind(); } const lecon = +(g.rw.charge - lc0).toFixed(2);
   withSk(R, ['arret']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const y0 = g.P.y; step(60); const frozen = g.P.y === y0; step(90); const thawed = g.P.y !== y0;
   withSk(R, ['prescience']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const pres = g.S.presT > 0;
-  g.mxp.rew = 80000; g.skSave('rew', ['ralenti', 'arret', 'prudence'], false); g.newGame(1, 1, R); const pr = g.maxLives(); g.skSave('rew', [], false); g.mxp.rew = 0;
+  withSk(R, ['prudence']); const pr = g.maxLives();
   console.log(`rembobineur : jauge ${span([])} s, grand ${span(['grand'])}, géant ${span(['grand', 'geant'])} ; recharge complète ${refill([])} cases, sable fin ${refill(['sablefin'])} ; rembobinage arrêté après 2 s : ${a.used} s remontées, ralenti fin ${b.used} s ; boucle, jauge vide, rembobine quand même ${loop.used === 0 && loop.frames > 1} ; hésitation ${win} s`);
   console.log(`rembobineur : leçon +${lecon} s de jauge ; arrêt sur image, figé ${frozen}, puis repart ${thawed} ; prescience ${pres} ; prudence ${pr} vies max ; écho ${ghost2(['echo'])}, paradoxe ${ghost2(['paradoxe'])}, sans ${ghost2([])}`);
 }
@@ -623,7 +623,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(M, ['heraut'], 2); g.items.length = 0; g.S.bonusLeft = 1; g.S.bonusWait = 2.5; step(2); const h = g.S_.herald; step(200); const at = h && g.items[0] && Math.hypot(g.items[0].x - h.x, g.items[0].y - h.y) < .01;
   const inn = list => { withSk(M, list, 21); g.setupLevel(21); return g.foes.filter(e => e.kind === 'inn').length; };
   withSk(M, ['tribut']); const s0 = g.S.score; g.awardCells(Math.ceil(g.S.interior * .25), { x: 10, y: 10 }, false); const trib = g.S.score - s0 - Math.round(Math.ceil(g.S.interior * .25) * 10 / G / G);
-  g.mxp.mon = 80000; g.skSave('mon', ['heraut', 'garde', 'tribut', 'couronne'], false); g.newGame(1, 1, M); const ml = g.maxLives(); g.skSave('mon', [], false); g.mxp.mon = 0;
+  withSk(M, ['couronne']); const ml = g.maxLives();
   const sd = list => { withSk(M, list); return g.supDur(); };
   withSk(M, ['magnif']); { const e = g.makeFoe('out', 1); e.x = 30; e.y = 40; e.vx = e.vy = 0; g.foes.push(e); g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); var mag = e.dead; }
   const pr = list => { let n = 0, w = 0; for (let k = 0; k < 400; k++) { withSk(M, list); n += g.S.bonusLeft; w += g.S.bonusWait; } return (n / 400).toFixed(2) + ' bonus, 1er à ' + (w / 400).toFixed(1) + ' s'; };
@@ -710,6 +710,33 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(F, ['freins']); g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); step(5); g.setDir('stop'); const fy = g.P.y; step(10); const frein = g.P.y === fy;
   withSk(F, ['secondsouffle']); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); g.ab.on = .05; step(5); const ss = g.ab.fury;
   console.log(`frénétique 4-5 : étincelles, voisin grillé ${et} ; cendres +${cen.toFixed(1)} % ; adrénaline, 30 % pendant la furie -> ${adr} ; rugissement, voisin assommé ${rug} ; freins, arrêté en pleine furie ${frein} ; second souffle ${ss}`);
+}
+// Rangs 4 et 5 : Encaisseur, Fulgurant, Furtif
+{
+  const E = SHIPI('enc'), FU = SHIPI('ful'), FT = SHIPI('fur');
+  const hitE = (list, setup) => { withSk(E, list); g.P.shield = false; g.setDir('down'); step(20); if (setup) setup(); const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + .6; e.vx = 0; e.vy = -5; g.foes.push(e); g.hitPlayer(e); return e; };
+  hitE(['rechecl']); const rc = g.P.guard;
+  withSk(E, ['miroir']); g.P.shield = false; g.setDir('down'); step(20); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); const mir = !g.wave_;
+  hitE(['contre']); g.P.grace = 0; { const f = g.makeFoe('out', 1); f.x = PX(); f.y = PY() + .4; g.foes.push(f); g.hitPlayer(f); var contre = f.stun > 0 && g.S.phase === 'play'; }
+  let rip; hitE(['riposte'], () => { rip = g.makeFoe('out', 1); rip.x = PX() + 4; rip.y = PY(); g.foes.push(rip); });
+  hitE(['meditation']); g.setDir('stop'); g.P.dir = { x: 0, y: 0 }; g.P.drawing = false; const gm0 = g.P.guard; step(60); const med = +(gm0 - g.P.guard).toFixed(1);
+  withSk(E, ['intact']); g.S.lives = 1; g.S.lives0 = 1; g.showClearX(); const intact = g.S.lives;
+  let rv; hitE(['renvoi'], () => { rv = g.makeFoe('out', 1); rv.x = PX() + 3; rv.y = PY(); g.foes.push(rv); });
+  console.log(`encaisseur 4-5 : recharge éclair ${rc} ; miroir, pas d'onde ${mir} ; contre-attaque, l'ennemi est assommé ${contre} ; riposte, voisin assommé ${rip.stun > 0} ; méditation -${med} cases en 1 s ; intact, 1 -> ${intact} vies ; renvoi, voisin détruit ${rv.dead} ; inébranlable ${(() => { withSk(E, ['inebr']); return g.startLives(); })()} vies`);
+  withSk(FU, ['sillage']); g.P.shield = false; g.planStart(); g.planTo(g.P.x, g.P.y + 20 * G); g.planLaunch(); step(15); { const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() - 4; e.vx = e.vy = 0; g.foes.push(e); step(3); var sil = e.stun > 0; }
+  const surc = list => { withSk(FU, list); g.P.shield = false; const s0 = g.S.score; g.planStart(); g.planTo(g.P.x, g.P.y + 40 * G); g.planTo(g.P.x - 20 * G, g.P.y + 40 * G); g.planTo(g.P.x - 20 * G, 0); g.planLaunch(); step(60); return g.S.score - s0; };
+  withSk(FU, ['calme']); g.P.shield = false; g.planStart(); g.planTo(g.P.x, g.P.y + 6 * G); g.planLaunch(); step(10); const calm = g.foeSlow();
+  withSk(FU, ['cyclone']); g.P.shield = false; { const e = g.makeFoe('out', 1); e.x = PX() + 2; e.y = PY() + 1; e.vx = -6; e.vy = 0; g.foes.push(e); g.planStart(); step(2); var cyc = e.vx > 0; }
+  withSk(FU, ['fusible']); g.P.shield = false; { const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + 8; e.vx = e.vy = 0; g.foes.push(e); g.planStart(); g.planTo(g.P.x, g.P.y + 20 * G); g.planLaunch(); step(30); var fus = g.S.phase; }
+  withSk(FU, ['chaine']); g.P.shield = false; { const a = g.makeFoe('out', 1), b = g.makeFoe('out', 1); a.x = 40; a.y = 50; b.x = 10; b.y = 55; a.vx = a.vy = b.vx = b.vy = 0; g.foes.push(a, b); g.planStart(); g.planTo(g.P.x, g.P.y + 6 * G); g.planLaunch(); step(30); var ch2 = a.dead && b.dead; }
+  console.log(`fulgurant 4-5 : sillage électrique, ennemi posé sur le trajet assommé ${sil} ; long éclair ${surc([])} -> surcharge ${surc(['surcharge'])} ; calme, monde à ${calm} ; œil du cyclone, repoussé ${cyc} ; fusible : ${fus} ; foudre en chaîne, deux ennemis ${ch2} ; survolté ${(() => { withSk(FU, ['survolte']); return g.startLives() + ' / ' + g.maxLives(); })()}`);
+  withSk(FT, ['manuel', 'optique']); g.usePower(); const opt = g.camo.on;
+  withSk(FT, ['manuel', 'camoflash']); g.usePower(); const cf = g.camo.cd;
+  withSk(FT, ['brouillage']); g.P.shield = false; g.setDir('left'); step(5); { const e = g.makeFoe('inn', 1); e.x = PX(); e.y = PY(); g.foes.push(e); g.hitPlayer(e); var br = g.S.phase; }
+  withSk(FT, ['indetect']); g.P.shield = false; g.setDir('down'); step(20); { const h = g.makeFoe('hunt', 1); h.x = PX(); h.y = PY() + 5; h.hd = -Math.PI / 2; g.foes.push(h); var ind = g.huntSees(h); }
+  const mega = list => { withSk(FT, list); const s0 = g.S.score; g.awardCells(Math.ceil(g.S.interior * .2), { x: 10, y: 10 }, true); return g.S.score - s0; };
+  withSk(FT, ['pickpocket'], 3); g.camo.on = 3; g.items.length = 0; g.spawnItem(); g.items[0].type = 'chr'; let s1 = g.S.score; g.collect(g.items[0]); const pick = g.S.score - s1;
+  console.log(`furtif 4-5 : optique ${opt} s ; recharge rapide ${cf} cases ; brouillage, gardien sur son terrain -> ${br} ; indétectable, chasseur à 5 cases le voit ${ind} ; MEGA ${mega([])} -> précision ${mega(['precision'])} ; pickpocket +${pick}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {

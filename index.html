@@ -460,7 +460,7 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
-const GUARD_CELLS = 80, guardCells = () => sk('rechrap') ? 65 : GUARD_CELLS, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+const GUARD_CELLS = 80, guardCells = () => sk('rechecl') ? 50 : sk('rechrap') ? 65 : GUARD_CELLS, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 // ouverture des mandibules du Prédateur (0 à 1) imposée par le jeu ; null : elles mâchonnent toutes seules
 var jaw = null;
 // regard du Prédateur (angle dans le monde vers la proie la plus proche) ; null : il regarde droit devant
@@ -635,8 +635,8 @@ const SHIPS = [
 ];
 const SH = () => SHIPS[S.ship] || SHIPS[0];
 // vies au maximum (Survolté, Prudence, Couronnement) et au départ (Inébranlable, Survolté)
-const maxLives = () => (SH().maxLives || 9) + (sk('survolte') ? 1 : 0) + (sk('prudence') ? 1 : 0) + (sk('couronne') ? 2 : 0);
-const startLives = () => SH().lives + (sk('inebr') ? 1 : 0) + (sk('survolte') ? 1 : 0);
+const maxLives = () => (SH().maxLives || 9) + (sk('survolte') ? 2 : 0) + (sk('prudence') ? 1 : 0) + (sk('couronne') ? 3 : 0);
+const startLives = () => SH().lives + (sk('inebr') ? 2 : 0) + (sk('survolte') ? 2 : 0) + (sk('couronne') ? 1 : 0);
 
 const INTRO = {
   out:  ['BOULE', 'Elle rebondit dans la zone à conquérir. Si elle touche ton fil, une onde de choc le remonte : regagne ton terrain avant qu\'elle te rattrape.'],
@@ -996,6 +996,8 @@ const ab = { on: 0, fury: 0, beat: 0, idle: 0 };
 // flammes de la furie : fin de la flamme de chaque case (horloge fireClock), et la liste pour les dessiner
 var fireT = new Float32Array(N);
 var fires = [], fireClock = 0;
+// Fulgurant, Sillage électrique : fin de l'électrification de chaque case (même horloge que les flammes)
+var zapT = new Float32Array(N), zaps = [];
 // compétences du Frénétique : durée des flammes (Braises, Mur de feu), jauge (Colérique), durée de la furie (Hors de lui)
 const fireDur = () => sk('murfeu') ? 8 : sk('braises') ? 4 : FIRE_T;
 const furyFill = () => sk('colere') ? .5 : FURY_FILL;
@@ -1441,7 +1443,7 @@ function makeFoe(kind, sp) {
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
   S.diff = d; S.ship = ship; S.score = 0; S.shipTip = true; S.usedGame = {}; S.tresor = null; loadSkills(); S.lives = startLives();
-  rw.charge = rwSpan(); ab.fury = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
+  rw.charge = rwSpan(); ab.fury = 0; camo.cd = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -1456,10 +1458,11 @@ function continueGame() {
 }
 function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
-  S.xp = 0; S.mlv0 = mLevel(SH().key); S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
+  S.xp = 0; S.mlv0 = mLevel(SH().key); S.lives0 = S.lives; S.contreT = 0; S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
   if (S.test) S.comp = { name: '', out: 2, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
+  zapT.fill(0); zaps = [];
   trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
   P = newPlayer();
   foes = [];
@@ -1555,6 +1558,7 @@ function onTrailHit(e, i) {
   if (onFire(i)) { burnFoe(e); return; }
   // Encaisseur, Après-coup : juste après un coup encaissé, le fil ne déclenche plus d'onde de choc
   if (S.noWave > 0) return;
+  if (SH().key === 'enc' && sk('miroir') && !(P.guard > 0)) return;
   // Flambeur, « fil fragile » de la machine à sous : un ennemi qui touche le fil tue sur le coup
   if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
@@ -1602,7 +1606,7 @@ const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow();
 // Fulgurant : le monde ralentit pendant qu'il dessine son trajet (Temps suspendu, Transe), ou se fige (Instant figé, 3 s au plus)
-const planSlow = () => !plan ? 1 : sk('fige') && (S.figeT || 0) < 3 ? 0 : sk('transe') ? .3 : sk('suspendu') ? .5 : 1;
+const planSlow = () => !plan ? (S.calmT > 0 ? .5 : 1) : sk('fige') && (S.figeT || 0) < 5 ? 0 : sk('transe') ? .3 : sk('suspendu') ? .5 : 1;
 function stepPlayer() {
   if (P.next) {
     // pas de demi-tour sur son fil, même à l'arrêt dans la zone à conquérir (chrono, coup encaissé)
@@ -1780,7 +1784,8 @@ function capture() {
   const n = cells.length;
   // Furtif, Embuscade : aucun ennemi à moins de 10 cases du vaisseau quand il referme
   let mult = 1;
-  if (sk('embuscade')) { const pp = playerPos(); if (!foes.some(e => !e.dead && Math.hypot(e.x - pp.x, e.y - pp.y) < 10)) { mult = 1.5; popups.push({ x: pp.x, y: pp.y - 2.4, text: 'EMBUSCADE ×1,5', age: -.2, color: T.rainbow ? '#46ffc8' : T.ball }); } }
+  if (sk('surcharge') && dash && dash.cells.length >= 60 * G) { mult *= 1.5; const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 3.2, text: 'SURCHARGE ×1,5', age: -.2, color: T.rainbow ? '#bfefff' : T.ball }); }
+  if (sk('embuscade')) { const pp = playerPos(); if (!foes.some(e => !e.dead && Math.hypot(e.x - pp.x, e.y - pp.y) < 10)) { mult *= 1.5; popups.push({ x: pp.x, y: pp.y - 2.4, text: 'EMBUSCADE ×1,5', age: -.2, color: T.rainbow ? '#46ffc8' : T.ball }); } }
   awardCells(n, playerPos(), n >= S.interior * 0.15, mult);
   furyGain(n, n >= S.interior * 0.15);
   if (SH().key === 'rob' && sk('recup') && n >= S.interior * .1) { armor.hp = Math.min(armorMax(), armor.hp + .03); pwHud(); }
@@ -1814,8 +1819,8 @@ function awardCells(n, at0, big, mult = 1) {
   if (sk('tribut')) { const k = Math.floor(S.filled / S.interior * 10); if (k > (S.tribut || 0)) { const p = (k - (S.tribut || 0)) * 1000 * S.level; S.tribut = k; S.score += p; popups.push({ x: COLS / 2, y: ROWS / 2 + 3, text: 'TRIBUT +' + fmt(p), age: -.3, color: T.rainbow ? '#ffd23f' : T.ball }); } }
   // 10 points × niveau par case d'origine (une case d'origine = G × G cases de la grille)
   let pts = Math.round(n * 10 * S.level / (G * G));
-  if (big) pts *= 2;
-  pts = Math.round(pts * mult * (sk('payante') ? 1.2 : 1) * (sk('infiltre') && !S.touched ? 2 : 1));
+  if (big) pts *= sk('precision') ? 3 : 2;
+  pts = Math.round(pts * mult * (sk('payante') ? 1.2 : 1) * (sk('infiltre') && !S.touched ? 3 : 1));
   S.score += pts;
   popups.push({ x: at0.x, y: at0.y - 1, text: '+' + pts, age: 0, color: T.ball });
   if (big) { popups.push({ x: COLS/2, y: ROWS/2, text: 'MEGA !', age: -0.15, color: T.trail, big: true }); sfx.mega(); }
@@ -1863,7 +1868,7 @@ const HUNT_FOV = 50 * Math.PI / 180, HUNT_RANGE = 22;
 function huntSees(e) {
   if (S.phase !== 'play' || !P || !inSeaNow() || P.shield || camoOn()) return false;
   const pp = playerPos(), dx = pp.x - e.x, dy = pp.y - e.y, d = Math.hypot(dx, dy);
-  if (d > (sk('discret') ? 14 : HUNT_RANGE)) return false;
+  if (sk('indetect') || d > (sk('discret') ? 14 : HUNT_RANGE)) return false;
   let da = Math.abs(Math.atan2(dy, dx) - e.hd);
   if (da > Math.PI) da = Math.PI * 2 - da;
   if (da > HUNT_FOV) return false;
@@ -1916,7 +1921,7 @@ function pulsarHits(e) {
       if (Math.abs(d - w.r) < .55) { onTrailHit(e, i); break; }
     }
     const pp = playerPos();
-    if (S.phase === 'play' && !w.hitP && Math.abs(Math.hypot(pp.x - e.x, pp.y - e.y) - w.r) < .5) { w.hitP = true; if (!sk('horsphase')) hitPlayer(null); }
+    if (S.phase === 'play' && !w.hitP && Math.abs(Math.hypot(pp.x - e.x, pp.y - e.y) - w.r) < .5) { w.hitP = true; if (!sk('horsphase') && !sk('terre')) hitPlayer(null); }
   }
 }
 // Diviseur : chaque contact avec le fil le coupe en deux, plus petits et plus rapides (deux fois au plus)
@@ -2019,6 +2024,7 @@ function updateFoes(dt) {
     else if (!near && dd < r + .6 && sk('frole') && P && P.drawing) { e.froleCd = 2; const p = 300 * S.level; S.score += p; popups.push({ x: pp.x, y: pp.y - 1.6, text: 'FRÔLÉ ! +' + fmt(p), age: 0, color: T.rainbow ? '#7dff9a' : T.ball }); hud(); }
     // flammes de la furie (le contact avec le vaisseau passe avant : lui n'est pas invincible)
     if (!near && fires.length && e.kind !== 'amph' && fireHits(e)) { burnFoe(e); continue; }
+    if (zaps.length && e.kind !== 'amph' && !(e.stun > 0) && zapT[at(Math.max(0, Math.min(GC - 1, gc(e.x))), Math.max(0, Math.min(GR - 1, gc(e.y))))] > fireClock) { stunBy(e, 1.5); continue; }
     if (e.hitCd > 0) { e.hitCd -= dt; continue; }
     if (near) hitPlayer(e);
   }
@@ -2032,11 +2038,13 @@ function hitPlayer(e) {
   // Prédateur : pendant un bond (ou sous Casque), il dévore ce qu'il touche ; le trou noir et le spectre invisible ne se mangent pas
   if (SH().key === 'pred' && e && (jawsOpen() || helmet()) && devour(e)) return;
   // Furtif camouflé : Ombre assassine (il détruit ce qu'il touche), Invisible (on le traverse)
-  if (camoOn() && e && sk('assassin') && killFoe(e, 'DANS L\'OMBRE', T.rainbow ? '#46ffc8' : T.shock)) return;
+  if (camoOn() && e && sk('assassin') && killFoe(e, 'DANS L\'OMBRE', T.rainbow ? '#46ffc8' : T.shock, 900 * S.level)) return;
   if (camoOn() && sk('invis')) return;
+  if (e && e.kind === 'inn' && sk('brouillage') && !P.drawing) return;
   if (helmet() || P.shield) return;
   if (invuln > 0 && !P.drawing) return;
   S.touched = true;
+  if (SH().key === 'enc' && S.contreT > 0 && e && e.kind !== 'amph') { stunBy(e, 2); e.hitCd = .8; return; }
   if (SH().key === 'enc' && absorb(e)) return;
   if (SH().key === 'rob') { armorHit(e ? e : 'ring'); return; }
   // Veinard, Ouf / Baraka : le coup rate (répit d'un instant pour qu'un même contact ne retente pas sa chance)
@@ -2139,6 +2147,7 @@ function lightFire(i, dur = fireDur()) {
 }
 function updateFires(dt) {
   fireClock += dt;
+  if (zaps.length) zaps = zaps.filter(z => z.end > fireClock);
   if (!fires.length) return;
   // pendant la furie, le fil encore en place continue de brûler
   if (ab.on > 0) for (const f of fires) if (grid[f.i] === 2) { f.dur = fireDur(); f.end = fireClock + f.dur; fireT[f.i] = f.end; }
@@ -2191,7 +2200,8 @@ function rescue(text, color, cause, safe = 1.5) {
 function skillSave(cause) {
   const used = S.used || (S.used = {});
   if (sk('paraton') && cause === 'wave' && !used.paraton) { used.paraton = 1; rescue('PARATONNERRE !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
-  if (sk('dispar') && !used.dispar) { used.dispar = 1; rescue('DISPARU !', T.rainbow ? '#46ffc8' : T.shock, cause, 3); camo.on = 3; sfx.cloak(); return true; }
+  if (sk('fusible') && dash && !used.fusible) { used.fusible = 1; dash = null; rescue('FUSIBLE !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
+  if (sk('dispar') && (used.dispar || 0) < 2) { used.dispar = (used.dispar || 0) + 1; rescue('DISPARU !', T.rainbow ? '#46ffc8' : T.shock, cause, 3); camo.on = 3; sfx.cloak(); return true; }
   if (sk('court') && !S.usedGame.court) { S.usedGame.court = 1; rescue('COURT-CIRCUIT !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
   if (sk('porteb') && cause === 'wave' && Math.random() < 1 / 3) { rescue('OUF !', T.rainbow ? '#7dff9a' : T.shock, cause, .8); return true; }
   if (sk('trefle') && (used.trefle || 0) < 2) { used.trefle = (used.trefle || 0) + 1; rescue('TRÈFLE !', T.rainbow ? '#7dff9a' : T.shock, cause); return true; }
@@ -2238,7 +2248,7 @@ function usePower() {
   }
   if (SH().key === 'fur') {
     if (!sk('manuel') || S.phase !== 'play' || camo.on > 0 || camo.cd > 0) return;
-    camo.on = 4; camo.cd = CAMO_CELLS; sfx.cloak(); pwHud(); return;
+    camo.on = camoLen(); camo.cd = camoCells(); sfx.cloak(); pwHud(); return;
   }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.fury < 1) return;
   ab.on = frT(); ab.beat = 0; ab.fury = 0;
@@ -2277,7 +2287,15 @@ function updateAbility(dt) {
   if (SH().key === 'rob' && sk('nanites') && armor.hp > 0 && armor.hp < armorMax()) { armor.hp = Math.min(armorMax(), armor.hp + dt * .0025); if (Math.random() < dt * 4) pwHud(); }
   if (xpUp > 0 && (xpUp -= dt) <= 0) xpHud();
   if (S.noWave > 0) S.noWave -= dt;
+  if (S.contreT > 0) S.contreT -= dt;
+  if (SH().key === 'enc' && sk('meditation') && P && !P.drawing && !P.dir.x && !P.dir.y) {
+    if (P.guard > 0) { P.guard = Math.max(0, P.guard - 6 * dt); if (!P.guard) sfx.guardUp(); pwHud(); }
+    else if (sk('double') && !P.g2 && (P.g2cd -= 6 * dt) <= 0) { P.g2 = true; sfx.guardUp(); }
+  }
   if (S.chainCd > 0) S.chainCd -= dt;
+  if (S.calmT > 0) S.calmT -= dt;
+  // Œil du cyclone : pendant le tracé, les ennemis proches du vaisseau sont repoussés
+  if (plan && sk('cyclone') && P) { const pp = playerPos(); for (const e of foes) { const dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy); if (e.dead || e.kind === 'amph' || d > 3 || d < .01) continue; const v = Math.max(4, Math.hypot(e.vx, e.vy)); e.vx = dx / d * v; e.vy = dy / d * v; } }
   if (S.presT > 0) S.presT -= dt;
   if (sk('reflexe') && P && P.drawing && !((S.refCd -= dt) > 0)) {
     const pp = playerPos();
@@ -2543,7 +2561,7 @@ function seaStep() {
 }
 // Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
 const camo = { on: 0, next: 5, cd: 0 };
-const CAMO_CELLS = 100;
+const CAMO_CELLS = 100, camoCells = () => sk('camoflash') ? 60 : CAMO_CELLS, camoLen = () => sk('optique') ? 6 : 4;
 const camoOn = () => SH().key === 'fur' && camo.on > 0;
 function updateCamo(dt) {
   if (camo.on > 0) {
@@ -2640,7 +2658,8 @@ function rewindEnd(r) {
 function absorb(e) {
   if (P.grace > 0) return true;
   if (P.guard > 0 && !P.g2) return false;
-  if (!(P.guard > 0)) P.guard = guardCells(); else { P.g2 = false; P.g2cd = guardCells(); }
+  if (!(P.guard > 0)) P.guard = guardCells(); else { P.g2 = false; P.g2cd = guardCells() / 2; }
+  if (sk('contre')) S.contreT = 3;
   P.grace = sk('souffle') ? 1.5 : 1;
   // Élan : il ne s'arrête plus net
   if (!sk('elan')) { P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y; }
@@ -2654,7 +2673,9 @@ function absorb(e) {
     const nx = dx / (d || 1), ny = dy / (d || 1), v = Math.max(4, Math.hypot(f.vx, f.vy));
     f.vx = nx * v; f.vy = ny * v; f.x += nx * .6; f.y += ny * .6;
   }
-  // Renvoi : l'ennemi est détruit ; Sonné : assommé 3 s (Prime : il rapporte)
+  if (sk('riposte')) for (const f of foes) if (f !== e && Math.hypot(f.x - pp.x, f.y - pp.y) < 6) stunBy(f, 2);
+  // Renvoi : l'ennemi est détruit, et ceux à moins de 4 cases avec lui ; Sonné : assommé 3 s (Prime : il rapporte)
+  if (e && sk('renvoi')) for (const f of foes) if (f !== e && Math.hypot(f.x - pp.x, f.y - pp.y) < 4) killFoe(f, 'RENVOYÉ !', T.rainbow ? '#5dffb0' : T.shock);
   if (e && sk('renvoi') && killFoe(e, 'RENVOYÉ !', T.rainbow ? '#5dffb0' : T.shock)) e = null;
   else if (e && sk('sonne') && e.kind !== 'amph') { stunBy(e, 3); if (sk('prime')) { const p = 200 * S.level; S.score += p; popups.push({ x: e.x, y: e.y - 1.2, text: 'SONNÉ +' + fmt(p), age: 0, color: T.rainbow ? '#5dffb0' : T.ball }); hud(); } }
   if (e) {
@@ -2744,6 +2765,7 @@ function updateDash(dt) {
     const wasDrawing = P.drawing;
     moveInto(nx, ny);
     P.px = P.x; P.py = P.y; P.acc = 0;
+    if (sk('sillage')) { zapT[i] = fireClock + 2; zaps.push({ x: (nx + .5) / G, y: (ny + .5) / G, end: fireClock + 2 }); }
     if (T.glow) for (let k = 0; k < 2; k++) particles.push({ x: (nx + .5) / G + (Math.random() - .5) * .4, y: (ny + .5) / G + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 0, max: .35, color: Math.random() < .5 ? '#ffffff' : '#9fe8ff', size: .16, ng: 1 });
     for (const e of foes) {
       if (e.dead) continue;
@@ -2753,19 +2775,20 @@ function updateDash(dt) {
       if (sk('arc') && d < r + 1.5 && !(e.stun > 0)) stunBy(e, 2);
     }
     // arrivé sur son terrain (zone refermée) ou trajet terminé : fin de l'éclair
-    if (S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) { dash = null; if (S.phase === 'play') chainBolt(); }
+    if (!dash || S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) { dash = null; if (S.phase === 'play') { chainBolt(); if (sk('calme')) S.calmT = 1; } }
   }
   if (dash && S.phase !== 'play') dash = null;
 }
 function chainBolt() {
   if (!sk('chaine') || S.chainCd > 0) return;
   const pp = playerPos();
-  let best = null, bd = 1e9;
-  for (const e of foes) { if (e.dead || e.kind === 'amph') continue; const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; best = e; } }
-  if (!best) return;
-  S.chainCd = 10;
-  for (let k = 0; k < 3; k++) bolts.push({ x0: pp.x, y0: pp.y, x1: best.x, y1: best.y, age: -k * .05, max: .45 });
-  killFoe(best, 'FOUDROYÉ !', T.rainbow ? '#bfefff' : T.shock);
+  const near = foes.filter(e => !e.dead && e.kind !== 'amph').sort((a, b) => Math.hypot(a.x - pp.x, a.y - pp.y) - Math.hypot(b.x - pp.x, b.y - pp.y)).slice(0, 2);
+  if (!near.length) return;
+  S.chainCd = 6;
+  for (const best of near) {
+    for (let k = 0; k < 3; k++) bolts.push({ x0: pp.x, y0: pp.y, x1: best.x, y1: best.y, age: -k * .05, max: .45 });
+    killFoe(best, 'FOUDROYÉ !', T.rainbow ? '#bfefff' : T.shock);
+  }
   sfx.zap();
 }
 // Trajectoires prévues des ennemis de la zone à conquérir (1,5 s), rebonds sur le terrain et le fil compris
@@ -3399,6 +3422,7 @@ function collect(it) {
   const color = T.items[it.type];
   burst(it.x, it.y, color, 30, 9);
   if (ITEM[it.type].label) popups.push({ x: it.x, y: it.y - 1.2, text: ITEM[it.type].label, age: 0, color });
+  if (sk('pickpocket') && camoOn()) { const p = 2000 * S.level; S.score += p; popups.push({ x: it.x, y: it.y - 3.2, text: 'PICKPOCKET +' + fmt(p), age: -.25, color: T.rainbow ? '#46ffc8' : T.ball }); hud(); }
   if (SUPER[it.type] && sk('eclat')) { const p = 2000 * S.level; S.score += p; popups.push({ x: it.x, y: it.y - 3.2, text: 'ÉCLAT +' + fmt(p), age: -.25, color: T.rainbow ? '#ffd23f' : T.ball }); hud(); }
   // Droit divin : l'autre super bonus proposé disparaît
   if (it.pair && !it.pair.done) { it.pair.done = true; burst(it.pair.x, it.pair.y, T.items[it.pair.type], 16, 5); }
@@ -3626,8 +3650,8 @@ function pwHud() {
     if (S.tresor) { cls = 'ready'; p = 1; inner = CROWNI; label = 'Déclencher le trésor : ' + (ITEM[S.tresor].label || S.tresor); }
     else { cls = 'cd'; p = 0; inner = CROWNI; label = 'Trésor vide : le prochain super bonus ira dans la couronne'; }
   } else if (k === 'fur') {
-    if (camo.on > 0) { cls = 'on'; p = camo.on / 4; inner = EYEI; label = 'Camouflage en cours'; }
-    else if (camo.cd > 0) { cls = 'cd'; p = 1 - camo.cd / CAMO_CELLS; inner = EYEI; label = 'Camouflage en recharge : trace dans la zone à conquérir'; }
+    if (camo.on > 0) { cls = 'on'; p = Math.min(1, camo.on / camoLen()); inner = EYEI; label = 'Camouflage en cours'; }
+    else if (camo.cd > 0) { cls = 'cd'; p = 1 - camo.cd / camoCells(); inner = EYEI; label = 'Camouflage en recharge : trace dans la zone à conquérir'; }
     else { cls = 'ready'; p = 1; inner = EYEI; label = 'Se camoufler'; }
   } else if (k === 'rob') {
     const hp = armor.hp;
@@ -3824,6 +3848,7 @@ function render() {
     ctx.setLineDash([.5, .35]); ctx.lineDashOffset = time * 4; ctx.beginPath(); rw.play.path.forEach((q, k) => k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke(); ctx.restore(); glowOff();
   }
   if (fires.length) drawFires();
+  if (zaps.length) { ctx.save(); glowOn('#9fe8ff', 1.2); ctx.fillStyle = T.rainbow ? '#bfefff' : T.shock; for (const z of zaps) { if (Math.random() < .5) continue; ctx.globalAlpha = Math.min(1, (z.end - fireClock) * 1.5) * .8; ctx.fillRect(z.x - .12 + (Math.random() - .5) * .3, z.y - .12 + (Math.random() - .5) * .3, .24, .24); } ctx.restore(); glowOff(); }
   if (P && ((plan && sk('premon')) || S.presT > 0)) drawPremon();
   if (plan && P) drawPlan();
   for (const r of rings) {
@@ -4989,6 +5014,7 @@ function showClear() {
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
   const xpB = 200 * (S.diff + 1); gainXp(xpB);
+  if (sk('intact') && S.lives >= (S.lives0 ?? 0) && S.lives < maxLives()) { S.lives++; hud(); }
   if (SH().key === 'rob' && sk('maint')) armor.hp = Math.min(armorMax(), armor.hp + (sk('revision') ? .1 : .05));
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   ab.on = 0;
@@ -5217,7 +5243,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives(); rw.charge = rwSpan(); ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = chipsMax(); setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.shipTip = true; S.usedGame = {}; loadSkills(); S.lives = startLives(); rw.charge = rwSpan(); ab.fury = 1; camo.cd = 0; carry = null; armor.hp = armorMax(); gam.chips = chipsMax(); setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -5286,7 +5312,7 @@ function showTree(test, mode) {
     else if (run) {
       // compétences prises en cours de partie : elles s'appliquent tout de suite (vies de départ comprises)
       const before = new Set(skills); loadSkills();
-      for (const id of ['inebr', 'survolte']) if (sk(id) && !before.has(id)) S.lives = Math.min(maxLives(), S.lives + 1);
+      for (const [id, n] of [['inebr', 2], ['survolte', 2], ['couronne', 1]]) if (sk(id) && !before.has(id)) S.lives = Math.min(maxLives(), S.lives + n);
       hud(); pwHud(); S.reshow();
     } else showShips(test);
   };
@@ -5346,7 +5372,7 @@ function testSync() {
 // pouvoirs à plein : furie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.fury = 1; rw.charge = rwSpan(); armor.hp = armorMax(); gam.chips = chipsMax(); pred.cd = 0; pred.blood = bloodMax();
+  ab.fury = 1; camo.cd = 0; rw.charge = rwSpan(); armor.hp = armorMax(); gam.chips = chipsMax(); pred.cd = 0; pred.blood = bloodMax();
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }
