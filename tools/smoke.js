@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -545,6 +545,21 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   g.mxp.ful = 80000; g.skSave('ful', ['paraton', 'reflexe', 'court', 'survolte'], false); g.newGame(1, 1, FU); const sv = g.S.lives + ' / ' + g.maxLives(); g.skSave('ful', [], false); g.mxp.ful = 0;
   console.log(`fulgurant : trajet max ${maxLen([])} cases, longue portée ${maxLen(['portee'])} ; éclair ${speed([]).toFixed(0)} cases/s, haute tension ${speed(['tension']).toFixed(0)} ; monde pendant le dessin : ${slowW([])}, suspendu ${slowW(['suspendu'])}, transe ${slowW(['transe'])}, figé ${slowW(['fige'])}`);
   console.log(`fulgurant : arc électrique, frôlé assommé ${arc} ; foudre en chaîne ${chain} ; paratonnerre, 1re onde -> ${pt1}, 2e -> ${pt2} ; court-circuit ${c1}, puis ${c2} ; survolté ${sv} vies`);
+}
+// Furtif
+{
+  const FT = SHIPI('fur');
+  const camoLen = list => { withSk(FT, list); let mx = 0, any = 0; for (let k = 0; k < 60 * 40; k++) { step(1); if (g.camo.on > mx) mx = g.camo.on; if (g.camo.on > 0) any++; } return mx.toFixed(1) + ' s (' + (any / 60).toFixed(0) + ' s en 40 s)'; };
+  const auto = camoLen([]), reg = camoLen(['reglage']), man = camoLen(['manuel']);
+  withSk(FT, ['manuel']); g.usePower(); const m1 = g.camo.on; step(300); g.usePower(); const m2 = g.camo.on; for (let i = 0; i < 100 * G; i++) g.seaStep(); g.usePower(); const m3 = g.camo.on;
+  const touch = list => { withSk(FT, list); g.P.shield = false; g.setDir('down'); step(20); g.camo.on = 3; const e = g.makeFoe('out', 1); e.x = PX(); e.y = PY() + .4; g.foes.push(e); g.hitPlayer(e); return g.S.phase + (e.dead ? ', ennemi détruit' : ''); };
+  withSk(FT, ['discret']); g.P.shield = false; g.setDir('down'); step(20); const h = g.makeFoe('hunt', 1); h.x = PX(); h.y = PY() + 18; h.hd = -Math.PI / 2; g.foes.push(h); const seen = g.huntSees(h);
+  const pull = list => { withSk(FT, list); g.P.shield = false; g.setDir('down'); step(20); const a = g.makeFoe('amph', 1); a.x = PX() + 4; a.y = PY(); a.vx = a.vy = 0; g.foes.push(a); const x0 = g.P.vox; step(10); return Math.abs(g.P.vox) > .01 || g.P.pull > 0; };
+  const pts = list => { withSk(FT, list); const s0 = g.S.score; g.awardCells(100 * G * G, { x: 10, y: 10 }, false); return g.S.score - s0; };
+  withSk(FT, ['infiltre']); g.S.touched = true; const s1 = g.S.score; g.awardCells(100 * G * G, { x: 10, y: 10 }, false); const touchedPts = g.S.score - s1;
+  withSk(FT, ['dispar']); g.P.shield = false; g.crash(); const d1 = g.S.phase + ' camouflé ' + (g.camo.on > 0); g.S.safe = 0; g.crash(); const d2 = g.S.phase;
+  console.log(`furtif : camouflage auto ${auto}, réglage ${reg}, manuel sans bouton ${man} ; bouton ${m1} s, puis refusé ${m2 === 0}, rechargé après 100 cases ${m3 > 0} ; touché camouflé : ${touch([])}, invisible ${touch(['invis'])}, ombre assassine ${touch(['invis', 'assassin'])}`);
+  console.log(`furtif : discret, chasseur à 18 cases le voit ${seen} ; trou noir aspire ${pull([])}, sans masse ${pull(['sansmasse'])} ; 100 cases +${pts([])}, discrétion payante +${pts(['payante'])}, infiltré +${pts(['infiltre'])} (touché +${touchedPts}) ; disparition : ${d1}, puis ${d2}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
