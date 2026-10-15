@@ -1477,7 +1477,7 @@ function updateWave(dt) {
   if (wave.hi >= last) {
     if (SH().key === 'enc' && absorb(null)) waveStop();
     else if (SH().key === 'rob') { const f = wave.fast; waveStop(); if (!(armor.cd > 0) && !foeTouching()) armorHit(f ? 'fastWave' : 'wave'); }
-    else crash();
+    else crash('wave');
   }
 }
 
@@ -1498,7 +1498,9 @@ const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 :
   * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
-const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
+const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow();
+// Fulgurant : le monde ralentit pendant qu'il dessine son trajet (Temps suspendu, Transe), ou se fige (Instant figé, 3 s au plus)
+const planSlow = () => !plan ? 1 : sk('fige') && (S.figeT || 0) < 3 ? 0 : sk('transe') ? .3 : sk('suspendu') ? .5 : 1;
 function stepPlayer() {
   if (P.next) {
     // pas de demi-tour sur son fil, même à l'arrêt dans la zone à conquérir (chrono, coup encaissé)
@@ -2057,6 +2059,8 @@ function rescue(text, color, cause, safe = 1.5) {
 // Compétences qui annulent un crash ; renvoie true si le vaisseau est sauvé
 function skillSave(cause) {
   const used = S.used || (S.used = {});
+  if (sk('paraton') && cause === 'wave' && !used.paraton) { used.paraton = 1; rescue('PARATONNERRE !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
+  if (sk('court') && !S.usedGame.court) { S.usedGame.court = 1; rescue('COURT-CIRCUIT !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
   if (sk('trefle') && !used.trefle) { used.trefle = 1; rescue('TRÈFLE !', T.rainbow ? '#7dff9a' : T.shock, cause); return true; }
   if (sk('phenix') && ab.on > 0 && !used.phenix) {
     used.phenix = 1; rescue('PHÉNIX !', T.rainbow ? '#ff8a2a' : T.shock, cause, 2);
@@ -2128,6 +2132,11 @@ function updateAbility(dt) {
   if (P && P.grace > 0) P.grace -= dt;
   if (S.safe > 0) S.safe -= dt;
   if (S.noWave > 0) S.noWave -= dt;
+  if (S.chainCd > 0) S.chainCd -= dt;
+  if (sk('reflexe') && P && P.drawing && !((S.refCd -= dt) > 0)) {
+    const pp = playerPos();
+    if (foes.some(e => !e.dead && !(e.stun > 0) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .9)) { slow = Math.max(slow, .5); S.refCd = 2; }
+  }
   if (armor.jolt > 0) armor.jolt -= dt;
   if (armor.cd > 0) armor.cd -= dt;
   // Blindé abîmé : il fume, puis crache des étincelles
@@ -2484,11 +2493,13 @@ function waveStop() {
 // au lâcher, le vaisseau le parcourt à DASH_V cases/s. Le trajet ne se croise pas, passe éventuellement sur le terrain
 // avant d'entrer dans la zone à conquérir, et se termine à la première case de terrain qui suit.
 const DASH_V = 150;
+const dashV = () => sk('tension') ? 200 : DASH_V, planMax = () => (sk('portee') ? 500 : 400) * G;
 let plan = null, dash = null;
 // En plein vol, le vaisseau s'arrête le temps de dessiner (le reste du monde continue de bouger)
 function planStart() {
   if (SH().key !== 'ful' || S.phase !== 'play' || dash) return false;
   plan = { cells: [], sea: false, closed: false, fly: P.drawing, resume: P.dir };
+  S.figeT = 0;
   P.dir = { x: 0, y: 0 }; P.next = null; P.acc = 0; P.px = P.x; P.py = P.y;
   return true;
 }
@@ -2505,7 +2516,7 @@ function planStep(dx, dy) {
   const i = at(x, y), c = plan.cells;
   const prev = c.length >= 2 ? c[c.length - 2] : at(P.x, P.y);
   if (i === prev) { c.pop(); if (plan.closed) plan.closed = false; plan.sea = c.some(j => grid[j] === 0); return true; }
-  if (plan.closed || c.includes(i) || i === at(P.x, P.y) || grid[i] === 2 || c.length >= 400 * G) return false;
+  if (plan.closed || c.includes(i) || i === at(P.x, P.y) || grid[i] === 2 || c.length >= planMax()) return false;
   c.push(i);
   if (grid[i] === 0) plan.sea = true; else if (plan.sea) plan.closed = true;
   return true;
@@ -2532,7 +2543,7 @@ function planLaunch() {
 }
 // le vaisseau file le long du trajet ; chaque case est vérifiée (ennemis, bonus), rien n'est sauté
 function updateDash(dt) {
-  dash.acc += dt * DASH_V * G;
+  dash.acc += dt * dashV() * G;
   while (dash && dash.acc >= 1 && S.phase === 'play') {
     dash.acc -= 1;
     const i = dash.cells[dash.k++], nx = i % GC, ny = (i / GC) | 0;
@@ -2544,12 +2555,43 @@ function updateDash(dt) {
     for (const e of foes) {
       if (e.dead) continue;
       const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9;
-      if (Math.hypot(e.x - (nx + .5) / G, e.y - (ny + .5) / G) < r) { hitPlayer(e); break; }
+      const d = Math.hypot(e.x - (nx + .5) / G, e.y - (ny + .5) / G);
+      if (d < r) { hitPlayer(e); break; }
+      if (sk('arc') && d < r + 1.5 && !(e.stun > 0)) stunBy(e, 2);
     }
     // arrivé sur son terrain (zone refermée) ou trajet terminé : fin de l'éclair
-    if (S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) dash = null;
+    if (S.phase !== 'play' || (wasDrawing && !P.drawing) || dash.k >= dash.cells.length) { dash = null; if (S.phase === 'play') chainBolt(); }
   }
   if (dash && S.phase !== 'play') dash = null;
+}
+function chainBolt() {
+  if (!sk('chaine') || S.chainCd > 0) return;
+  const pp = playerPos();
+  let best = null, bd = 1e9;
+  for (const e of foes) { if (e.dead || e.kind === 'amph') continue; const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; best = e; } }
+  if (!best) return;
+  S.chainCd = 10;
+  for (let k = 0; k < 3; k++) bolts.push({ x0: pp.x, y0: pp.y, x1: best.x, y1: best.y, age: -k * .05, max: .45 });
+  killFoe(best, 'FOUDROYÉ !', T.rainbow ? '#bfefff' : T.shock);
+  sfx.zap();
+}
+// Trajectoires prévues des ennemis de la zone à conquérir (1,5 s), rebonds sur le terrain et le fil compris
+function drawPremon() {
+  ctx.save(); ctx.lineWidth = .1; ctx.setLineDash([.25, .25]); ctx.lineDashOffset = -time * 2;
+  for (const e of foes) {
+    if (e.dead || e.kind === 'amph' || e.kind === 'inn' || e.kind === 'puls' || (e.stun > 0)) continue;
+    const R = e.r || R_SEA, h = .05;
+    let x = e.x, y = e.y, vx = e.vx, vy = e.vy;
+    const wall = c => c !== 0 && !(e.kind === 'perf' && c === 2);
+    ctx.strokeStyle = T.rainbow ? 'rgba(191,239,255,0.55)' : T.shock; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 30; k++) {
+      const nx = x + vx * h; if (wall(cellW(nx + Math.sign(vx) * R, y))) vx = -vx; else x = nx;
+      const ny = y + vy * h; if (wall(cellW(x, ny + Math.sign(vy) * R))) vy = -vy; else y = ny;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 // trajet prévu : pointillé lumineux qui part du vaisseau
 function drawPlan() {
@@ -3392,6 +3434,7 @@ function update(dt) {
   const ph = S.phase;
   if (ph === 'play') {
     if (dash) updateDash(dt); else if (!plan) updatePlayer(dt);
+    S.figeT = plan ? (S.figeT || 0) + dt : 0;
     const fdt = dt * foeSlow();
     if (S.phase === 'play') updatePull(fdt);
     if (S.phase === 'play') updateWave(fdt);
@@ -3491,6 +3534,7 @@ function render() {
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
   if (fires.length) drawFires();
+  if (P && ((plan && sk('premon')) || S.presT > 0)) drawPremon();
   if (plan && P) drawPlan();
   for (const r of rings) {
     if (r.fill) {

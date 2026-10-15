@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -530,6 +530,21 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   hitBy(['apres']); { const f = g.makeFoe('out', 1); g.foes.push(f); g.onTrailHitX(f, g.trail[0]); } const noWave = !g.wave;
   g.mxp.enc = 80000; g.skSave('enc', ['souffle', 'rafist', 'apres', 'inebr'], false); g.newGame(1, 1, E); const lives = g.S.lives; g.skSave('enc', [], false); g.mxp.enc = 0;
   console.log(`encaisseur : coup encaissé -> recharge ${base.guard}, arrêté ${!base.moving}, répit ${base.grace} s ; recharge rapide ${rr} ; prêt à tout ${pret} ; sonné ${sonne} s ; prime +${s0} ; élan, continue ${elan} ; renvoi, détruit ${renvoi} ; souffle ${souffle} s ; double bouclier ${ph.join(' / ')} ; onde de bouclier, voisin repoussé ${pushed} ; après-coup, pas d'onde ${noWave} ; inébranlable ${lives} vies`);
+}
+// Fulgurant
+{
+  const FU = SHIPI('ful');
+  const maxLen = list => { withSk(FU, list); return g.planMax() / G; };
+  const speed = list => { withSk(FU, list); g.P.shield = false; g.planStart(); g.planTo(g.P.x, g.P.y + 40 * G); g.planLaunch(); step(6); const k = g.dash ? g.dash.k : -1; g.dash = null; return k / G / 0.1; };
+  const slowW = list => { withSk(FU, list); g.P.shield = false; g.planStart(); const a = g.foeSlow(); step(200); const b = g.foeSlow(); g.plan = null; return a + ' puis ' + b; };
+  withSk(FU, ['arc']); g.P.shield = false; { const e = g.makeFoe('out', 1); e.x = PX() + 1.8; e.y = PY() + 10; e.vx = e.vy = 0; g.foes.push(e); g.planStart(); g.planTo(g.P.x, g.P.y + 20 * G); g.planLaunch(); step(30); var arc = e.stun > 0; }
+  withSk(FU, ['chaine']); g.P.shield = false; { const e = g.makeFoe('out', 1); e.x = 40; e.y = 50; e.vx = e.vy = 0; g.foes.push(e); g.planStart(); g.planTo(g.P.x, g.P.y + 6 * G); g.planLaunch(); step(30); var chain = e.dead; }
+  withSk(FU, ['paraton']); g.P.shield = false; g.setDir('down'); step(30); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); step(60); const pt1 = g.S.phase; g.S.safe = 0; g.setDir('down'); step(20); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); step(90); const pt2 = g.S.phase;
+  withSk(FU, ['premon']); g.P.shield = false; { const e = g.makeFoe('out', 1); g.foes.push(e); } g.planStart(); step(10);
+  withSk(FU, ['court']); g.P.shield = false; g.crash(); const c1 = g.S.phase; g.setupLevel(2); g.go(); g.S.safe = 0; g.P.shield = false; g.crash(); const c2 = g.S.phase;
+  g.mxp.ful = 80000; g.skSave('ful', ['paraton', 'reflexe', 'court', 'survolte'], false); g.newGame(1, 1, FU); const sv = g.S.lives + ' / ' + g.maxLives(); g.skSave('ful', [], false); g.mxp.ful = 0;
+  console.log(`fulgurant : trajet max ${maxLen([])} cases, longue portée ${maxLen(['portee'])} ; éclair ${speed([]).toFixed(0)} cases/s, haute tension ${speed(['tension']).toFixed(0)} ; monde pendant le dessin : ${slowW([])}, suspendu ${slowW(['suspendu'])}, transe ${slowW(['transe'])}, figé ${slowW(['fige'])}`);
+  console.log(`fulgurant : arc électrique, frôlé assommé ${arc} ; foudre en chaîne ${chain} ; paratonnerre, 1re onde -> ${pt1}, 2e -> ${pt2} ; court-circuit ${c1}, puis ${c2} ; survolté ${sv} vies`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
