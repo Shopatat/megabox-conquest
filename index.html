@@ -194,13 +194,48 @@ details li::marker{color:var(--accent)}
 details li b{color:var(--text);font-weight:600}
 .btn:focus-visible,.mini:focus-visible,.pbtn:focus-visible,.seg button:focus-visible,.stepper button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
+/* ---- Maîtrise et arbre du vaisseau ---- */
+.smast{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:7px 8px 7px 12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.smast .k{font-size:11px;letter-spacing:.12em;color:var(--text);font-family:var(--display);font-weight:700;white-space:nowrap}
+.smast .mbar{height:5px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden}
+.smast .mbar i{display:block;height:100%;border-radius:9px;background:var(--grad)}
+.smast .mtree{display:inline-flex;align-items:center;gap:6px}
+.smast .mtree b{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--grad);color:#fff;font-size:11px;line-height:18px;text-align:center}
+.card.trees{gap:10px;max-width:380px}
+.tpts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tpts .pips{display:flex;gap:3px}
+.tpts .pips i{width:11px;height:11px;border-radius:3px;border:1px solid var(--line-2)}
+.tpts .pips i.av{border-color:var(--sc)}
+.tpts .pips i.on{background:var(--sc);border-color:var(--sc);box-shadow:0 0 6px var(--sc)}
+.tpts .mini{margin-left:auto}
+.tnote,.tmsg{margin:0;font-size:12px;color:var(--muted)}
+.tmsg{min-height:1.2em;color:#ffd23f}
+.tree{display:grid;gap:10px}
+.tbr{display:grid;gap:6px;padding:10px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.tbh b{font-family:var(--title);font-size:12px;letter-spacing:.12em;color:var(--sc)}
+.tbh span{margin-left:8px;font-size:11px;color:var(--muted)}
+.tnode{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start;text-align:left;width:100%;padding:7px 9px 7px 7px;border-radius:12px;cursor:pointer;
+  background:rgba(7,9,22,.45);border:1px solid var(--line);color:var(--text);font:inherit;transition:border-color .2s,box-shadow .2s,opacity .2s}
+.tnode i{width:22px;height:22px;margin-top:1px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:var(--display);font-weight:800;font-size:11px;color:var(--muted);border:2px solid var(--line-2);box-sizing:border-box}
+.tnode.ult i{border-radius:6px}
+.tnode b{display:block;font-family:var(--display);font-size:13px}
+.tnode small{display:block;font-size:11.5px;line-height:1.35;color:var(--muted)}
+.tnode em{font-style:normal;font-family:var(--display);font-weight:700;font-size:9px;letter-spacing:.14em;color:#ffd23f}
+.tnode.on{border-color:var(--sc);box-shadow:0 0 0 1px var(--sc) inset,0 0 14px rgba(255,255,255,.08)}
+.tnode.on i{background:var(--sc);border-color:var(--sc);color:#14111c}
+.tnode.lock{opacity:.5}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+.mrow b{font-family:var(--display);color:var(--text);font-variant-numeric:tabular-nums}
+.mrow em{grid-column:1/-1;font-style:normal;font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.06em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mrow.up{border-color:rgba(255,154,77,.55);box-shadow:0 0 16px rgba(255,92,138,.25)}
+
 /* ---- Choix du vaisseau ---- */
 .card.ships{gap:11px}
 .shead{display:flex;align-items:center;gap:10px}
 .shead h2{flex:1}
 .back{width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid var(--line-2)}
 .back svg,.arrow svg{width:16px;height:16px;fill:none;stroke:var(--text);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.sstage{position:relative;height:128px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+.sstage{position:relative;height:112px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
 #shipcv{width:100%;height:100%;border-radius:18px;box-shadow:none}
 .arrow{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;border-radius:50%;
   background:rgba(7,9,22,.6);border:1px solid var(--line-2);transition:transform .15s var(--ease)}
@@ -343,7 +378,7 @@ details li b{color:var(--text);font-weight:600}
 
   <div class="testbar" id="testbar" hidden>
     <div class="trow"><span class="k">VAISSEAU</span>
-      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><select class="mini" id="tforce" aria-label="Gain de la machine à sous" hidden></select><button class="mini" id="tquit">QUITTER</button>
+      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><button class="mini gold" id="ttree">ARBRE</button><select class="mini" id="tforce" aria-label="Gain de la machine à sous" hidden></select><button class="mini" id="tquit">QUITTER</button>
     </div>
     <div class="trow"><span class="k">BONUS</span>
       <button class="mini gold" data-item="coin" id="tcoin" hidden>+JETON</button><button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
@@ -609,6 +644,217 @@ const store = {
   set(k, v) { try { localStorage.setItem('mbc2-' + k, JSON.stringify(v)); } catch (e) {} },
   del(k) { try { localStorage.removeItem('mbc2-' + k); } catch (e) {} }
 };
+// Arbres de maîtrise (demande de Fabien) : plus on joue avec un vaisseau, plus on le maîtrise. Chaque vaisseau gagne sa
+// propre expérience (mxp : 1 XP par case conquise, 200 × (difficulté + 1) par niveau gagné, rien en mode test) ; chaque
+// palier de MASTERY donne un point à placer dans son arbre : 3 branches de 4 compétences [id, nom, description], qu'on
+// débloque dans l'ordre, la 4e étant l'ultime (une seule à la fois). Les compétences restent actives en permanence ; on
+// les choisit sur l'écran du vaisseau, donc entre deux parties. En mode test, l'arbre est libre (sktest).
+const SKILLS = {
+  cla: [
+    ['TRÈFLE', 'plus de bonus', [
+      ['chance', 'Coup de chance', 'Le premier bonus de chaque niveau arrive dans les 5 premières secondes.'],
+      ['etoile', 'Bonne étoile', '+25 % de bonus par niveau.'],
+      ['trouvaille', 'Trouvaille', 'Les bonus apparaissent à moins de 12 cases de toi.'],
+      ['corne', 'Corne d\'abondance', 'Chaque bonus ramassé a une chance sur quatre d\'en faire apparaître un autre aussitôt.']]],
+    ['FER À CHEVAL', 'de meilleurs bonus', [
+      ['precoce', 'Précoce', 'Super bonus possibles dès le niveau 1 (au lieu du 3).'],
+      ['veine', 'Veine', 'Super bonus encore 50 % plus fréquents.'],
+      ['ecrin', 'Écrin', 'Les super bonus ne disparaissent pas tant que tu traces.'],
+      ['groslot', 'Gros lot', 'Les effets des super bonus durent 50 % plus longtemps.']]],
+    ['MIRACULÉ', 'la chance face au danger', [
+      ['ouf', 'Ouf', '10 % de chances qu\'un coup d\'ennemi te rate (« OUF ! »).'],
+      ['baraka', 'Baraka', '20 % de chances au lieu de 10 %.'],
+      ['ange', 'Ange gardien', '3 s d\'invulnérabilité après une réapparition, au lieu de 1.'],
+      ['trefle', 'Trèfle à quatre feuilles', 'Une fois par niveau, ton premier crash est annulé. Le trèfle du cockpit fane.']]]],
+  rob: [
+    ['BLINDAGE', 'encaisser', [
+      ['plaques', 'Plaques renforcées', 'Tous les chocs abîment 10 % de moins.'],
+      ['soudeur', 'Soudeur', 'Réparation deux fois plus rapide (2 500 cases pour 100 %).'],
+      ['reactives', 'Plaques réactives', 'Sous 30 % de blindage, les chocs abîment 25 % de moins.'],
+      ['forteresse', 'Forteresse', 'Blindage jusqu\'à 150 %.']]],
+    ['MOTEUR', 'le poids comme arme', [
+      ['moteur', 'Moteur révisé', '10 % plus lent seulement, au lieu de 20 %.'],
+      ['masse', 'Masse', 'Un choc ne le ralentit plus du tout.'],
+      ['belier', 'Bélier', 'Les ennemis qu\'il percute sont assommés 2 s.'],
+      ['rouleau', 'Rouleau compresseur', 'Les ennemis qu\'il percute en traçant sont détruits. Le choc abîme quand même le blindage.']]],
+    ['ATELIER', 'réparer', [
+      ['maint', 'Maintenance', '+5 % de blindage à chaque fin de niveau.'],
+      ['pieces', 'Pièces détachées', 'Les bonus Vie apparaissent pour lui et réparent 40 %.'],
+      ['recup', 'Récupération', 'Chaque zone de plus de 10 % refermée répare 3 %.'],
+      ['coque', 'Seconde coque', 'Une fois par partie, à 0 %, il repart avec 25 % au lieu d\'exploser.']]]],
+  fre: [
+    ['BRASIER', 'le feu', [
+      ['braises', 'Braises', 'Les flammes restent 4 s au lieu de 3.'],
+      ['bbq', 'Barbecue', 'Les ennemis grillés rapportent deux fois plus.'],
+      ['meche', 'Mèche', 'Hors furie, les 10 dernières cases du fil brûlent toujours.'],
+      ['murfeu', 'Mur de feu', 'Flammes de 6 s, et plus larges : elles grillent à une case de distance.']]],
+    ['RAGE', 'la jauge', [
+      ['colere', 'Colérique', 'Jauge pleine à 50 % du terrain au lieu de 60 %.'],
+      ['rancune', 'Rancune', 'Chaque ennemi grillé remplit 8 % de la prochaine furie.'],
+      ['horslui', 'Hors de lui', 'Furie de 12 s au lieu de 10.'],
+      ['sansfin', 'Furie sans fin', 'Chaque ennemi grillé prolonge la furie de 1,5 s.']]],
+    ['NERFS', 'survivre à ×3', [
+      ['sangfroid', 'Sang-froid', 'La jauge ne retombe plus quand il traîne sur son terrain.'],
+      ['reflexes', 'Réflexes', 'Pendant la furie, le temps ralentit un instant quand un ennemi frôle le vaisseau.'],
+      ['retombee', 'Retombée', 'À la fin de la furie, 2 s d\'invincibilité.'],
+      ['phenix', 'Phénix', 'Une fois par niveau, un crash pendant la furie est annulé : il renaît en flammes et grille tout autour.']]]],
+  enc: [
+    ['BOUCLIER', 'tenir', [
+      ['rechrap', 'Recharge rapide', 'Bouclier en 65 cases au lieu de 80.'],
+      ['pret', 'Prêt à tout', 'Bouclier plein au début de chaque niveau.'],
+      ['ondeb', 'Onde de bouclier', 'Encaisser un coup repousse les ennemis proches.'],
+      ['double', 'Double bouclier', 'Deux charges de bouclier.']]],
+    ['RIPOSTE', 'rendre les coups', [
+      ['sonne', 'Sonné', 'L\'ennemi qui frappe le bouclier est assommé 3 s.'],
+      ['prime', 'Prime', 'Chaque ennemi assommé rapporte 200 × niveau.'],
+      ['elan', 'Élan', 'Encaisser ne t\'arrête plus net : tu continues ta route.'],
+      ['renvoi', 'Renvoi', 'L\'ennemi qui frappe le bouclier est détruit.']]],
+    ['RÉSILIENCE', 'se relever', [
+      ['souffle', 'Souffle', 'Répit de 1,5 s après un coup, au lieu de 1.'],
+      ['rafist', 'Rafistolage', 'Après une onde de choc encaissée, le bout de fil referme quand même les zones.'],
+      ['apres', 'Après-coup', 'Après un coup encaissé, ton fil ne déclenche plus d\'onde de choc pendant 3 s.'],
+      ['inebr', 'Inébranlable', '3 vies au départ au lieu de 2.']]]],
+  ful: [
+    ['ÉCLAIR', 'la foudre', [
+      ['portee', 'Longue portée', 'Trajet éclair 25 % plus long.'],
+      ['tension', 'Haute tension', 'Éclair à 200 cases/s au lieu de 150.'],
+      ['arc', 'Arc électrique', 'Les ennemis frôlés par l\'éclair (à moins de 1,5 case) sont assommés 2 s.'],
+      ['chaine', 'Foudre en chaîne', 'À la fin de chaque éclair, la foudre frappe et détruit l\'ennemi le plus proche (toutes les 10 s au plus).']]],
+    ['CONCENTRATION', 'viser', [
+      ['suspendu', 'Temps suspendu', 'Pendant que tu dessines, le monde ralentit de moitié.'],
+      ['transe', 'Transe', 'Le monde ralentit à 30 % au lieu de 50 %.'],
+      ['premon', 'Prémonition', 'Les trajectoires des ennemis s\'affichent pendant que tu dessines.'],
+      ['fige', 'Instant figé', 'Le monde est figé pendant que tu dessines (3 s au plus).']]],
+    ['SURVIE', 'une vie, mais', [
+      ['paraton', 'Paratonnerre', 'La première onde de choc qui te rattrape dans chaque niveau est absorbée.'],
+      ['reflexe', 'Réflexe', 'Un ennemi sur le point de te toucher déclenche un ralenti d\'une demi-seconde.'],
+      ['court', 'Court-circuit', 'Une fois par partie, un crash est annulé.'],
+      ['survolte', 'Survolté', '2 vies au maximum au lieu d\'une.']]]],
+  fur: [
+    ['CAMOUFLAGE', 'de défaut à outil', [
+      ['reglage', 'Réglage optique', 'Camouflages plus courts (1,5 à 2,5 s au lieu de 2,5 à 4).'],
+      ['manuel', 'Commande manuelle', 'Plus de camouflage au hasard : un bouton le déclenche (4 s, recharge en 100 cases).'],
+      ['invis', 'Invisible', 'Camouflé, les ennemis ne te voient plus non plus : ils te traversent.'],
+      ['assassin', 'Ombre assassine', 'Camouflé, toucher un ennemi le détruit.']]],
+    ['SILENCE', 'hors des radars', [
+      ['discret', 'Discret', 'Le chasseur ne te repère qu\'à 14 cases au lieu de 22.'],
+      ['sansmasse', 'Sans masse', 'Le trou noir n\'aspire plus le vaisseau.'],
+      ['horsphase', 'Hors phase', 'L\'anneau du pulsar ne te touche plus.'],
+      ['dispar', 'Disparition', 'Une fois par niveau, un coup fatal te rend invisible 3 s au lieu de te tuer.']]],
+    ['INFILTRATION', 'le travail propre', [
+      ['payante', 'Discrétion payante', '+20 % de points sur les cases conquises.'],
+      ['embuscade', 'Embuscade', 'Une zone refermée sans ennemi à moins de 10 cases du vaisseau rapporte ×1,5.'],
+      ['coupbas', 'Coup bas', 'Un ennemi enfermé dans une zone de moins de 5 % du terrain est éliminé.'],
+      ['infiltre', 'Infiltré', 'Points ×2 tant que tu n\'as pas été touché dans le niveau.']]]],
+  rew: [
+    ['SABLIER', 'la jauge', [
+      ['grand', 'Grand sablier', 'Jauge de 4 s au lieu de 3.'],
+      ['sablefin', 'Sable fin', 'Recharge en 90 cases au lieu de 120.'],
+      ['geant', 'Sablier géant', 'Jauge de 5 s.'],
+      ['boucle', 'Boucle', 'Une fois par niveau, un rembobinage complet gratuit, qui ne vide pas la jauge.']]],
+    ['PARADOXE', 'changer le passé', [
+      ['hesit', 'Hésitation', '4 s pour décider au crash, au lieu de 3.'],
+      ['lecon', 'Leçon', 'Rembobiner après un crash rend 1 s de jauge.'],
+      ['echo', 'Écho', 'En rembobinant, ton fantôme laisse un sillage qui assomme les ennemis 2 s.'],
+      ['paradoxe', 'Paradoxe', 'Les ennemis que ton fantôme traverse en rembobinant sont effacés.']]],
+    ['MAÎTRISE', 'le bon moment', [
+      ['ralenti', 'Ralenti fin', 'Rembobinage encore plus lent, pour s\'arrêter pile.'],
+      ['arret', 'Arrêt sur image', 'Pendant le rembobinage, un tap fige tout 2 s pour viser ta reprise.'],
+      ['prudence', 'Prudence', '3 vies au maximum au lieu de 2.'],
+      ['prescience', 'Prescience', 'Après un rembobinage, les trajectoires des ennemis s\'affichent 2 s : tu sais ce qui va arriver.']]]],
+  trap: [
+    ['MÂCHOIRES', 'la taille du piège', [
+      ['large', 'Large', 'Pièges jusqu\'à 15 % du terrain au lieu de 12 %.'],
+      ['tlarge', 'Très large', 'Jusqu\'à 18 %.'],
+      ['gibier', 'Gros gibier', 'Le trou noir se piège aussi (zone de moins de 8 %).'],
+      ['geant', 'Piège géant', 'Pièges jusqu\'à 25 % du terrain.']]],
+    ['TROPHÉES', 'ce que ça rapporte', [
+      ['prime', 'Prime', 'Ennemi piégé : points ×1,5.'],
+      ['double', 'Coup double', 'Piéger deux ennemis d\'un coup fait apparaître un bonus.'],
+      ['depouille', 'Dépouille', 'Chaque ennemi piégé conquiert aussi 2 % de terrain autour de la zone.'],
+      ['tableau', 'Tableau de chasse', 'Piéger tous les ennemis de la zone à conquérir d\'un niveau donne +1 vie.']]],
+    ['APPÂTS', 'amener la proie', [
+      ['collet', 'Collet', 'Un ennemi qui touche ton fil est ralenti 2 s.'],
+      ['filet', 'Filet', 'Les ondes de choc avancent 25 % moins vite.'],
+      ['leurre', 'Leurre', 'Sur ton terrain, les ennemis proches sont légèrement attirés vers toi.'],
+      ['nasse', 'Nasse', 'Une zone qui ne contient qu\'un seul ennemi se piège quelle que soit sa taille (sauf la plus grande).']]]],
+  mon: [
+    ['COURONNE', 'garder le meilleur', [
+      ['patience', 'Patience royale', 'Les super bonus restent 25 % plus longtemps avant de disparaître.'],
+      ['majeste', 'Majesté', '50 % plus longtemps au lieu de 25 %.'],
+      ['tresor', 'Trésor', 'La couronne garde un super bonus en réserve, à déclencher quand tu veux.'],
+      ['divin', 'Droit divin', 'Chaque super bonus est choisi parmi deux proposés.']]],
+    ['COUR', 'ses serviteurs', [
+      ['heraut', 'Héraut', 'Un signal annonce l\'endroit du prochain super bonus 3 s avant son apparition.'],
+      ['garde', 'Garde royale', 'Un gardien de moins par niveau.'],
+      ['tribut', 'Tribut', 'Chaque tranche de 10 % de terrain conquis rapporte 1 000 × niveau.'],
+      ['couronne', 'Couronnement', '6 vies au maximum au lieu de 4.']]],
+    ['FASTE', 'des effets plus forts', [
+      ['apparat', 'Apparat', 'Effets des super bonus : +2 s.'],
+      ['splendeur', 'Splendeur', '+4 s au lieu de +2.'],
+      ['magnif', 'Magnificence', 'Ramasser un super bonus détruit l\'ennemi le plus proche.'],
+      ['prodig', 'Prodigalité', 'Un super bonus de plus par niveau, et ils arrivent deux fois plus vite.']]]],
+  gam: [
+    ['MISE', 'les jetons', [
+      ['bourse', 'Grosse bourse', '6 jetons au maximum au lieu de 5.'],
+      ['depart', 'Mise de départ', 'Un jeton offert au début de chaque niveau.'],
+      ['coffre', 'Coffre', '8 jetons au maximum.'],
+      ['flambe', 'Flambe', 'Mise de 4 jetons possible : gain garanti, gros lots plus fréquents.']]],
+    ['CHANCE', 'la machine est gentille', [
+      ['fer', 'Fer à cheval', 'Coups durs 30 % moins fréquents.'],
+      ['main', 'Main chaude', '+5 % de chances de gagner à chaque mise.'],
+      ['assurance', 'Assurance', 'Un coup dur rend les jetons misés.'],
+      ['sept', 'Sept chanceux', 'Le 777 trois fois plus fréquent.']]],
+    ['TRICHE', 'la machine obéit', [
+      ['huile', 'Rouleaux huilés', 'La machine tourne 30 % plus vite.'],
+      ['rejoue', 'Rejoue', '« Rejoue X2 » deux fois plus fréquent.'],
+      ['lynx', 'Œil de lynx', 'Le premier rouleau s\'affiche avant de miser.'],
+      ['tricheur', 'Tricheur', 'Un tap arrête le dernier rouleau pile au moment voulu : à toi de viser.']]]],
+  pred: [
+    ['CARNAGE', 'le combo', [
+      ['acharne', 'Acharnement', 'Le combo tient 7 s au lieu de 6.'],
+      ['boucherie', 'Boucherie', 'Combo jusqu\'à ×6.'],
+      ['dechaine', 'Déchaîné', 'À partir de ×4, le bond n\'a plus de recharge.'],
+      ['chaine', 'Réaction en chaîne', 'À ×5, chaque proie explose et tue les ennemis à moins de 3 cases.']]],
+    ['SANG', 'la jauge', [
+      ['veine', 'Grosse veine', 'Jauge pleine à 36 s au lieu de 30.'],
+      ['metab', 'Métabolisme', 'La jauge se vide 15 % moins vite.'],
+      ['festin', 'Festin', 'Chaque proie donne 2 s de sang de plus.'],
+      ['souffle', 'Dernier souffle', 'Une fois par niveau, à sec, il récupère 10 s au lieu de mourir.']]],
+    ['CHASSE', 'la traque', [
+      ['machoires', 'Mâchoires', 'Portée de morsure +0,3 case.'],
+      ['ressort', 'Ressort', 'Recharge du bond en 1 s au lieu de 1,3.'],
+      ['terreur', 'Terreur', 'Les ennemis qui ont peur ralentissent de 30 %.'],
+      ['apex', 'Apex', 'Le trou noir devient mangeable : énorme gerbe, 5 000 × niveau.']]]]
+};
+const MASTERY = [2000, 6000, 12000, 20000, 30000, 42000, 56000, 72000];
+var mxp = store.get('mxp', {});
+const mLevel = k => MASTERY.filter(v => (mxp[k] || 0) >= v).length;
+const skAll = test => store.get(test ? 'sktest' : 'sk', {});
+// arbre d'un vaisseau, remis en ordre (ordre des branches, une seule ultime, pas plus de points que la maîtrise)
+function skBuild(k, test) {
+  const list = skAll(test)[k] || [], out = [];
+  let ult = false;
+  for (const br of SKILLS[k] || []) for (let r = 0; r < 4; r++) {
+    const id = br[2][r][0];
+    if (!list.includes(id)) break;
+    if (!test && (r === 3 && ult || out.length >= mLevel(k))) break;
+    if (r === 3) ult = true;
+    out.push(id);
+  }
+  return out;
+}
+function skSave(k, list, test) { const all = skAll(test); all[k] = list; store.set(test ? 'sktest' : 'sk', all); }
+// compétences de la partie en cours
+var skills = new Set();
+const sk = id => skills.has(id);
+function loadSkills() { skills = new Set(skBuild(SH().key, S.test)); }
+function gainXp(n) {
+  if (S.test || !(n > 0)) return;
+  const k = SH().key;
+  mxp[k] = (mxp[k] || 0) + n; S.xp = (S.xp || 0) + n;
+  store.set('mxp', mxp);
+}
 
 const $ = id => document.getElementById(id);
 const cv = $('cv'), stage = $('stage'), ov = $('ov');
@@ -1088,7 +1334,7 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true;
+  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; loadSkills();
   rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = 1; gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
@@ -1098,12 +1344,13 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true;
+  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; loadSkills();
   const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
 function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
+  S.xp = 0; S.mlv0 = mLevel(SH().key);
   if (S.test) S.comp = { name: '', out: 2, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
@@ -1426,6 +1673,7 @@ function startReveal(list) {
 }
 function awardCells(n, at0, big, mult = 1) {
   S.filled += n;
+  gainXp(n / (G * G));
   // 10 points × niveau par case d'origine (une case d'origine = G × G cases de la grille)
   let pts = Math.round(n * 10 * S.level / (G * G));
   if (big) pts *= 2;
@@ -4285,6 +4533,7 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
+  const xpB = 200 * (S.diff + 1); gainXp(xpB);
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   ab.on = 0;
   carry = { guard: P ? P.guard : 0 };
@@ -4300,7 +4549,14 @@ function showClear() {
       <div><span>Bonus dépassement</span><span>+${fmt(extra)}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
     </div>
+    ${masteryRow()}
     <button class="btn" id="go">NIVEAU SUIVANT</button>`, () => setupLevel(S.level + 1));
+}
+// fin de niveau et fin de partie : expérience gagnée avec ce vaisseau, et nouveau palier de maîtrise
+function masteryRow() {
+  if (S.test) return '';
+  const k = SH().key, lv = mLevel(k), up = lv > (S.mlv0 ?? lv);
+  return `<div class="mrow${up ? ' up' : ''}"><span>Maîtrise ${SH().name}</span><b>+${fmt(Math.round(S.xp || 0))} XP</b>${up ? `<em>MAÎTRISE ${lv} ! ${lv - S.mlv0 > 1 ? lv - S.mlv0 + ' points' : 'Un point'} à placer dans son arbre</em>` : ''}</div>`;
 }
 function endScreen(title, sub) {
   const key = 'best' + S.diff, best = store.get(key, 0), rec = S.score > best;
@@ -4314,6 +4570,7 @@ function endScreen(title, sub) {
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
       ${rec ? '' : `<div><span>Record ${DIFFS[S.diff].name}</span><span>${fmt(best)}</span></div>`}
     </div>
+    ${masteryRow()}
     <button class="btn" id="go">MENU</button>`, titleScreen);
 }
 function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); }
@@ -4488,6 +4745,7 @@ function showShips(test) {
       <button class="arrow r" id="snext" aria-label="Vaisseau suivant">${ARROW('M9 5 L16 12 L9 19')}</button>
     </div>
     <div class="sname"><b style="color:${sh.hullA === '#ffffff' ? '#f2f3ff' : sh.glow}">${sh.name}</b><span>${sh.tag}</span></div>
+    ${masteryBar(sh.key, test)}
     <div class="sstats">
       <div><span class="k">Vies</span><span class="dots l">${'<i></i>'.repeat(sh.lives)}</span></div>
       <div><span class="k">Vitesse</span><span class="dots s">${dots(sh.spd, 'on')}</span></div>
@@ -4498,7 +4756,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; loadSkills(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -4507,12 +4765,57 @@ function showShips(test) {
   $('snext').addEventListener('click', () => pick(menuShip + 1));
   ov.querySelectorAll('.spage button').forEach(b => b.addEventListener('click', () => pick(+b.dataset.s)));
   $('sback').addEventListener('click', () => { shipPick = null; titleScreen(); });
+  $('stree').addEventListener('click', () => { shipPick = null; showTree(test); });
   // glisser sur l'aperçu pour changer de vaisseau
   const c = $('shipcv');
   let sx = null;
   c.addEventListener('pointerdown', e => { sx = e.clientX; });
   c.addEventListener('pointerup', e => { if (sx !== null && Math.abs(e.clientX - sx) > 30) pick(menuShip + (e.clientX < sx ? 1 : -1)); sx = null; });
   shipPick.step = pick;
+}
+// barre de maîtrise sous la description du vaisseau, et le bouton de son arbre (avec les points à placer)
+function masteryBar(k, test) {
+  const lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv], free = (test ? 12 : lv) - skBuild(k, test).length;
+  const p = hi ? (x - lo) / (hi - lo) : 1;
+  return `<div class="smast"><span class="k">${test ? 'ARBRE LIBRE' : 'MAÎTRISE ' + lv}</span>
+    <span class="mbar"><i style="width:${test ? 100 : (p * 100).toFixed(1)}%"></i></span>
+    <button class="mini mtree" id="stree">COMPÉTENCES${!test && free > 0 ? `<b>${free}</b>` : ''}</button></div>`;
+}
+// Arbre du vaisseau choisi : trois branches, on touche une compétence pour la prendre ou la rendre (avec celles en dessous)
+function showTree(test, inGame) {
+  const sh = SHIPS[menuShip], k = sh.key, tree = SKILLS[k], max = test ? 12 : mLevel(k);
+  let list = skBuild(k, test);
+  const render = msg => {
+    const set = new Set(list), ult = tree.some(b => set.has(b[2][3][0]));
+    showOverlay(`
+      <div class="shead">
+        <button class="back" id="tback" aria-label="Retour">${ARROW('M15 5 L8 12 L15 19')}</button>
+        <h2><span>${test ? 'MODE TEST · ARBRE LIBRE' : 'MAÎTRISE ' + max + ' / 8 · ' + (MASTERY[max] ? fmt(Math.floor(mxp[k] || 0)) + ' / ' + fmt(MASTERY[max]) + ' XP' : 'MAXIMUM')}</span>${sh.name}</h2>
+      </div>
+      <div class="tpts" style="--sc:${sh.glow}"><span class="pips">${Array.from({ length: test ? 0 : 8 }, (_, i) => `<i class="${i < list.length ? 'on' : i < max ? 'av' : ''}"></i>`).join('')}</span>
+        <span>${test ? list.length + ' compétence' + (list.length > 1 ? 's' : '') : (max - list.length) + ' point' + (max - list.length > 1 ? 's' : '') + ' à placer'}</span><button class="mini" id="treset2">RÉINITIALISER</button></div>
+      ${max === 0 && !test ? '<p class="tnote">Gagne un niveau avec ce vaisseau pour obtenir ton premier point.</p>' : ''}
+      <div class="tree" style="--sc:${sh.glow}">${tree.map(([bn, th, nodes], bi) => `<div class="tbr"><div class="tbh"><b>${bn}</b><span>${th}</span></div>${nodes.map(([id, n, d], r) => {
+        const on = set.has(id), reach = r === 0 || set.has(nodes[r - 1][0]);
+        return `<button class="tnode${r === 3 ? ' ult' : ''}${on ? ' on' : ''}${!on && !reach ? ' lock' : ''}" data-b="${bi}" data-r="${r}" aria-pressed="${on}"><i>${r === 3 ? '◆' : r + 1}</i><span>${r === 3 ? '<em>ULTIME</em>' : ''}<b>${n}</b><small>${d}</small></span></button>`;
+      }).join('')}</div>`).join('')}</div>
+      <p class="tmsg" aria-live="polite">${msg || ''}</p>
+      <button class="btn" id="go">${inGame ? 'REPRENDRE' : 'VALIDER'}</button>`, back);
+    ov.querySelector('.card').classList.add('trees');
+    $('tback').addEventListener('click', back);
+    $('treset2').addEventListener('click', () => { list = []; skSave(k, list, test); sfx.cancel(); render(); });
+    ov.querySelectorAll('.tnode').forEach(b => b.addEventListener('click', () => {
+      const bi = +b.dataset.b, r = +b.dataset.r, nodes = tree[bi][2], id = nodes[r][0];
+      if (set.has(id)) { const drop = nodes.slice(r).map(x => x[0]); list = list.filter(x => !drop.includes(x)); }
+      else if (r > 0 && !set.has(nodes[r - 1][0])) return render('Débloque d\'abord la compétence au-dessus.');
+      else if (!test && list.length >= max) return render(max ? 'Plus de point : rends une compétence ou réinitialise.' : 'Pas encore de point : gagne un niveau avec ce vaisseau.');
+      else if (!test && r === 3 && ult) return render('Une seule ultime à la fois.');
+      else { list.push(id); sfx.ready(); }
+      skSave(k, list, test); render();
+    }));
+  };
+  const back = () => { if (inGame) { hideOverlay(); loadSkills(); testReset(true); S.phase = 'play'; last = performance.now(); } else showShips(test); };
+  render();
 }
 // Aperçu du vaisseau choisi : il file vers le haut au milieu d'étoiles qui défilent
 function drawPreview() {
@@ -4587,7 +4890,7 @@ function testReset(keep) {
 function testShip(d) {
   if (!S.test) return;
   menuShip = S.ship = (S.ship + d + SHIPS.length) % SHIPS.length; store.set('ship', S.ship);
-  testReset();
+  loadSkills(); testReset();
 }
 function testItem(type) {
   if (!S.test || !P || (S.phase !== 'play' && S.phase !== 'ready' && S.phase !== 'pause')) return;
@@ -4632,6 +4935,7 @@ $('tprev').addEventListener('click', () => testShip(-1));
 $('tnext').addEventListener('click', () => testShip(1));
 $('tship').addEventListener('click', () => testShip(1));
 $('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
+$('ttree').addEventListener('click', () => { if (!S.test || S.phase === 'title') return; menuShip = S.ship; S.phase = 'pause'; showTree(true, true); });
 const tforce = $('tforce');
 tforce.innerHTML = '<option value="">MACHINE : AU HASARD</option><option value="none">MACHINE : PERDU (RIEN)</option>' + SLOT.map(w => `<option value="${w.k}">MACHINE : ${w.txt}</option>`).join('');
 tforce.addEventListener('change', () => { gam.force = tforce.value; tforce.blur(); });

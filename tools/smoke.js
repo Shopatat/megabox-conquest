@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -435,6 +435,26 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   console.log(`piégeur : ennemi piégé ${t.dead}, +${t.pct.toFixed(1)} % (Classique dans la même situation : piégé ${c.dead}, +${c.pct.toFixed(1)} %)`);
   run(7); const n0 = g.foes.length; step(60 * 16);
   console.log(`piégeur : ${n0} ennemi(s) juste après, ${g.foes.length} 16 s plus tard (il ne revient pas)`);
+}
+// 5r) Arbres de maîtrise : XP par vaisseau, paliers, arbre remis en ordre (points, ordre des branches, une seule ultime), mode test libre
+{
+  const ids = k => g.SKILLS[k].flatMap(b => b[2].map(n => n[0]));
+  const nodes = Object.values(g.SKILLS).reduce((a, br) => a + br.length * br[0][2].length, 0);
+  g.mxp.cla = 0; g.newGame(1, 1, 0); g.go(); g.foes.length = 0;
+  const x0 = g.mxp.cla; g.setDir('down'); step(40); g.setDir('right'); step(20); g.setDir('up'); step(60);
+  const x1 = g.mxp.cla; g.showClear(); const x2 = g.mxp.cla;
+  console.log(`maîtrise : ${nodes} compétences pour ${Object.keys(g.SKILLS).length} vaisseaux ; zone refermée +${(x1 - x0).toFixed(0)} XP (${(g.S.filled / G / G).toFixed(0)} cases), niveau gagné +${x2 - x1} (400 en Confirmé)`);
+  const c = ids('cla');
+  g.mxp.cla = 6000; g.skSave('cla', [c[0], c[1], c[2], c[4]], false);
+  const b1 = g.skBuild('cla', false).length;
+  g.mxp.cla = 80000; g.skSave('cla', [c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]], false);
+  const b2 = g.skBuild('cla', false), ults = b2.filter(id => [c[3], c[7], c[11]].includes(id)).length;
+  g.skSave('cla', [c[1], c[2]], false); const b3 = g.skBuild('cla', false).length;
+  g.skSave('cla', c, true); const b4 = g.skBuild('cla', true).length;
+  g.skSave('cla', [c[0], c[4]], false); g.newGame(1, 1, 0); const on = g.sk(c[0]) && g.sk(c[4]) && !g.sk(c[1]);
+  g.showTree(false); g.showShips(false);
+  console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 8 -> ${b2.length} dont ${ults} ultime ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; paliers ${g.MASTERY.join(' ')}`);
+  g.skSave('cla', [], false); g.skSave('cla', [], true); g.mxp.cla = 0; g.newGame(1, 1, 0);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
