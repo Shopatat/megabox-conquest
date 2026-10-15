@@ -471,8 +471,8 @@ const SHIPS = [
     desc: 'Le vaisseau d\'origine, avec la chance en plus : 50 % de bonus en plus, deux fois plus de super bonus, et ils restent plus longtemps.',
     deco(g, o) {
       // trèfle à quatre feuilles sur le cockpit
-      const fane = o.neon && !shipPick && S.phase !== 'title' && sk('trefle') && S.used && S.used.trefle;
-      g.fillStyle = fane ? '#8a8f6a' : o.neon ? '#ffd23f' : T.playerSea;
+      const fane = o.neon && !shipPick && S.phase !== 'title' && sk('trefle') && S.used ? S.used.trefle || 0 : 0;
+      g.fillStyle = fane >= 2 ? '#8a8f6a' : fane ? '#c9b85a' : o.neon ? '#ffd23f' : T.playerSea;
       g.strokeStyle = o.neon ? '#6b3d00' : T.playerSeaInk; g.lineWidth = .02;
       for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.arc(.14 + Math.cos(a) * .085, Math.sin(a) * .085, .075, 0, Math.PI * 2); g.fill(); g.stroke(); }
       g.beginPath(); g.arc(.14, 0, .04, 0, Math.PI * 2); g.fill();
@@ -997,7 +997,7 @@ const ab = { on: 0, fury: 0, beat: 0, idle: 0 };
 var fireT = new Float32Array(N);
 var fires = [], fireClock = 0;
 // compétences du Frénétique : durée des flammes (Braises, Mur de feu), jauge (Colérique), durée de la furie (Hors de lui)
-const fireDur = () => sk('murfeu') ? 6 : sk('braises') ? 4 : FIRE_T;
+const fireDur = () => sk('murfeu') ? 8 : sk('braises') ? 4 : FIRE_T;
 const furyFill = () => sk('colere') ? .5 : FURY_FILL;
 const frT = () => sk('horslui') ? 12 : FR_T;
 // Prédateur : bond en cours (bite, s), recharge (cd, s), combo (jusqu'à PRED_MAX) et temps restant pour l'entretenir (ct) ;
@@ -1466,7 +1466,7 @@ function setupLevel(L, instant) {
   const C = S.comp;
   for (const k of FOES) for (let i = 0; i < C[k] - (k === 'inn' && sk('garde') ? 1 : 0); i++) foes.push(makeFoe(k, C.sp));
   S.tribut = 0;
-  items = []; S.herald = null; S.bonusLeft = C.bonus ? bonusCount() + (sk('prodig') ? 1 : 0) : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
+  items = []; S.herald = null; S.bonusLeft = C.bonus ? bonusCount() + (sk('prodig') ? 2 : 0) + (sk('pluie') ? 1 : 0) : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
   // facteur de bonus du vaisseau : Blindé ×0,75 (chaque bonus prévu a 3 chances sur 4 d'apparaître), Veinard ×1,5
   // (chaque bonus prévu a 1 chance sur 2 d'en amener un deuxième)
   const bf = SH().bonus * (sk('etoile') ? 1.25 : 1);
@@ -1588,7 +1588,7 @@ function setDir(d) {
   if (S.phase === 'ready' && d !== 'stop') { go(); }
   if (S.phase !== 'play') return;
   ensureAudio();
-  if (d === 'stop') { if (!P.drawing || chronoOn()) { P.dir = {x:0,y:0}; P.next = null; } return; }
+  if (d === 'stop') { if (!P.drawing || chronoOn() || (sk('freins') && ab.on > 0)) { P.dir = {x:0,y:0}; P.next = null; } return; }
   const v = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[d];
   if (!v) return;
   dropShield();
@@ -1597,7 +1597,7 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (SH().key === 'fre' ? (ab.on > 0 ? FR_SPD : FRE_SPD) : 1)
-  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
+  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow();
@@ -2014,7 +2014,9 @@ function updateFoes(dt) {
     if (P && P.shield) shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
     if (e.kind === 'puls') pulsarHits(e);
-    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9, near = Math.hypot(e.x - pp.x, e.y - pp.y) < r;
+    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9, dd = Math.hypot(e.x - pp.x, e.y - pp.y), near = dd < r;
+    if (e.froleCd > 0) e.froleCd -= dt;
+    else if (!near && dd < r + .6 && sk('frole') && P && P.drawing) { e.froleCd = 2; const p = 300 * S.level; S.score += p; popups.push({ x: pp.x, y: pp.y - 1.6, text: 'FRÔLÉ ! +' + fmt(p), age: 0, color: T.rainbow ? '#7dff9a' : T.ball }); hud(); }
     // flammes de la furie (le contact avec le vaisseau passe avant : lui n'est pas invincible)
     if (!near && fires.length && e.kind !== 'amph' && fireHits(e)) { burnFoe(e); continue; }
     if (e.hitCd > 0) { e.hitCd -= dt; continue; }
@@ -2118,9 +2120,9 @@ let carry = null;
 const powState = () => ({ tresor: S.tresor || null, fury: ab.fury, guard: carry ? carry.guard : P ? P.guard : 0, rw: rw.charge, hp: armor.hp, chips: gam.chips });
 // Jauge de furie : chaque zone conquise la remplit (pas pendant la furie)
 function furyGain(n, big) {
-  if (SH().key !== 'fre' || ab.on > 0 || ab.fury >= 1) return;
-  ab.fury = Math.min(1, ab.fury + n / (S.interior * furyFill()) * (big ? 1.5 : 1));
-  if (ab.fury >= 1) {
+  if (SH().key !== 'fre' || (ab.on > 0 && !sk('adrenaline')) || ab.fury >= 1) return;
+  ab.fury = Math.min(1, ab.fury + n / (S.interior * furyFill()) * (big ? 1.5 : 1) * (ab.on > 0 ? .5 : 1));
+  if (ab.fury >= 1 && !(ab.on > 0)) {
     const pp = playerPos();
     popups.push({ x: pp.x, y: pp.y - 2.4, text: 'FURIE PRÊTE', age: -0.2, color: T.rainbow ? '#ff8a2a' : T.ball });
     rings.push({ x: pp.x, y: pp.y, r: 0, max: 4, age: 0, color: T.rainbow ? '#ff5a1f' : T.shock });
@@ -2149,7 +2151,7 @@ function updateFires(dt) {
 }
 // un ennemi touche une flamme : cases en feu sous son disque (rayon + un peu)
 function fireHits(e) {
-  const R = (e.r || (e.kind === 'inn' ? R_LAND : R_SEA)) + .3 + (sk('murfeu') ? 1 : 0);
+  const R = (e.r || (e.kind === 'inn' ? R_LAND : R_SEA)) + .3 + (sk('murfeu') ? 1.5 : 0);
   const x0 = Math.max(0, gc(e.x - R)), x1 = Math.min(GC - 1, gc(e.x + R)), y0 = Math.max(0, gc(e.y - R)), y1 = Math.min(GR - 1, gc(e.y + R));
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const i = x + y * GC;
@@ -2168,7 +2170,9 @@ function burnFoe(e) {
   const pts = 300 * S.level * (sk('bbq') ? 2 : 1); S.score += pts;
   popups.push({ x: e.x, y: e.y - 1.2, text: 'GRILLÉ ! +' + pts, age: 0, color: T.rainbow ? '#ff8a2a' : T.ball });
   if (sk('rancune')) { ab.fury = Math.min(1, ab.fury + .08); pwHud(); }
-  if (sk('sansfin') && ab.on > 0) { ab.on += 1.5; popups.push({ x: e.x, y: e.y - 2.2, text: '+1,5 S', age: -.15, color: T.rainbow ? '#ffd27a' : T.ball }); }
+  if (sk('cendres')) claimNear(e.x, e.y, Math.round(S.interior * .01));
+  if (sk('etincelles')) for (const f of foes) if (!f.dead && f.kind !== 'amph' && Math.hypot(f.x - e.x, f.y - e.y) < 2) burnFoe(f);
+  if (sk('sansfin') && ab.on > 0) { ab.on += 2; popups.push({ x: e.x, y: e.y - 2.2, text: '+2 S', age: -.15, color: T.rainbow ? '#ffd27a' : T.ball }); }
   sfx.burn(); hud();
 }
 // Sauvetage par une compétence : pas de crash. Si l'onde de choc a rattrapé la tête du fil ou s'il s'est croisé, le fil
@@ -2189,11 +2193,12 @@ function skillSave(cause) {
   if (sk('paraton') && cause === 'wave' && !used.paraton) { used.paraton = 1; rescue('PARATONNERRE !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
   if (sk('dispar') && !used.dispar) { used.dispar = 1; rescue('DISPARU !', T.rainbow ? '#46ffc8' : T.shock, cause, 3); camo.on = 3; sfx.cloak(); return true; }
   if (sk('court') && !S.usedGame.court) { S.usedGame.court = 1; rescue('COURT-CIRCUIT !', T.rainbow ? '#bfefff' : T.shock, cause); return true; }
-  if (sk('trefle') && !used.trefle) { used.trefle = 1; rescue('TRÈFLE !', T.rainbow ? '#7dff9a' : T.shock, cause); return true; }
+  if (sk('porteb') && cause === 'wave' && Math.random() < 1 / 3) { rescue('OUF !', T.rainbow ? '#7dff9a' : T.shock, cause, .8); return true; }
+  if (sk('trefle') && (used.trefle || 0) < 2) { used.trefle = (used.trefle || 0) + 1; rescue('TRÈFLE !', T.rainbow ? '#7dff9a' : T.shock, cause); return true; }
   if (sk('phenix') && ab.on > 0 && !used.phenix) {
-    used.phenix = 1; rescue('PHÉNIX !', T.rainbow ? '#ff8a2a' : T.shock, cause, 2);
+    used.phenix = 1; rescue('PHÉNIX !', T.rainbow ? '#ff8a2a' : T.shock, cause, 3);
     const pp = playerPos();
-    for (const e of foes) if (Math.hypot(e.x - pp.x, e.y - pp.y) < 5) burnFoe(e);
+    for (const e of foes) if (Math.hypot(e.x - pp.x, e.y - pp.y) < 8) burnFoe(e);
     for (let k = 0; k < 3; k++) burst(pp.x, pp.y, T.rainbow ? ['#ffe27a', '#ff8a2a', '#ff3b1f'][k] : T.shock, 30, 10 + k * 4);
     rings.push({ x: pp.x, y: pp.y, r: 0, max: 5, age: 0, color: T.rainbow ? '#ff5a1f' : T.shock, fill: true });
     return true;
@@ -2220,7 +2225,7 @@ function stunBy(e, t) {
   e.stun = Math.max(e.stun || 0, t);
 }
 // durée des super bonus (Veinard : Gros lot)
-const supDur = () => POWER_T * (sk('groslot') ? 1.5 : 1) + (sk('splendeur') ? 4 : sk('apparat') ? 2 : 0);
+const supDur = () => POWER_T * (sk('groslot') ? 2 : 1) + (sk('splendeur') ? 4 : sk('apparat') ? 2 : 0);
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : furie du Frénétique, rembobinage du Rembobineur…
 function usePower() {
   if (SH().key === 'pred') { predBite(); return; }
@@ -2237,6 +2242,7 @@ function usePower() {
   }
   if (SH().key !== 'fre' || S.phase !== 'play' || ab.on > 0 || ab.fury < 1) return;
   ab.on = frT(); ab.beat = 0; ab.fury = 0;
+  if (sk('rugissement')) { const pp0 = playerPos(); for (const e of foes) if (Math.hypot(e.x - pp0.x, e.y - pp0.y) < 8) stunBy(e, 2); }
   // le fil déjà tracé prend feu
   for (let k = 0; k < trail.length; k++) if (!erased[k]) lightFire(trail[k]);
   const pp = playerPos();
@@ -2252,7 +2258,7 @@ function updateAbility(dt) {
     ab.on = Math.max(0, ab.on - dt);
     // battements de cœur, de plus en plus rapides
     ab.beat -= dt; if (ab.beat <= 0) { ab.beat = .32 + ab.on * .06; sfx.heart(); }
-    if (ab.on === 0) { sfx.rageEnd(); powersHud(); if (sk('retombee')) { S.safe = Math.max(S.safe, 2); const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 1.6, text: 'RETOMBÉE', age: 0, color: T.rainbow ? '#ffd27a' : T.ball }); } }
+    if (ab.on === 0) { sfx.rageEnd(); powersHud(); if (sk('secondsouffle')) ab.fury = Math.max(ab.fury, .25); if (sk('retombee')) { S.safe = Math.max(S.safe, 2); const pp = playerPos(); popups.push({ x: pp.x, y: pp.y - 1.6, text: 'RETOMBÉE', age: 0, color: T.rainbow ? '#ffd27a' : T.ball }); } }
     // Réflexes : un ennemi frôle le vaisseau pendant la furie, le temps ralentit un instant
     if (ab.on > 0 && sk('reflexes') && P && !((S.refCd -= dt) > 0)) {
       const pp = playerPos();
@@ -2268,6 +2274,7 @@ function updateAbility(dt) {
   updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
   if (S.safe > 0) S.safe -= dt;
+  if (SH().key === 'rob' && sk('nanites') && armor.hp > 0 && armor.hp < armorMax()) { armor.hp = Math.min(armorMax(), armor.hp + dt * .0025); if (Math.random() < dt * 4) pwHud(); }
   if (xpUp > 0 && (xpUp -= dt) <= 0) xpHud();
   if (S.noWave > 0) S.noWave -= dt;
   if (S.chainCd > 0) S.chainCd -= dt;
@@ -2859,7 +2866,7 @@ const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
-const armorMax = () => sk('forteresse') ? 1.5 : 1;
+const armorMax = () => sk('forteresse') ? 2 : 1;
 const armorCells = () => ARMOR_CELLS / (sk('soudeur') ? 2 : 1);
 // un ennemi au contact du vaisseau : l'onde qu'il déclenche en touchant le bout du fil fait partie du même choc
 function foeTouching() {
@@ -2872,6 +2879,11 @@ function armorHit(src) {
   if (e && e.kind === 'div') dmg = [.12, .09, .06][e.gen || 0];
   if (sk('plaques')) dmg *= .9;
   if (sk('reactives') && armor.hp < .3) dmg *= .75;
+  // Blindage lourd (ondes), Charge (en traçant), Rouleau compresseur (écrase sans s'abîmer), Pare-chocs (1er choc du niveau)
+  if (sk('lourd') && (kind === 'wave' || kind === 'fastWave')) dmg = 0;
+  if (e && P.drawing && sk('charge')) dmg *= .5;
+  if (e && e.kind !== 'amph' && P.drawing && sk('rouleau')) dmg = 0;
+  if (sk('parechoc') && !S.used.parechoc) { S.used.parechoc = 1; dmg = 0; }
   armor.hp = Math.max(0, armor.hp - dmg); armor.jolt = sk('masse') ? 0 : .2; armor.cd = .6;
   const pp = playerPos();
   if (e) {
@@ -2889,7 +2901,7 @@ function armorHit(src) {
     else if (sk('belier')) stunBy(e, 2);
   }
   // Seconde coque : une fois par partie, à 0 % il repart avec 25 %
-  if (armor.hp <= 0 && sk('coque') && !S.usedGame.coque) { S.usedGame.coque = 1; armor.hp = .25; rescue('SECONDE COQUE !', T.rainbow ? '#dfe6ee' : T.shock); pwHud(); return; }
+  if (armor.hp <= 0 && sk('coque') && !S.used.coque) { S.used.coque = 1; armor.hp = .5; rescue('SECONDE COQUE !', T.rainbow ? '#dfe6ee' : T.shock); pwHud(); return; }
   if (armor.hp <= 0) crash();
 }
 
@@ -3295,6 +3307,7 @@ function bonusDelay(first) {
 function pickType() {
   // Flambeur : des jetons de casino à la place des objets (machine à sous)
   if (SH().key === 'gam') return 'coin';
+  if (sk('entree') && S.used && !S.used.entree) { S.used.entree = 1; const sp = ['sup', 'sterr', 'sspd', 'schr'].filter(t => !(SH().noItems || []).includes(t)); return sp[(Math.random() * sp.length) | 0]; }
   // Monarque : rien que des super bonus, dès le niveau 1 (la Super Vie seulement s'il n'a pas atteint son maximum)
   if (SH().onlySuper) {
     const pool = [['sup', 0.45], ['sterr', 0.35], ['sspd', 0.35], ['schr', 0.35]];
@@ -3386,6 +3399,7 @@ function collect(it) {
   const color = T.items[it.type];
   burst(it.x, it.y, color, 30, 9);
   if (ITEM[it.type].label) popups.push({ x: it.x, y: it.y - 1.2, text: ITEM[it.type].label, age: 0, color });
+  if (SUPER[it.type] && sk('eclat')) { const p = 2000 * S.level; S.score += p; popups.push({ x: it.x, y: it.y - 3.2, text: 'ÉCLAT +' + fmt(p), age: -.25, color: T.rainbow ? '#ffd23f' : T.ball }); hud(); }
   // Droit divin : l'autre super bonus proposé disparaît
   if (it.pair && !it.pair.done) { it.pair.done = true; burst(it.pair.x, it.pair.y, T.items[it.pair.type], 16, 5); }
   // Magnificence : le super bonus détruit l'ennemi le plus proche
@@ -3399,7 +3413,7 @@ function collect(it) {
   applyItem(it);
   powersHud();
   // Veinard, Corne d'abondance : une chance sur quatre qu'un autre bonus apparaisse aussitôt
-  if (sk('corne') && it.type !== 'coin' && Math.random() < .25 && spawnItem()) popups.push({ x: it.x, y: it.y - 2.4, text: 'ABONDANCE !', age: -.2, color: T.rainbow ? '#7dff9a' : T.ball });
+  if (sk('corne') && it.type !== 'coin' && Math.random() < .5 && spawnItem()) popups.push({ x: it.x, y: it.y - 2.4, text: 'ABONDANCE !', age: -.2, color: T.rainbow ? '#7dff9a' : T.ball });
 }
 function applyItem(it) {
   const color = T.items[it.type];
@@ -3542,6 +3556,7 @@ function updateItems(dt) {
   for (const it of items) {
     if (!(sk('ecrin') && SUPER[it.type] && P && P.drawing)) it.age += dt;
     moveItem(it, dt);
+    if (sk('aimant') && P) { const pp = playerPos(), dx = pp.x - it.x, dy = pp.y - it.y, d = Math.hypot(dx, dy); if (d < 6 && d > .1) { const v = Math.min(d, 9 * dt); it.x += dx / d * v; it.y += dy / d * v; } }
     if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
@@ -4974,7 +4989,7 @@ function showClear() {
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
   const xpB = 200 * (S.diff + 1); gainXp(xpB);
-  if (SH().key === 'rob' && sk('maint')) armor.hp = Math.min(armorMax(), armor.hp + .05);
+  if (SH().key === 'rob' && sk('maint')) armor.hp = Math.min(armorMax(), armor.hp + (sk('revision') ? .1 : .05));
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   ab.on = 0;
   carry = { guard: P ? P.guard : 0 };

@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -478,8 +478,8 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(V, ['groslot'], 3); g.superOn({ x: 20, y: 30 }); const dur = g.power.sup;
   const ouf = list => { withSk(V, list); let alive = 0; for (let k = 0; k < 1000; k++) { g.S.phase = 'play'; g.S.safe = 0; g.P.shield = false; g.hitPlayer(null); if (g.S.phase === 'play') alive++; } return alive / 10; };
   withSk(V, ['ange']); g.dropShield(); const inv = g.invuln;
-  withSk(V, ['trefle']); g.P.shield = false; g.crash(); const p1 = g.S.phase, safe = g.S.safe > 0; g.S.safe = 0; g.crash(); const p2 = g.S.phase;
-  console.log(`veinard : écrin, super bonus vieilli de ${aged.toFixed(2)} s en traçant ; gros lot, super casque ${dur} s ; ouf ${ouf(['ouf'])} %, baraka ${ouf(['ouf', 'baraka'])} % de coups ratés ; ange gardien ${inv} s ; trèfle : 1er crash -> ${p1} (répit ${safe}), 2e -> ${p2}`);
+  withSk(V, ['trefle']); g.P.shield = false; g.crash(); const p1 = g.S.phase, safe = g.S.safe > 0; g.S.safe = 0; g.crash(); g.S.safe = 0; g.crash(); const p2 = g.S.phase;
+  console.log(`veinard : écrin, super bonus vieilli de ${aged.toFixed(2)} s en traçant ; gros lot, super casque ${dur} s ; ouf ${ouf(['ouf'])} %, baraka ${ouf(['ouf', 'baraka'])} % de coups ratés ; ange gardien ${inv} s ; trèfle : 1er crash -> ${p1} (répit ${safe}), 3e -> ${p2}`);
 }
 // Blindé
 {
@@ -687,6 +687,29 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
     out.push(sh.name.toLowerCase() + ' ' + crashes + ' crash(s)');
   });
   console.log('endurance, 12 compétences à la fois : ' + out.join(', '));
+}
+// Rangs 4 et 5 : Veinard, Blindé, Frénétique
+{
+  const V = SHIPI('cla'), B = SHIPI('rob'), F = SHIPI('fre');
+  withSk(V, ['aimant'], 3); g.items.length = 0; g.spawnItem(); const it = g.items[0]; it.x = PX() + 4; it.y = PY() + 3; it.type = 'chr'; const d0 = Math.hypot(it.x - PX(), it.y - PY()); step(10); const d1 = Math.hypot(it.x - PX(), it.y - PY());
+  let pl0 = 0, pl1 = 0; for (let k = 0; k < 300; k++) { withSk(V, []); pl0 += g.S.bonusLeft; withSk(V, ['pluie']); pl1 += g.S.bonusLeft; }
+  withSk(V, ['eclat'], 3); g.items.length = 0; g.spawnItem(); g.items[0].type = 'schr'; let s0 = g.S.score; g.collect(g.items[0]); const ecl = g.S.score - s0;
+  withSk(V, ['entree']); const first = g.pickType(), second = g.pickType();
+  let ouf = 0; for (let k = 0; k < 300; k++) { withSk(V, ['porteb']); g.P.shield = false; g.crash('wave'); if (g.S.phase === 'play') ouf++; }
+  withSk(V, ['frole']); g.P.shield = false; g.setDir('down'); step(10); { const e = g.makeFoe('out', 1); e.x = PX() + 1.25; e.y = PY() + 3; e.vx = e.vy = 0; g.foes.push(e); } s0 = g.S.score; step(15); const fro = g.S.score - s0;
+  console.log(`veinard 4-5 : aimant, bonus à ${d0.toFixed(1)} -> ${d1.toFixed(1)} cases ; pluie ${(pl0 / 300).toFixed(2)} -> ${(pl1 / 300).toFixed(2)} bonus ; éclat +${ecl} ; entrée royale ${first} puis ${second} ; porte-bonheur ${(ouf / 3).toFixed(0)} % d'ondes éteintes ; frôlé +${fro}`);
+  const hitB = (list, src, drawing, hp = 1) => { withSk(B, list); g.armor.hp = hp; g.P.drawing = drawing; let e = src; if (src === 'foe') { e = g.makeFoe('out', 1); e.x = PX() + .5; e.y = PY(); g.foes.push(e); } g.armorHit(e); return +(hp - g.armor.hp).toFixed(3); };
+  withSk(B, ['nanites']); g.armor.hp = .5; g.P.shield = false; g.setDir('left'); step(4); step(60 * 8); const nan = +(g.armor.hp - .5).toFixed(3);
+  const tb = list => { withSk(B, list); g.P.shield = false; g.setDir('left'); step(3); const x = g.P.x; step(30); return (x - g.P.x) / G; };
+  withSk(B, ['maint', 'revision']); g.armor.hp = .5; g.showClearX(); const rev = +g.armor.hp.toFixed(2);
+  console.log(`blindé 4-5 : onde ${hitB([], 'wave', true)} -> blindage lourd ${hitB(['lourd'], 'wave', true)} ; nanites +${nan} en 8 s ; turbo ${tb([]).toFixed(1)} -> ${tb(['turbo']).toFixed(1)} cases ; charge ${hitB(['charge'], 'foe', true)} ; rouleau ${hitB(['rouleau'], 'foe', true)} ; révision 50 % -> ${rev} ; pare-chocs, 1er choc ${hitB(['parechoc'], 'out', false)}, 2e ${(() => { g.armorHit('out'); return +(1 - g.armor.hp).toFixed(2); })()} ; forteresse max ${(() => { withSk(B, ['forteresse']); return g.armorMax(); })()}`);
+  withSk(F, ['etincelles']); { const a = g.makeFoe('out', 1), b = g.makeFoe('out', 1); a.x = 20; a.y = 30; b.x = 21.5; b.y = 30; g.foes.push(a, b); g.burnFoe(a); var et = b.dead; }
+  withSk(F, ['cendres']); { const f0 = g.S.filled; const a = g.makeFoe('out', 1); a.x = 20; a.y = 30; g.foes.push(a); g.burnFoe(a); var cen = (g.S.filled - f0) / g.S.interior * 100; }
+  withSk(F, ['adrenaline']); g.ab.on = 5; g.furyGain(g.S.interior * .3, false); const adr = +g.ab.fury.toFixed(2);
+  withSk(F, ['rugissement']); g.ab.fury = 1; { const e = g.makeFoe('out', 1); e.x = PX() + 3; e.y = PY() + 3; g.foes.push(e); g.usePower(); var rug = e.stun > 0; }
+  withSk(F, ['freins']); g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); step(5); g.setDir('stop'); const fy = g.P.y; step(10); const frein = g.P.y === fy;
+  withSk(F, ['secondsouffle']); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); g.ab.on = .05; step(5); const ss = g.ab.fury;
+  console.log(`frénétique 4-5 : étincelles, voisin grillé ${et} ; cendres +${cen.toFixed(1)} % ; adrénaline, 30 % pendant la furie -> ${adr} ; rugissement, voisin assommé ${rug} ; freins, arrêté en pleine furie ${frein} ; second souffle ${ss}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
