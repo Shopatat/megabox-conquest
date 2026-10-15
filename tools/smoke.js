@@ -660,6 +660,30 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`prédateur : combo tenu ${win} s, maximum ×${mx} ; sang ${bm} s ; portée ${reach} ; recharge du bond ${cd([], 0)} s, ressort ${cd(['ressort'], 0)} s, à ×4 ${cd([], 4)} s -> déchaîné ${cd(['dechaine'], 4)} s`);
   console.log(`prédateur : 10 s de jeu, sang perdu ${drain([])} -> métabolisme ${drain(['grosseveine', 'metab'])} ; une proie +${gain([])} s -> festin +${gain(['grosseveine', 'metab', 'festin'])} s ; dernier souffle : ${ds}, puis ${ds2} ; trou noir mangé ${apex.dead} (sans apex ${apexNo.dead}, ${g.S.phase}) ; réaction en chaîne, voisin emporté ${chain} ; proie effrayée parcourt ${fear([])} -> terreur ${fear(['terreur'])}`);
 }
+// Endurance : chaque vaisseau avec ses 12 compétences à la fois, parties au hasard sur plusieurs niveaux
+{
+  const out = [];
+  g.SHIPS.forEach((sh, i) => {
+    const all = g.SKILLS[sh.key].flatMap(b => b[2].map(n => n[0]));
+    let s = 1234 + i * 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    let crashes = 0, levels = 0, last = '';
+    for (const L of [3, 12, 22]) {
+      g.newGame(2, L, i); g.setSkills(all); g.setupLevel(L); g.go();
+      for (let f = 0; f < 2500; f++) {
+        if (g.S.phase === 'ready') g.go();
+        if (g.S.phase === 'over') { g.newGame(2, L, i); g.setSkills(all); g.setupLevel(L); g.go(); }
+        if (g.S.phase === 'clear') { levels++; g.setupLevel(Math.min(25, g.S.level + 1)); g.go(); }
+        if (rnd() < .02) g.usePower();
+        if (rnd() < .04) g.setDir(DIRS[(rnd() * 4) | 0]);
+        step();
+        if (g.S.phase === 'crash' && last !== 'crash') crashes++;
+        last = g.S.phase;
+      }
+    }
+    out.push(sh.name.toLowerCase() + ' ' + crashes + ' crash(s)');
+  });
+  console.log('endurance, 12 compétences à la fois : ' + out.join(', '));
+}
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
   g.newGame(1, 1, 2); g.go(); g.ab.fury = .4; g.showClear(); g.setupLevel(2);
