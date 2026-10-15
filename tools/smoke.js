@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -458,6 +458,7 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
 }
 // 5s) Compétences, vaisseau par vaisseau (withSk : nouvelle partie avec ces compétences, niveau L)
 const withSk = (ship, list, L = 1) => { g.newGame(1, L, ship); g.setSkills(list); g.setupLevel(L); g.go(); g.foes.length = 0; };
+const fmtN = n => String(Math.round(n));
 const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
 // Veinard
 {
@@ -607,6 +608,23 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const wv = list => { withSk(TR, list); g.P.shield = false; g.setDir('down'); step(20); g.onTrailHitX(g.makeFoe('out', 1), g.trail[0]); return g.wave_.speed / G; };
   withSk(TR, ['leurre']); g.P.shield = false; g.setDir('left'); step(4); g.setDir('stop'); { const e = g.makeFoe('out', 1); e.x = PX() + 3; e.y = PY() + 8; e.vx = 6; e.vy = 0; g.foes.push(e); step(30); var lure = e.vx < 5.5 && e.vy < 0; }
   console.log(`piégeur : collet, ralenti ${collet} s ; onde ${wv([])} cases/s, filet ${wv(['filet'])} ; leurre, la boule vire vers lui ${lure}`);
+}
+// Monarque
+{
+  const M = SHIPI('mon');
+  const ttl = list => { withSk(M, list); g.items.length = 0; g.spawnItem(); return +(g.items[0].ttl).toFixed(1); };
+  const t0 = ttl([]), t1 = ttl(['patience']), t2 = ttl(['patience', 'majeste']);
+  withSk(M, ['tresor']); g.items.length = 0; g.spawnItem(); const ty = g.items[0].type; g.collect(g.items[0]); const stored = g.S.tresor === ty; g.usePower(); const used = !g.S.tresor;
+  withSk(M, ['divin']); g.items.length = 0; g.spawnItem(); const pair = g.items.length; g.collect(g.items[0]); const gone = g.items[1] && g.items[1].done;
+  withSk(M, ['heraut'], 2); g.items.length = 0; g.S.bonusLeft = 1; g.S.bonusWait = 2.5; step(2); const h = g.S_.herald; step(200); const at = h && g.items[0] && Math.hypot(g.items[0].x - h.x, g.items[0].y - h.y) < .01;
+  const inn = list => { withSk(M, list, 21); g.setupLevel(21); return g.foes.filter(e => e.kind === 'inn').length; };
+  withSk(M, ['tribut']); const s0 = g.S.score; g.awardCells(Math.ceil(g.S.interior * .25), { x: 10, y: 10 }, false); const trib = g.S.score - s0 - Math.round(Math.ceil(g.S.interior * .25) * 10 / G / G);
+  g.mxp.mon = 80000; g.skSave('mon', ['heraut', 'garde', 'tribut', 'couronne'], false); g.newGame(1, 1, M); const ml = g.maxLives(); g.skSave('mon', [], false); g.mxp.mon = 0;
+  const sd = list => { withSk(M, list); return g.supDur(); };
+  withSk(M, ['magnif']); { const e = g.makeFoe('out', 1); e.x = 30; e.y = 40; e.vx = e.vy = 0; g.foes.push(e); g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); var mag = e.dead; }
+  const pr = list => { let n = 0, w = 0; for (let k = 0; k < 400; k++) { withSk(M, list); n += g.S.bonusLeft; w += g.S.bonusWait; } return (n / 400).toFixed(2) + ' bonus, 1er à ' + (w / 400).toFixed(1) + ' s'; };
+  console.log(`monarque : durée de vie ${t0} s, patience ${t1}, majesté ${t2} ; trésor, gardé ${stored}, déclenché ${used} ; droit divin, ${pair} proposés, l'autre disparaît ${gone} ; héraut, annoncé et apparu au même endroit ${!!at} ; gardiens au niveau 21 : ${inn([])}, garde royale ${inn(['garde'])}`);
+  console.log(`monarque : tribut sur 25 % +${fmtN(trib)} ; couronnement ${ml} vies max ; super bonus ${sd([])} s, apparat ${sd(['apparat'])}, splendeur ${sd(['apparat', 'splendeur'])} ; magnificence, ennemi détruit ${mag} ; ${pr([])} -> prodigalité ${pr(['prodig'])}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
