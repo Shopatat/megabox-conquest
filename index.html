@@ -904,9 +904,10 @@ const SKILLS = {
       ['paralysie', 'Paralysie', 'Les ennemis terrorisés à moins de 3 cases se figent.'],
       ['apex', 'Apex', 'Le trou noir devient mangeable : énorme gerbe, 5 000 × niveau.']]]]
 };
-// palier n : 1 500 × n² XP (15 paliers, le dernier vers 337 500 XP, environ cinq parties complètes) ; l'ultime (6e rang)
-// coûte ULT_COST points et demande la maîtrise ULT_LV
-const MASTERY = Array.from({ length: 15 }, (_, i) => 1500 * (i + 1) * (i + 1)), ULT_COST = 3, ULT_LV = 10, ULT_R = 5;
+// palier n : 5 000 × n^1,7 XP, arrondi à 500 (demande de Fabien : il faut vraiment jouer pour débloquer ; 15 paliers, de 5 000
+// à 499 500 XP, soit 2 niveaux pour le premier, une partie complète pour le 5e, environ 7 parties pour le 15e) ; l'ultime
+// (6e rang) coûte ULT_COST points et demande la maîtrise ULT_LV
+const MASTERY = Array.from({ length: 15 }, (_, i) => Math.round(5000 * Math.pow(i + 1, 1.7) / 500) * 500), ULT_COST = 3, ULT_LV = 10, ULT_R = 5;
 const skCost = list => list.reduce((a, id) => a + (isUlt(id) ? ULT_COST : 1), 0);
 const isUlt = id => Object.values(SKILLS).some(br => br.some(b => b[2][ULT_R][0] === id));
 var mxp = store.get('mxp', {});
