@@ -738,6 +738,40 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(FT, ['pickpocket'], 3); g.camo.on = 3; g.items.length = 0; g.spawnItem(); g.items[0].type = 'chr'; let s1 = g.S.score; g.collect(g.items[0]); const pick = g.S.score - s1;
   console.log(`furtif 4-5 : optique ${opt} s ; recharge rapide ${cf} cases ; brouillage, gardien sur son terrain -> ${br} ; indétectable, chasseur à 5 cases le voit ${ind} ; MEGA ${mega([])} -> précision ${mega(['precision'])} ; pickpocket +${pick}`);
 }
+// Rangs 4 et 5 : Rembobineur, Piégeur, Monarque
+{
+  const R = SHIPI('rew'), TR = SHIPI('trap'), M = SHIPI('mon');
+  withSk(R, ['remontee']); g.rw.charge = 1; g.setDir('down'); step(40); g.setDir('right'); step(20); g.setDir('up'); step(60); const rem = +(g.rw.charge - 1).toFixed(2);
+  const rwEnd = list => { withSk(R, list); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); };
+  rwEnd(['dejavu']); const dv = g.S.safe > 0;
+  rwEnd(['bulle']); const bul = g.foeSlow();
+  withSk(R, ['secondechance']); g.P.shield = false; g.setDir('down'); step(90); g.crash(); step(40); g.rw.charge = 1.5; g.rewind(); for (let i = 0; i < 60 * 20 && g.rw.play; i++) { step(1); if (i === 60) g.rewind(); } const sc = g.rw.charge;
+  withSk(R, ['flashback']); g.P.shield = false; g.setDir('down'); step(90); g.rw.charge = 0; g.crash(); step(40); const can = g.canRewind(); g.rewind(); let fn = 0; for (let i = 0; i < 60 * 30 && g.rw.play; i++) { step(1); fn++; } const fb = g.S.phase;
+  console.log(`rembobineur 4-5 : remontée +${rem} s ; titanesque ${(() => { withSk(R, ['titan']); return g.rwSpan(); })()} s ; déjà-vu, intouchable ${dv} ; bulle temporelle, monde à ${bul} ; seconde chance, jauge 1,5 -> ${sc} ; flashback, rembobinable sans jauge ${can}, puis ${fb}`);
+  const zone = (list, depth, foesAt, far = true) => {
+    withSk(TR, list); g.P.shield = false;
+    const fs_ = foesAt.map(([x, y, k]) => { const e = g.makeFoe(k || 'out', 1); e.x = x; e.y = y; e.vx = 0; e.vy = 0; g.foes.push(e); return e; });
+    if (far) { const b = g.makeFoe('out', 1); b.x = 40.5; b.y = 58.5; g.foes.push(b); g.__far = b; }
+    const s0 = g.S.score, l0 = g.S.lives;
+    g.setDir('down'); let n = 0; while (g.P.y < depth * G && n++ < 400) step();
+    g.setDir('left'); n = 0; while (g.P.drawing && n++ < 400) step();
+    return { dead: fs_.every(e => e.dead || !g.foes.includes(e)), pts: g.S.score - s0, lives: g.S.lives - l0 };
+  };
+  const ac = zone(['acier'], 27, [[10.5, 8.5]]).dead, acNo = zone(['tlarge'], 27, [[10.5, 8.5]]).dead;
+  zone(['fermeture'], 16, [[10.5, 8.5]]); const ferm = g.__far.slowT > 0;
+  const col = zone(['collection'], 16, [[8.5, 8.5], [14.5, 10.5, 'perf']]).pts - zone([], 16, [[8.5, 8.5], [14.5, 10.5, 'perf']]).pts;
+  g.newGame(1, 1, TR); g.S.usedGame.trapped = 5; g.setSkills(['trophee']); g.setupLevel(1); g.go(); g.foes.length = 0; const l0 = g.S.lives; { const e = g.makeFoe('out', 1); e.x = 10.5; e.y = 8.5; e.vx = e.vy = 0; g.foes.push(e); const b = g.makeFoe('out', 1); b.x = 40.5; b.y = 58.5; g.foes.push(b); g.P.shield = false; g.setDir('down'); let n = 0; while (g.P.y < 16 * G && n++ < 400) step(); g.setDir('left'); n = 0; while (g.P.drawing && n++ < 400) step(); } const tro = g.S.lives - l0;
+  withSk(TR, ['glu']); g.P.shield = false; g.setDir('down'); step(20); { const e = g.makeFoe('out', 1); g.foes.push(e); g.onTrailHitX(e, g.trail[0]); var glu = e.stun > 0; }
+  const cage = list => { withSk(TR, list); g.P.shield = false; g.setDir('down'); step(100); g.onTrailHitX(g.makeFoe('perf', 1), g.trail[0]); step(90); return g.S.phase; };
+  console.log(`piégeur 4-5 : zone de 20 %, très large ${acNo ? 'piégé' : 'libre'}, mâchoires d'acier ${ac ? 'piégé' : 'libre'} ; fermeture éclair, l'autre ennemi ralenti ${ferm} ; collection +${col} ; trophée de vie, 6e ennemi +${tro} vie ; glu ${glu} ; onde lancée loin derrière : ${cage([])}, cage ${cage(['cage'])}`);
+  withSk(M, ['tresor', 'coffret']); for (let k = 0; k < 2; k++) { g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); } const two = !!(g.S_.tresor && g.S_.tresor2); g.usePower(); const left = !!g.S_.tresor;
+  withSk(M, ['tresor', 'joyau']); g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); g.usePower(); const joy = g.S.safe > 0;
+  withSk(M, ['emissaire'], 3); let far = 0; for (let k = 0; k < 30; k++) { g.items.length = 0; g.spawnItem(); const it = g.items[0]; if (it && Math.hypot(it.x - PX(), it.y - PY()) > 15.5) far++; }
+  const inn = list => { withSk(M, list, 21); g.setupLevel(21); return g.foes.filter(e => e.kind === 'inn').length; };
+  let cor = 0; for (let k = 0; k < 400; k++) { withSk(M, ['cortege'], 3); g.S.lives = 1; g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); if (g.S.lives > 1) cor++; }
+  withSk(M, ['divin'], 3); g.items.length = 0; g.spawnItem(); const three = g.items.length; g.collect(g.items[0]); const gone = g.items.filter(x => x.done).length;
+  console.log(`monarque 4-5 : coffret, deux trésors ${two}, il en reste un après usage ${left} ; joyau, invincible ${joy} ; émissaire, loin ${far}/30 ; gardiens niveau 21 : ${inn([])}, garde + courtisans ${inn(['garde', 'courtisans'])} ; cortège, vie ${(cor / 4).toFixed(0)} % ; droit divin, ${three} proposés, ${gone} retirés`);
+}
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
   g.newGame(1, 1, 2); g.go(); g.ab.fury = .4; g.showClear(); g.setupLevel(2);
