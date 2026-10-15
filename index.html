@@ -4866,7 +4866,7 @@ function showReady(mode) {
     <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : S.comp.name ? 'NIVEAU · « ' + S.comp.name + ' »' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
     ${infoRows(mode === 'restart')}
     ${newcomers()}
-    <button class="btn" id="go">PARTIR</button>
+    <button class="btn" id="go">${mode === 'restart' ? 'C\'EST REPARTI' : 'DÉCOLLAGE'}</button>
     <p class="count">ou touche l'écran</p>`, () => { hideOverlay(); S.phase = 'play'; last = performance.now(); sfx.start(); });
   setupFoePics();
 }
