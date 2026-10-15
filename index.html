@@ -463,7 +463,8 @@ const SHIPS = [
     desc: 'Le vaisseau d\'origine, avec la chance en plus : 50 % de bonus en plus, deux fois plus de super bonus, et ils restent plus longtemps.',
     deco(g, o) {
       // trèfle à quatre feuilles sur le cockpit
-      g.fillStyle = o.neon ? '#ffd23f' : T.playerSea;
+      const fane = o.neon && !shipPick && S.phase !== 'title' && sk('trefle') && S.used && S.used.trefle;
+      g.fillStyle = fane ? '#8a8f6a' : o.neon ? '#ffd23f' : T.playerSea;
       g.strokeStyle = o.neon ? '#6b3d00' : T.playerSeaInk; g.lineWidth = .02;
       for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.arc(.14 + Math.cos(a) * .085, Math.sin(a) * .085, .075, 0, Math.PI * 2); g.fill(); g.stroke(); }
       g.beginPath(); g.arc(.14, 0, .04, 0, Math.PI * 2); g.fill();
@@ -1334,8 +1335,8 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; loadSkills();
-  rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = 1; gam.chips = 1;
+  S.diff = d; S.ship = ship; S.score = 0; S.lives = SH().lives; S.shipTip = true; S.usedGame = {}; loadSkills();
+  rw.charge = RW_SPAN; ab.fury = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
   try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(()=>{}); } catch (e) {}
@@ -1344,13 +1345,13 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; loadSkills();
+  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
   const pw = sv.pow || {}; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
 function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
-  S.xp = 0; S.mlv0 = mLevel(SH().key);
+  S.xp = 0; S.mlv0 = mLevel(SH().key); S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
   if (S.test) S.comp = { name: '', out: 2, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
   resetGrid();
   S.filled = 0;
@@ -1362,8 +1363,10 @@ function setupLevel(L, instant) {
   items = []; S.bonusLeft = C.bonus ? bonusCount() : 0; S.bonusWait = bonusDelay(true); stage.classList.remove('super'); combo = 0;
   // facteur de bonus du vaisseau : Blindé ×0,75 (chaque bonus prévu a 3 chances sur 4 d'apparaître), Veinard ×1,5
   // (chaque bonus prévu a 1 chance sur 2 d'en amener un deuxième)
-  const bf = SH().bonus;
+  const bf = SH().bonus * (sk('etoile') ? 1.25 : 1);
   if (bf !== 1) { let n = 0; for (let k = 0; k < S.bonusLeft; k++) n += Math.floor(bf) + (Math.random() < bf % 1 ? 1 : 0); S.bonusLeft = n; }
+  // Veinard, Coup de chance : le premier bonus du niveau arrive dans les 5 premières secondes
+  if (sk('chance') && C.bonus) { S.bonusLeft = Math.max(1, S.bonusLeft); S.bonusWait = 1 + Math.random() * 4; }
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   // les pouvoirs ne se rechargent pas entre les niveaux (demande de Fabien) : jauge de furie, bouclier et jauge conservés
   ab.on = 0; ab.idle = 0; fires = []; fireT.fill(0); fireClock = 0; plan = null; dash = null; slow = 0; superFlash = 0;
@@ -1390,7 +1393,7 @@ function newPlayer(x = GC >> 1, y = 0) {
 const SHIELD_R = 3;
 function dropShield() {
   if (!P.shield) return;
-  P.shield = false; P.shieldFade = 1; P.shieldX = (P.x + .5) / G; P.shieldY = (P.y + .5) / G; invuln = 1;
+  P.shield = false; P.shieldFade = 1; P.shieldX = (P.x + .5) / G; P.shieldY = (P.y + .5) / G; invuln = sk('ange') ? 3 : 1;
 }
 // Après un crash : la case conquise la plus proche de l'endroit du crash, de préférence loin de tout ennemi
 function respawnCell(px, py) {
@@ -1481,7 +1484,7 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (SH().key === 'fre' ? (ab.on > 0 ? FR_SPD : FRE_SPD) : 1)
-  * (SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
+  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1;
@@ -1661,6 +1664,7 @@ function capture() {
   const n = cells.length;
   awardCells(n, playerPos(), n >= S.interior * 0.15);
   furyGain(n, n >= S.interior * 0.15);
+  if (SH().key === 'rob' && sk('recup') && n >= S.interior * .1) { armor.hp = Math.min(armorMax(), armor.hp + .03); pwHud(); }
   sfx.capture(n);
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
@@ -1884,7 +1888,7 @@ function updateFoes(dt) {
 }
 // Le vaisseau est touché (par un ennemi, ou par l'anneau d'un pulsar si e est nul)
 function hitPlayer(e) {
-  if (S.phase !== 'play') return;
+  if (S.phase !== 'play' || S.safe > 0) return;
   if (power.sup > 0) { if (e) smash(e); return; }
   // Prédateur : pendant un bond (ou sous Casque), il dévore ce qu'il touche ; le trou noir et le spectre invisible ne se mangent pas
   if (SH().key === 'pred' && e && (jawsOpen() || helmet()) && devour(e)) return;
@@ -1892,6 +1896,8 @@ function hitPlayer(e) {
   if (invuln > 0 && !P.drawing) return;
   if (SH().key === 'enc' && absorb(e)) return;
   if (SH().key === 'rob') { armorHit(e ? e : 'ring'); return; }
+  // Veinard, Ouf / Baraka : le coup rate (répit d'un instant pour qu'un même contact ne retente pas sa chance)
+  if (sk('ouf') && Math.random() < (sk('baraka') ? .2 : .1)) { const pp = playerPos(); S.safe = .8; popups.push({ x: pp.x, y: pp.y - 1.6, text: 'OUF !', age: 0, color: T.rainbow ? '#7dff9a' : T.ball }); burst(pp.x, pp.y, T.rainbow ? '#7dff9a' : T.shock, 16, 6); sfx.ready(); return; }
   crash();
 }
 function shieldBounce(e, ox, oy) {
@@ -1938,7 +1944,7 @@ function superMusic(dt) {
   tone(f, .09, 'square', .022); if (musicStep % 2) tone(f / 2, .1, 'triangle', .02);
 }
 function superOn(it) {
-  setPow('sup', POWER_T); power.inv = 0; combo = 0; musicT = 0; musicStep = 0;
+  setPow('sup', supDur()); power.inv = 0; combo = 0; musicT = 0; musicStep = 0;
   slow = 0.6; superFlash = 1; superTint = '255,226,122'; shake = REDUCED ? 0 : 1;
   rings.push({ x: it.x, y: it.y, r: 0, max: 70, age: 0, color: T.rainbow ? '#ffe27a' : T.shock, big: true });
   for (let k = 0; k < 4; k++) burst(it.x, it.y, T.rainbow ? `hsl(${k * 90},100%,65%)` : T.ball, 30, 18);
@@ -2022,6 +2028,45 @@ function burnFoe(e) {
   popups.push({ x: e.x, y: e.y - 1.2, text: 'GRILLÉ ! +' + pts, age: 0, color: T.rainbow ? '#ff8a2a' : T.ball });
   sfx.burn(); hud();
 }
+// Sauvetage par une compétence : pas de crash. Si l'onde de choc a rattrapé la tête du fil ou s'il s'est croisé, le fil
+// est effacé (conquête annulée) ; puis S.safe s pendant lesquelles rien ne peut le toucher (il clignote)
+function rescue(text, color, cause, safe = 1.5) {
+  const pp = playerPos();
+  if (cause === 'self') dissolveTrail(); else if (wave && P.drawing) waveStop();
+  S.safe = safe;
+  burst(pp.x, pp.y, color, 40, 12); burst(pp.x, pp.y, T.rainbow ? '#ffffff' : T.shock, 14, 7);
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: 7, age: 0, color });
+  popups.push({ x: pp.x, y: pp.y - 1.8, text, age: 0, color, big: true });
+  shake = REDUCED ? 0 : .8; flash = .6;
+  sfx.guard();
+}
+// Compétences qui annulent un crash ; renvoie true si le vaisseau est sauvé
+function skillSave(cause) {
+  const used = S.used || (S.used = {});
+  if (sk('trefle') && !used.trefle) { used.trefle = 1; rescue('TRÈFLE !', T.rainbow ? '#7dff9a' : T.shock, cause); return true; }
+  return false;
+}
+// Ennemi détruit par une compétence (explosion, texte, points) ; le trou noir y échappe sauf mention contraire
+function killFoe(e, text, color, pts = 300 * S.level, big) {
+  if (!e || e.dead || (e.kind === 'amph' && !big)) return false;
+  e.dead = true;
+  const c = color || foeColor(e);
+  burst(e.x, e.y, foeColor(e), 30, 11); burst(e.x, e.y, c, 18, 8);
+  rings.push({ x: e.x, y: e.y, r: 0, max: big ? 9 : 4.5, age: 0, color: c });
+  shake = REDUCED ? 0 : Math.max(shake, big ? 1.2 : .5);
+  S.score += pts;
+  popups.push({ x: e.x, y: e.y - 1.2, text: (text ? text + ' ' : '') + '+' + fmt(pts), age: 0, color: c });
+  sfx.smash(); hud();
+  return true;
+}
+// Ennemi assommé un moment par une compétence (il ne bouge plus et ne touche plus rien)
+function stunBy(e, t) {
+  if (!e || e.dead || e.kind === 'amph') return;
+  if (!(e.stun > 0)) burst(e.x, e.y, T.rainbow ? '#ffe27a' : T.shock, 10, 5);
+  e.stun = Math.max(e.stun || 0, t);
+}
+// durée des super bonus (Veinard : Gros lot)
+const supDur = () => POWER_T * (sk('groslot') ? 1.5 : 1);
 // Pouvoir du vaisseau (bouton du HUD, F ou E) : furie du Frénétique, rembobinage du Rembobineur…
 function usePower() {
   if (SH().key === 'pred') { predBite(); return; }
@@ -2054,6 +2099,7 @@ function updateAbility(dt) {
   }
   updateFires(dt);
   if (P && P.grace > 0) P.grace -= dt;
+  if (S.safe > 0) S.safe -= dt;
   if (armor.jolt > 0) armor.jolt -= dt;
   if (armor.cd > 0) armor.cd -= dt;
   // Blindé abîmé : il fume, puis crache des étincelles
@@ -2276,7 +2322,7 @@ function flee(e, dt) {
 // Chaque nouvelle case de fil recharge les pouvoirs (bouclier, rembobinage, blindage)
 function seaStep() {
   const k = SH().key;
-  if (k === 'rob' && armor.hp < 1) { armor.hp = Math.min(1, armor.hp + 1 / ARMOR_CELLS / G); pwHud(); }
+  if (k === 'rob' && armor.hp < armorMax()) { armor.hp = Math.min(armorMax(), armor.hp + 1 / armorCells() / G); pwHud(); }
   if (k === 'enc' && P.guard > 0) {
     P.guard -= 1 / G; if (P.guard < 1e-6) P.guard = 0;
     if (!P.guard) { sfx.guardUp(); const pp = playerPos(); rings.push({ x: pp.x, y: pp.y, r: 0, max: 2.5, age: 0, color: T.rainbow ? '#5dffb0' : T.shock }); powersHud(); }
@@ -2527,6 +2573,9 @@ const ARMOR_CELLS = 5000, HIT_CD = .8;
 const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, ring: .08, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
+// blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
+const armorMax = () => sk('forteresse') ? 1.5 : 1;
+const armorCells = () => ARMOR_CELLS / (sk('soudeur') ? 2 : 1);
 // un ennemi au contact du vaisseau : l'onde qu'il déclenche en touchant le bout du fil fait partie du même choc
 function foeTouching() {
   const pp = playerPos();
@@ -2536,7 +2585,9 @@ function armorHit(src) {
   const e = typeof src === 'object' ? src : null, kind = e ? e.kind : src;
   let dmg = ARMOR_DMG[kind] || .1;
   if (e && e.kind === 'div') dmg = [.12, .09, .06][e.gen || 0];
-  armor.hp = Math.max(0, armor.hp - dmg); armor.jolt = .2; armor.cd = .6;
+  if (sk('plaques')) dmg *= .9;
+  if (sk('reactives') && armor.hp < .3) dmg *= .75;
+  armor.hp = Math.max(0, armor.hp - dmg); armor.jolt = sk('masse') ? 0 : .2; armor.cd = .6;
   const pp = playerPos();
   if (e) {
     e.hitCd = HIT_CD;
@@ -2547,6 +2598,13 @@ function armorHit(src) {
   popups.push({ x: pp.x, y: pp.y - 1.4, text: '-' + Math.round(dmg * 100) + ' %', age: 0, color: armor.hp > .3 ? (T.rainbow ? '#ffb347' : T.ball) : T.danger });
   shake = REDUCED ? 0 : Math.max(shake, .35); flash = Math.max(flash, .15);
   sfx.clang(); pwHud();
+  if (e && e.kind !== 'amph') {
+    // Rouleau compresseur : en traçant, il écrase ce qu'il percute ; Bélier : il l'assomme
+    if (sk('rouleau') && P.drawing) killFoe(e, 'ÉCRASÉ !', T.rainbow ? '#dfe6ee' : T.shock);
+    else if (sk('belier')) stunBy(e, 2);
+  }
+  // Seconde coque : une fois par partie, à 0 % il repart avec 25 %
+  if (armor.hp <= 0 && sk('coque') && !S.usedGame.coque) { S.usedGame.coque = 1; armor.hp = .25; rescue('SECONDE COQUE !', T.rainbow ? '#dfe6ee' : T.shock); pwHud(); return; }
   if (armor.hp <= 0) crash();
 }
 
@@ -2867,9 +2925,10 @@ function drawSlot() {
 }
 
 /* ---------- Crash ---------- */
-function crash() {
-  if (S.phase !== 'play') return;
+function crash(cause) {
+  if (S.phase !== 'play' || S.safe > 0) return;
   if (helmet() || power.sup > 0) return;
+  if (skillSave(cause)) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
@@ -2903,7 +2962,7 @@ function updateCrash(dt) {
     P = newPlayer(rx, ry); P.guard = guard;
     // Prédateur : il repart avec la jauge de sang au moins à moitié
     pred.blood = Math.max(pred.blood, BLOOD_MAX / 2);
-    if (S.test && armor.hp <= 0) armor.hp = 1;
+    if (S.test && armor.hp <= 0) armor.hp = armorMax();
     rw.hist = []; camo.on = 0;
     invuln = 0;
     if (S.test) { S.phase = 'play'; hud(); pwHud(); } else showReady('restart');
@@ -2934,22 +2993,23 @@ function pickType() {
     return 'sterr';
   }
   let pool = [['terr', 3], ['inv', 3], ['spd', 2.5], ['chr', 2.5]];
-  if (S.lives < maxLives()) pool.push(['life', 1.5]);
+  if (S.lives < maxLives() || (SH().key === 'rob' && sk('pieces') && armor.hp < armorMax())) pool.push(['life', 1.5]);
   // super bonus : rares (environ 1 bonus sur 8 en tout), à partir du niveau 3 ; deux fois plus fréquents pour le Veinard
-  if (S.level >= 3) {
-    const k = SH().superLuck || 1;
+  if (S.level >= 3 || sk('precoce')) {
+    const k = (SH().superLuck || 1) * (sk('veine') ? 1.5 : 1);
     pool.push(['sup', 0.45 * k], ['sterr', 0.35 * k], ['sspd', 0.35 * k], ['schr', 0.35 * k]);
     if (S.lives < maxLives()) pool.push(['slife', 0.3 * k]);
   }
   // certains vaisseaux n'ont pas droit à tous les bonus (Fulgurant : ni vie ni vitesse ; Frénétique : ni vitesse ni super bonus)
   const no = SH().noItems;
-  if (no) pool = pool.filter(([t]) => !no.includes(t));
+  if (no) pool = pool.filter(([t]) => !no.includes(t) || (t === 'life' && sk('pieces')));
   let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random() * tot;
   for (const [t, w] of pool) { if ((r -= w) <= 0) return t; }
   return pool[pool.length - 1][0];
 }
 function spawnItem() {
-  const type = pickType(), medium = ITEM[type].medium, cands = [];
+  const type = pickType(), medium = ITEM[type].medium;
+  let cands = [];
   const pp = playerPos();
   for (let y = G; y < GR - G; y++) for (let x = G; x < GC - G; x++) {
     const v = grid[at(x, y)];
@@ -2959,6 +3019,8 @@ function spawnItem() {
     if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
     cands.push([cx - .5, cy - .5]);
   }
+  // Veinard, Trouvaille : les bonus apparaissent près du vaisseau
+  if (sk('trouvaille')) { const near = cands.filter(([x, y]) => Math.hypot(x + .5 - pp.x, y + .5 - pp.y) < 12); if (near.length) cands = near; }
   if (!cands.length) return false;
   const [x, y] = cands[(Math.random() * cands.length) | 0];
   const a = Math.PI / 4 + ((Math.random() * 4) | 0) * Math.PI / 2;
@@ -2992,7 +3054,8 @@ function collect(it) {
   const color = T.items[it.type];
   burst(it.x, it.y, color, 30, 9);
   if (ITEM[it.type].label) popups.push({ x: it.x, y: it.y - 1.2, text: ITEM[it.type].label, age: 0, color });
-  if (it.type === 'life') { S.lives = Math.min(maxLives(), S.lives + 1); hud(); sfx.power(); }
+  if (it.type === 'life' && SH().key === 'rob') { armor.hp = Math.min(armorMax(), armor.hp + .4); popups.push({ x: it.x, y: it.y - 2.2, text: '+40 %', age: -.1, color }); pwHud(); sfx.power(); }
+  else if (it.type === 'life') { S.lives = Math.min(maxLives(), S.lives + 1); hud(); sfx.power(); }
   else if (it.type === 'sup') superOn(it);
   else if (it.type === 'terr') territoryBurst(it);
   else if (it.type === 'sterr') superBomb(it);
@@ -3003,6 +3066,8 @@ function collect(it) {
   else if (it.type === 'coin') gainChip(it);
   else { setPow(it.type, POWER_T); sfx.power(); }
   powersHud();
+  // Veinard, Corne d'abondance : une chance sur quatre qu'un autre bonus apparaisse aussitôt
+  if (sk('corne') && it.type !== 'coin' && Math.random() < .25 && spawnItem()) popups.push({ x: it.x, y: it.y - 2.4, text: 'ABONDANCE !', age: -.2, color: T.rainbow ? '#7dff9a' : T.ball });
 }
 // Entrée en scène commune des super bonus : ralenti, flash teinté, grand titre arc-en-ciel
 function superIntro(it, text, tint) {
@@ -3022,7 +3087,7 @@ function superBomb(it) {
 // Super Vitesse : vitesse x4 pendant 10 s, des éclairs frappent le vaisseau
 function superSpeed(it) {
   superIntro(it, 'SUPER VITESSE !', '159,243,255');
-  setPow('hyp', POWER_T); power.spd = 0;
+  setPow('hyp', supDur()); power.spd = 0;
   const pp = playerPos();
   for (let k = 0; k < 4; k++) bolts.push({ x0: pp.x + (Math.random() - .5) * 30, y0: -1, x1: pp.x, y1: pp.y, age: -k * 0.07, max: 0.45, follow: true });
   burst(pp.x, pp.y, T.rainbow ? '#9ff3ff' : T.ball, 50, 20); burst(pp.x, pp.y, '#ffffff', 25, 14);
@@ -3045,7 +3110,7 @@ function superLife(it) {
 // Super Chrono : le monde se fige presque (ennemis ×0,15), le vaisseau garde sa vitesse
 function superChrono(it) {
   superIntro(it, 'SUPER CHRONO !', '124,245,196');
-  setPow('schr', POWER_T); power.chr = 0;
+  setPow('schr', supDur()); power.chr = 0;
   for (let k = 0; k < 3; k++) rings.push({ x: it.x, y: it.y, r: 0, max: 16 + k * 16, age: 0, color: T.rainbow ? ['#7cf5c4', '#ffffff', '#43e0ff'][k] : T.shock, big: k === 2 });
   for (const c of ['#7cf5c4', '#ffffff', '#43e0ff']) burst(it.x, it.y, T.rainbow ? c : T.ball, 35, 16);
   sfx.superChrono();
@@ -3127,7 +3192,8 @@ function updateItems(dt) {
     if (S.bonusWait <= 0) { if (spawnItem()) S.bonusLeft--; S.bonusWait = bonusDelay(false); }
   }
   for (const it of items) {
-    it.age += dt; moveItem(it, dt);
+    if (!(sk('ecrin') && SUPER[it.type] && P && P.drawing)) it.age += dt;
+    moveItem(it, dt);
     if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   }
   items = items.filter(it => !it.done && it.age < it.ttl);
@@ -3193,7 +3259,7 @@ function pwHud() {
     else { cls = 'ready fury'; p = 1; inner = FLAME; label = 'Déclencher la furie'; }
   } else if (k === 'rob') {
     const hp = armor.hp;
-    cls = 'armor'; p = hp; inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
+    cls = 'armor'; p = hp / armorMax(); inner = Math.round(hp * 100); label = 'Blindage : ' + inner + ' %';
     b.style.setProperty('--ac', hp > .6 ? '#5dffb0' : hp > .3 ? '#ffb347' : '#ff4d5e');
   } else if (k === 'gam') {
     const n = gam.chips;
@@ -3743,7 +3809,7 @@ function drawTrail(pp) {
 }
 
 function drawPlayer(pp) {
-  const vis = (invuln <= 0 && !(P.grace > 0)) || Math.floor(time * 12) % 2 === 0;
+  const vis = (invuln <= 0 && !(P.grace > 0) && !(S.safe > 0)) || Math.floor(time * 12) % 2 === 0;
   if (!vis) return;
   const sup = power.sup > 0, sh = SH(), rage = frenzyOn() && S.phase !== 'crash';
   // frénésie : aura rouge qui bat comme un cœur
@@ -4534,13 +4600,14 @@ function showClear() {
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
   const xpB = 200 * (S.diff + 1); gainXp(xpB);
+  if (SH().key === 'rob' && sk('maint')) armor.hp = Math.min(armorMax(), armor.hp + .05);
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   ab.on = 0;
   carry = { guard: P ? P.guard : 0 };
   powersHud(); pwHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
-  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState() });
+  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame });
   showOverlay(`
     <h2><span>${D.name.toUpperCase()}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
     <div class="rows">
@@ -4756,7 +4823,7 @@ function showShips(test) {
     <div class="spage">${SHIPS.map((s, i) => `<button data-s="${i}" aria-label="${s.name}" aria-current="${i === menuShip}"><i></i></button>`).join('')}</div>
     <button class="btn" id="go">C'EST PARTI</button>`, () => {
       shipPick = null; store.set('ship', menuShip);
-      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; loadSkills(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = 1; gam.chips = CHIPS_MAX; setupLevel(1); }
+      if (test) { S.test = true; S.diff = menuDiff; S.ship = menuShip; S.score = 0; S.lives = SH().lives; S.shipTip = true; S.usedGame = {}; loadSkills(); rw.charge = RW_SPAN; ab.fury = 1; carry = null; armor.hp = armorMax(); gam.chips = CHIPS_MAX; setupLevel(1); }
       else newGame(menuDiff, menuLevel, menuShip);
     });
   ov.querySelector('.card').classList.add('ships');
@@ -4871,7 +4938,7 @@ function testSync() {
 // pouvoirs à plein : furie, bouclier, rembobinage, blindage, jetons
 function testRefill() {
   if (!S.test) return;
-  ab.fury = 1; rw.charge = RW_SPAN; armor.hp = 1; gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
+  ab.fury = 1; rw.charge = RW_SPAN; armor.hp = armorMax(); gam.chips = CHIPS_MAX; pred.cd = 0; pred.blood = BLOOD_MAX;
   if (P) P.guard = 0;
   powersHud(); pwHud();
 }

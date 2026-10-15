@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -455,6 +455,41 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.showTree(false); g.showShips(false);
   console.log(`maîtrise : 2 points -> ${b1} compétences ; maîtrise 8 -> ${b2.length} dont ${ults} ultime ; sans la 1re de la branche -> ${b3} ; mode test (libre) -> ${b4} ; actives en partie ${on} ; paliers ${g.MASTERY.join(' ')}`);
   g.skSave('cla', [], false); g.skSave('cla', [], true); g.mxp.cla = 0; g.newGame(1, 1, 0);
+}
+// 5s) Compétences, vaisseau par vaisseau (withSk : nouvelle partie avec ces compétences, niveau L)
+const withSk = (ship, list, L = 1) => { g.newGame(1, L, ship); g.setSkills(list); g.setupLevel(L); g.go(); g.foes.length = 0; };
+const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
+// Veinard
+{
+  const V = SHIPI('cla');
+  let ok = true, n0 = 0, n1 = 0;
+  for (let k = 0; k < 300; k++) { withSk(V, ['chance']); if (g.S.bonusLeft < 1 || g.S.bonusWait > 5) ok = false; }
+  for (let k = 0; k < 600; k++) { withSk(V, []); n0 += g.S.bonusLeft; withSk(V, ['etoile']); n1 += g.S.bonusLeft; }
+  withSk(V, ['trouvaille'], 3); let far = 0; for (let k = 0; k < 40; k++) { g.items.length = 0; g.spawnItem(); const it = g.items[0], pp = { x: PX(), y: PY() }; if (it && Math.hypot(it.x - pp.x, it.y - pp.y) > 12.5) far++; }
+  withSk(V, ['corne'], 3); let extra = 0; for (let k = 0; k < 400; k++) { g.items.length = 0; g.spawnItem(); g.items[0].type = 'chr'; g.collect(g.items[0]); if (g.items.some(it => !it.done)) extra++; }
+  const sup = list => { withSk(V, list, 1); let n = 0; for (let k = 0; k < 4000; k++) if (['sup', 'sterr', 'sspd', 'schr', 'slife'].includes(g.pickType())) n++; return n / 40; };
+  console.log(`veinard : coup de chance ${ok} ; bonne étoile ${(n1 / 600).toFixed(2)} bonus contre ${(n0 / 600).toFixed(2)} ; trouvaille, loin ${far}/40 ; corne d'abondance ${(extra / 4).toFixed(0)} % ; super bonus au niveau 1 : ${sup([]).toFixed(0)} % sans, ${sup(['precoce']).toFixed(0)} % précoce, ${sup(['precoce', 'veine']).toFixed(0)} % avec veine`);
+  withSk(V, ['ecrin'], 3); g.items.length = 0; g.spawnItem(); const it = g.items[0]; it.type = 'sup'; g.P.drawing = true; step(60); const aged = it.age;
+  withSk(V, ['groslot'], 3); g.superOn({ x: 20, y: 30 }); const dur = g.power.sup;
+  const ouf = list => { withSk(V, list); let alive = 0; for (let k = 0; k < 1000; k++) { g.S.phase = 'play'; g.S.safe = 0; g.P.shield = false; g.hitPlayer(null); if (g.S.phase === 'play') alive++; } return alive / 10; };
+  withSk(V, ['ange']); g.dropShield(); const inv = g.invuln;
+  withSk(V, ['trefle']); g.P.shield = false; g.crash(); const p1 = g.S.phase, safe = g.S.safe > 0; g.S.safe = 0; g.crash(); const p2 = g.S.phase;
+  console.log(`veinard : écrin, super bonus vieilli de ${aged.toFixed(2)} s en traçant ; gros lot, super casque ${dur} s ; ouf ${ouf(['ouf'])} %, baraka ${ouf(['ouf', 'baraka'])} % de coups ratés ; ange gardien ${inv} s ; trèfle : 1er crash -> ${p1} (répit ${safe}), 2e -> ${p2}`);
+}
+// Blindé
+{
+  const B = SHIPI('rob'), hit = (list, hp, src = 'out') => { withSk(B, list); g.armor.hp = hp; g.armorHit(src); return +g.armor.hp.toFixed(3); };
+  withSk(B, ['forteresse']); g.armor.hp = 1; for (let i = 0; i < 3000 * G; i++) g.seaStep(); const fort = +g.armor.hp.toFixed(2);
+  const rep = list => { withSk(B, list); g.armor.hp = .5; for (let i = 0; i < 500 * G; i++) g.seaStep(); return +(g.armor.hp - .5).toFixed(3); };
+  const dist = list => { withSk(B, list); g.setDir('down'); step(3); const y = g.P.y; step(60); return (g.P.y - y) / G; };
+  withSk(B, ['masse']); g.armorHit('out'); const jolt = g.armor.jolt;
+  const foe = (list, drawing) => { withSk(B, list); const e = g.makeFoe('out', 1); e.x = PX() + .5; e.y = PY(); g.foes.push(e); g.P.drawing = drawing; g.armorHit(e); return e.dead ? 'détruit' : e.stun > 0 ? 'assommé ' + e.stun + ' s' : 'renvoyé'; };
+  withSk(B, ['maint']); g.armor.hp = .5; g.showClearX(); const maint = +g.armor.hp.toFixed(2);
+  withSk(B, ['pieces'], 3); g.armor.hp = .5; const types = new Set(); for (let k = 0; k < 2000; k++) types.add(g.pickType()); g.items.length = 0; g.spawnItem(); g.items[0].type = 'life'; g.collect(g.items[0]); const lifeHp = +g.armor.hp.toFixed(2);
+  const zone = list => { withSk(B, list); g.armor.hp = .5; g.setDir('down'); step(40); g.setDir('right'); step(20); g.setDir('up'); step(60); return g.armor.hp; };
+  withSk(B, ['coque']); g.armor.hp = .05; g.armorHit('amph'); const c1 = g.S.phase + ' ' + g.armor.hp; g.S.safe = 0; g.armor.hp = .05; g.armorHit('amph'); const c2 = g.S.phase;
+  console.log(`blindé : boule 10 % -> plaques ${(1 - hit(['plaques'], 1)) * 100} %, réactives sous 30 % ${((.2 - hit(['reactives'], .2)) * 100).toFixed(1)} % ; forteresse, réparé jusqu'à ${fort} ; réparation de 500 cases +${rep([])} / soudeur +${rep(['soudeur'])}`);
+  console.log(`blindé : 1 s -> ${dist([]).toFixed(1)} cases, moteur révisé ${dist(['moteur']).toFixed(1)} ; masse, ralenti ${jolt} ; ennemi percuté : ${foe([], false)}, bélier ${foe(['belier'], false)}, rouleau en traçant ${foe(['rouleau'], true)} ; maintenance 50 % -> ${maint} ; pièces détachées : vie tirée ${types.has('life')}, vie ramassée 50 % -> ${lifeHp} ; récupération +${((zone(['recup']) - zone([])) * 100).toFixed(1)} % ; seconde coque : ${c1}, puis ${c2}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
