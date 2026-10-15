@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -490,6 +490,24 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(B, ['coque']); g.armor.hp = .05; g.armorHit('amph'); const c1 = g.S.phase + ' ' + g.armor.hp; g.S.safe = 0; g.armor.hp = .05; g.armorHit('amph'); const c2 = g.S.phase;
   console.log(`blindé : boule 10 % -> plaques ${(1 - hit(['plaques'], 1)) * 100} %, réactives sous 30 % ${((.2 - hit(['reactives'], .2)) * 100).toFixed(1)} % ; forteresse, réparé jusqu'à ${fort} ; réparation de 500 cases +${rep([])} / soudeur +${rep(['soudeur'])}`);
   console.log(`blindé : 1 s -> ${dist([]).toFixed(1)} cases, moteur révisé ${dist(['moteur']).toFixed(1)} ; masse, ralenti ${jolt} ; ennemi percuté : ${foe([], false)}, bélier ${foe(['belier'], false)}, rouleau en traçant ${foe(['rouleau'], true)} ; maintenance 50 % -> ${maint} ; pièces détachées : vie tirée ${types.has('life')}, vie ramassée 50 % -> ${lifeHp} ; récupération +${((zone(['recup']) - zone([])) * 100).toFixed(1)} % ; seconde coque : ${c1}, puis ${c2}`);
+}
+// Frénétique
+{
+  const F = SHIPI('fre');
+  const fire = list => { withSk(F, list); const cx = 20 * G, cy = 40 * G; g.lightFire(g.at(cx, cy)); const put = dx => { const e = g.makeFoe('out', 1); e.x = (cx + .5) / G + dx; e.y = (cy + .5) / G; e.vx = e.vy = 0; g.foes.push(e); return e; };
+    const a = put(1.1); step(2); const b = put(.3); step(Math.round(60 * 3.4)); const c = put(.3); step(2); step(Math.round(60 * 2)); const d = put(.3); step(2); return [a.dead, b.dead, c.dead, d.dead].map(x => x ? 'X' : '.').join(''); };
+  const pts = list => { withSk(F, list); const e = g.makeFoe('out', 1); g.foes.push(e); const s0 = g.S.score; g.burnFoe(e); return g.S.score - s0; };
+  const fill = list => { withSk(F, list); g.furyGain(g.S.interior * .3, false); return +g.ab.fury.toFixed(2); };
+  const dur = list => { withSk(F, list); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); return g.ab.on; };
+  withSk(F, ['rancune']); g.burnFoe((() => { const e = g.makeFoe('out', 1); g.foes.push(e); return e; })()); const ranc = g.ab.fury;
+  withSk(F, ['sansfin']); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); step(30); const on0 = g.ab.on; g.burnFoe((() => { const e = g.makeFoe('out', 1); g.foes.push(e); return e; })()); const sf = +(g.ab.on - on0).toFixed(2);
+  withSk(F, ['meche']); g.setDir('down'); step(40); const meche = g.fires.length;
+  withSk(F, ['sangfroid']); g.ab.fury = .5; g.setDir('left'); step(5); step(60 * 6); const sfr = g.ab.fury;
+  withSk(F, ['retombee']); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); g.ab.on = .1; step(12); const ret = g.S.safe > 0;
+  withSk(F, ['reflexes']); g.ab.fury = 1; g.setDir('down'); step(5); g.usePower(); { const e = g.makeFoe('out', 1); e.x = PX() + 2; e.y = PY(); e.vx = e.vy = 0; g.foes.push(e); } step(1); const refl = g.slow > 0;
+  withSk(F, ['phenix']); g.ab.fury = 1; g.setDir('down'); step(20); g.usePower(); { const e = g.makeFoe('out', 1); e.x = PX() + 3; e.y = PY(); g.foes.push(e); g.crash(); var ph = g.S.phase + ', voisin grillé ' + e.dead; } g.S.safe = 0; g.crash(); const ph2 = g.S.phase;
+  console.log(`frénétique : flammes (à 1,1 / dessus / 3,4 s après / 5,4 s après) ${fire([])} ; braises ${fire(['braises'])} ; mur de feu ${fire(['murfeu'])} ; grillé +${pts([])}, barbecue +${pts(['bbq'])}`);
+  console.log(`frénétique : 30 % du terrain -> jauge ${fill([])}, colérique ${fill(['colere'])} ; furie ${dur([])} s, hors de lui ${dur(['horslui'])} s ; rancune +${ranc} ; furie sans fin +${sf} s ; mèche, flammes hors furie ${meche} ; sang-froid, jauge après 6 s sur son terrain ${sfr} ; retombée, invincible après la furie ${ret} ; réflexes, ralenti ${refl} ; phénix : ${ph}, 2e crash -> ${ph2}`);
 }
 // 5k) Les pouvoirs ne se rechargent pas entre les niveaux (et restent dans la sauvegarde)
 {
