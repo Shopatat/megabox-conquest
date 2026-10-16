@@ -386,7 +386,7 @@ details li b{color:var(--text);font-weight:600}
 
   <div class="testbar" id="testbar" hidden>
     <div class="trow"><span class="k">VAISSEAU</span>
-      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><button class="mini gold" id="ttree">ARBRE</button><select class="mini" id="tforce" aria-label="Gain de la machine à sous" hidden></select><button class="mini" id="tquit">QUITTER</button>
+      <button class="mini" id="tprev" aria-label="Vaisseau précédent">‹</button><button class="mini gold" id="tship">VEINARD</button><button class="mini" id="tnext" aria-label="Vaisseau suivant">›</button><button class="mini" id="treset">RÉINITIALISER</button><button class="mini" id="trefill">RECHARGER</button><button class="mini" id="teco">PLANÈTE · TERRA NOVA</button><button class="mini gold" id="ttree">ARBRE</button><select class="mini" id="tforce" aria-label="Gain de la machine à sous" hidden></select><button class="mini" id="tquit">QUITTER</button>
     </div>
     <div class="trow"><span class="k">BONUS</span>
       <button class="mini gold" data-item="coin" id="tcoin" hidden>+JETON</button><button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
@@ -1430,6 +1430,7 @@ const ECOS = [
     { out: 2, frost: 2, skate: 1, scar: 1 },
     { name: 'BANQUISE', frost: 2, skate: 2, div: 1, inn: 2 } ] },
   { key: 'pyros', name: 'PYROS', tag: 'Des volcans qui crachent la lave.', sig: 'spark',
+    rule: 'Gouffres de lave : on n\'y entre pas, enfermés ils refroidissent. Météores : une cible annonce l\'impact, même sur ton terrain.',
     look: { empty: '#190a0a', vignette: 'rgba(255,80,40,0.2)', landGrad: ['#ff8a3d', '#b8185a'], edge: '#ffe0cc', landP: '#ffb38a',
       nebulas: [[12, 18, 16, '255,90,40'], [38, 46, 18, '200,40,80'], [30, 10, 10, '255,180,80'], [8, 54, 11, '255,60,60']] },
     levels: [
@@ -1545,8 +1546,11 @@ function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
   S.xp = 0; S.mlv0 = mLevel(SH().key); S.lives0 = S.lives; S.contreT = 0; S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
   if (S.test) S.comp = Object.assign(Object.fromEntries(FOES.map(k => [k, 0])), { name: '', out: 2, inn: 1, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 });
-  applyLook(S.test ? null : S.comp.eco);
+  // planète : ses couleurs, son ambiance et ses dangers (mode test : la planète choisie dans la barre, étape « plus dur »)
+  const eco = S.test ? ECOS[S.testEco || 0] : S.comp.eco;
+  applyLook(eco);
   resetGrid();
+  ecoSetup(eco, S.test ? 1 : S.comp.stage);
   S.filled = 0;
   zapT.fill(0); zaps = [];
   trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
@@ -1725,6 +1729,8 @@ function moveInto(nx, ny) {
     if (SH().key === 'rob' && S.phase === 'play') { dissolveTrail(); pickItems(); if (!(armor.cd > 0)) armorHit('self'); return; }
     crash('self'); return;
   }
+  // Pyros : gouffre de lave (crash, ou bord infranchissable si le coup est encaissé ; sous Casque, on passe au-dessus)
+  if (c === 0 && lavaG[at(nx, ny)] && !(helmet() || power.sup > 0) && S.phase === 'play' && lavaBurn(nx, ny)) return;
   const ox = P.x, oy = P.y;
   P.x = nx; P.y = ny;
   if (c === 0) {
@@ -2420,11 +2426,12 @@ function hitPlayer(e) {
   if (camoOn() && sk('invis')) return;
   if (e && e.kind === 'inn' && sk('brouillage') && !P.drawing) return;
   if (helmet() || P.shield) return;
-  if (invuln > 0 && !P.drawing) return;
+  // le répit d'une seconde au départ protège des ennemis, pas de la lave
+  if (invuln > 0 && !P.drawing && hitSrc !== 'lava') return;
   S.touched = true;
   if (SH().key === 'enc' && S.contreT > 0 && e && e.kind !== 'amph') { stunBy(e, 2); e.hitCd = .8; return; }
   if (SH().key === 'enc' && absorb(e)) return;
-  if (SH().key === 'rob') { armorHit(e ? e : 'ring'); return; }
+  if (SH().key === 'rob') { armorHit(e ? e : hitSrc); return; }
   // Veinard, Ouf / Baraka : le coup rate (répit d'un instant pour qu'un même contact ne retente pas sa chance)
   if (sk('ouf') && Math.random() < (sk('baraka') ? .2 : .1)) { const pp = playerPos(); S.safe = .8; popups.push({ x: pp.x, y: pp.y - 1.6, text: 'OUF !', age: 0, color: T.rainbow ? '#7dff9a' : T.ball }); burst(pp.x, pp.y, T.rainbow ? '#7dff9a' : T.shock, 16, 6); sfx.ready(); return; }
   crash();
@@ -3295,7 +3302,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -3725,8 +3732,600 @@ function updateCrash(dt) {
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
     rw.hist = []; camo.on = 0;
     invuln = 0;
-    if (S.test) { S.phase = 'play'; hud(); pwHud(); } else showReady('restart');
+    // on repart aussitôt, sans écran d'info (demande de Fabien : l'interruption cassait le rythme), dans la zone protégée
+    S.phase = 'play'; hud(); pwHud();
+    if (!S.test) {
+      const x = (rx + .5) / G, y = (ry + .5) / G;
+      rings.push({ x, y, r: 0, max: SHIELD_R + 2, age: 0, color: T.shock }, { x, y, r: 0, max: SHIELD_R + .5, age: -.12, color: T.rainbow ? '#7cf5c4' : T.shock });
+      popups.push({ x, y: y < ROWS / 2 ? y + 5 : y - 4.5, text: S.lives > 1 ? S.lives + ' VIES' : 'DERNIÈRE VIE', age: -.1, color: S.lives > 1 ? T.shock : T.danger, big: true });
+      sfx.ready();
+    }
   }
+}
+
+/* ---------- Planètes : ambiance et dangers ---------- */
+// Demande de Fabien : chaque planète doit se voir. Ambiance animée (thème COULEUR seulement, coupée si l'appareil
+// demande moins d'animations) : ce qui passe dans l'espace est dessiné sous le terrain conquis (drawAmb('back')),
+// neige, pluie, braises, bulles ou brouillard par-dessus tout, très discrets (drawAmb('front')).
+// Terra Nova : étoiles filantes. Astéria : astéroïdes qui dérivent et poussière. Glacia : aurore boréale, neige, givre
+// sur les bords, reflets sur la glace. Pyros : lueur de lave en bas, éruptions au loin, braises qui montent. Océania :
+// rayons de lumière, bancs de poissons, bulles, plancton. Nébula : brouillard qui dérive, éclairs dans les nuages,
+// poussière qui scintille. Voltaria : nuages d'orage, éclairs (et tonnerre), pluie. Singularité : disque d'accrétion au
+// centre, poussière qui tombe en spirale, ondes de gravité qui se resserrent.
+const PI2 = Math.PI * 2;
+const urand = (a, b) => a + Math.random() * (b - a);
+let amb = null;
+function ambSetup(key) {
+  const a = amb = { key, list: [], fx: [], next: urand(1.5, 4), flash: 0 };
+  const fill = (n, f) => { for (let i = 0; i < n; i++) a.list.push(f(true)); };
+  if (key === 'aste') { a.rocks = Array.from({ length: 9 }, () => rockMake()); fill(40, () => ({ x: urand(0, COLS), y: urand(0, ROWS), v: urand(.3, 1.1), s: urand(.04, .1), ph: urand(0, PI2) })); }
+  else if (key === 'glace') fill(70, flake);
+  else if (key === 'pyros') fill(46, ember);
+  else if (key === 'ocea') { fill(26, bubble); a.fish = [school(true), school(true)]; a.motes = Array.from({ length: 30 }, () => ({ x: urand(0, COLS), y: urand(0, ROWS), ph: urand(0, PI2) })); }
+  else if (key === 'nebu') { a.fog = Array.from({ length: 9 }, () => fogMake(true)); fill(26, () => ({ x: urand(0, COLS), y: urand(0, ROWS), ph: urand(0, PI2), sp: urand(1, 2.5) })); }
+  else if (key === 'volt') { fill(64, raindrop); a.clouds = Array.from({ length: 6 }, (_, i) => ({ x: i * 10 + urand(-3, 3), y: urand(-1, 7), r: urand(6, 10), v: urand(.5, 1.2) })); }
+  else if (key === 'sing') fill(60, orbiter);
+}
+function rockMake() {
+  const r = urand(.7, 3.2), c = document.createElement('canvas'); c.width = c.height = 96;
+  const g = c.getContext('2d'); g.setTransform(48 / 1.25, 0, 0, 48 / 1.25, 48, 48);
+  const m = 9 + ((Math.random() * 4) | 0);
+  g.beginPath();
+  for (let k = 0; k < m; k++) { const t = k / m * PI2, d = urand(.72, 1.05); k ? g.lineTo(Math.cos(t) * d, Math.sin(t) * d) : g.moveTo(Math.cos(t) * d, Math.sin(t) * d); }
+  g.closePath();
+  const gr = g.createRadialGradient(-.4, -.45, .1, 0, 0, 1.15);
+  gr.addColorStop(0, '#c09060'); gr.addColorStop(.55, '#5e3f28'); gr.addColorStop(1, '#1d120c');
+  g.fillStyle = gr; g.fill();
+  g.save(); g.clip();
+  for (let k = 0; k < 4; k++) {
+    const x = urand(-.55, .55), y = urand(-.55, .55), cr = urand(.1, .26);
+    g.fillStyle = 'rgba(20,10,6,0.5)'; g.beginPath(); g.arc(x, y, cr, 0, PI2); g.fill();
+    g.fillStyle = 'rgba(255,215,170,0.16)'; g.beginPath(); g.arc(x + cr * .2, y + cr * .2, cr * .8, 0, PI2); g.arc(x, y, cr * .9, 0, PI2, true); g.fill();
+  }
+  g.restore();
+  g.strokeStyle = 'rgba(255,200,140,0.35)'; g.lineWidth = .05; g.stroke();
+  // les gros passent plus vite et plus nets (parallaxe)
+  const near = r / 3.2, dir = Math.random() < .5 ? -1 : 1;
+  return { x: urand(-4, COLS + 4), y: urand(-4, ROWS + 4), r, vx: (.2 + near * .8) * dir, vy: urand(.1, .45) * (.4 + near), a: urand(0, PI2), va: urand(-.35, .35), al: .25 + near * .4, img: c };
+}
+const flake = init => ({ x: urand(0, COLS), y: init ? urand(0, ROWS) : -1, s: urand(.05, .2), ph: urand(0, PI2), sw: urand(.3, 1) });
+const ember = init => ({ x: urand(0, COLS), y: init ? urand(0, ROWS) : ROWS + 1, v: urand(1.5, 4.5), s: urand(.06, .18), ph: urand(0, PI2), c: ['#ffb347', '#ff5a1f', '#ffe08a'][(Math.random() * 3) | 0] });
+const bubble = init => ({ x: urand(0, COLS), y: init ? urand(0, ROWS) : ROWS + 1, r: urand(.08, .3), v: urand(1, 3), ph: urand(0, PI2) });
+const raindrop = init => ({ x: urand(0, COLS + 14), y: init ? urand(0, ROWS) : urand(-4, 0), l: urand(.6, 1.5), v: urand(30, 42) });
+const orbiter = init => ({ r: init ? urand(4, 34) : urand(26, 36), a: urand(0, PI2), c: Math.random() < .7 ? '255,205,120' : '170,130,255' });
+function school(init) {
+  const dir = Math.random() < .5 ? -1 : 1;
+  return { dir, x: init ? urand(0, COLS) : dir > 0 ? -8 : COLS + 8, y: urand(10, ROWS - 10), v: urand(1.8, 3.4), ph: urand(0, PI2),
+    fish: Array.from({ length: 7 }, () => [urand(-3, 3), urand(-1.6, 1.6), urand(0, PI2)]) };
+}
+function fogMake(init) {
+  const r = urand(9, 16);
+  return { x: init ? urand(-10, COLS + 10) : -r, y: urand(0, ROWS), r, v: urand(.4, 1), ph: urand(0, PI2), al: urand(.14, .24), c: ['255,140,230', '170,120,255', '255,190,245'][(Math.random() * 3) | 0] };
+}
+// un éclair : ligne brisée qui descend du haut, avec deux branches
+function boltMake() {
+  const pts = [[urand(4, COLS - 4), -1]], end = urand(20, 55);
+  while (pts[pts.length - 1][1] < end) { const [x, y] = pts[pts.length - 1]; pts.push([x + urand(-1.3, 1.3), y + urand(1.2, 2.2)]); }
+  const br = [];
+  for (let k = 0; k < 2; k++) {
+    let [x, y] = pts[2 + ((Math.random() * (pts.length - 3)) | 0)]; const s = Math.random() < .5 ? -1 : 1, b = [[x, y]];
+    for (let j = 0; j < 5; j++) { x += s * urand(.6, 1.6); y += urand(.8, 1.8); b.push([x, y]); }
+    br.push(b);
+  }
+  return { pts, br, age: 0, max: .45 };
+}
+function ambUpdate(dt) {
+  const a = amb, k = a.key;
+  a.next -= dt; a.flash *= Math.exp(-dt * 6);
+  for (const f of a.fx) f.age += dt;
+  a.fx = a.fx.filter(f => f.age < f.max);
+  if (k === 'terra' && a.next <= 0) {
+    a.next = urand(4, 9);
+    const dir = Math.random() < .5 ? -1 : 1, v = urand(28, 40), t = urand(.35, .6);
+    a.fx.push({ x: urand(8, COLS - 8), y: urand(2, ROWS * .6), vx: dir * v * Math.cos(t), vy: v * Math.sin(t), age: 0, max: urand(.6, .9) });
+  } else if (k === 'aste') {
+    for (const r of a.rocks) {
+      r.x += r.vx * dt; r.y += r.vy * dt; r.a += r.va * dt;
+      const m = r.r * 1.4;
+      if (r.x < -m - 2) r.x = COLS + m; else if (r.x > COLS + m + 2) r.x = -m;
+      if (r.y > ROWS + m + 2) { r.y = -m; r.x = urand(0, COLS); }
+    }
+    for (const d of a.list) { d.x += d.v * .6 * dt; d.y += d.v * .25 * dt; if (d.x > COLS) d.x = 0; if (d.y > ROWS) d.y = 0; }
+  } else if (k === 'glace') {
+    for (const f of a.list) {
+      f.y += (f.s * 14 + .8) * dt; f.x += (Math.sin(time * .8 + f.ph) * f.sw + .6) * dt;
+      if (f.y > ROWS + 1 || f.x > COLS + 1) Object.assign(f, flake(false), { x: urand(-4, COLS) });
+    }
+    // reflets sur la glace : une petite étoile s'allume sur le terrain conquis
+    if (a.next <= 0) {
+      a.next = urand(.25, .6);
+      for (let t = 0; t < 8; t++) {
+        const x = (Math.random() * GC) | 0, y = (Math.random() * GR) | 0;
+        if (grid[at(x, y)] === 1) { a.fx.push({ x: (x + .5) / G, y: (y + .5) / G, age: 0, max: .7, s: urand(.25, .5) }); break; }
+      }
+    }
+  } else if (k === 'pyros') {
+    for (const e of a.list) { e.y -= e.v * dt; e.x += Math.sin(time * 1.5 + e.ph) * .8 * dt; if (e.y < -1) Object.assign(e, ember(false)); }
+    if (a.next <= 0) {
+      a.next = urand(3, 7);
+      const x = urand(4, COLS - 4), sparks = Array.from({ length: 14 }, () => ({ x, y: ROWS + 1, vx: urand(-4, 4), vy: urand(-16, -8) }));
+      a.fx.push({ x, age: 0, max: 1.8, sparks });
+    }
+    for (const f of a.fx) if (f.sparks) for (const s of f.sparks) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 12 * dt; }
+  } else if (k === 'ocea') {
+    for (const b of a.list) { b.y -= b.v * dt; b.x += Math.sin(time * 2 + b.ph) * .4 * dt; if (b.y < -1) Object.assign(b, bubble(false)); }
+    for (let i = 0; i < a.fish.length; i++) {
+      const s = a.fish[i]; s.x += s.dir * s.v * dt;
+      if (s.x < -14 || s.x > COLS + 14) a.fish[i] = school(false);
+    }
+  } else if (k === 'nebu') {
+    for (let i = 0; i < a.fog.length; i++) { const f = a.fog[i]; f.x += f.v * dt; if (f.x - f.r > COLS) a.fog[i] = fogMake(false); }
+    if (a.next <= 0) { a.next = urand(2.5, 6); a.fx.push({ x: urand(4, COLS - 4), y: urand(4, ROWS - 4), r: urand(8, 14), age: 0, max: .7 }); }
+  } else if (k === 'volt') {
+    for (const d of a.list) { d.y += d.v * dt; d.x -= d.v * .22 * dt; if (d.y > ROWS + 1) Object.assign(d, raindrop(false)); }
+    for (const c of a.clouds) { c.x += c.v * dt; if (c.x - c.r > COLS) { c.x = -c.r; c.y = urand(-1, 7); } }
+    if (a.next <= 0) {
+      a.next = urand(2.5, 6.5); a.fx.push(boltMake()); a.flash = 1;
+      if (S.phase === 'play') { tone(1800, .08, 'sawtooth', .02, -1400); tone(55, 1.2, 'sawtooth', .045, -20, urand(.25, .6)); tone(85, .7, 'triangle', .05, -35, .3); }
+    }
+  } else if (k === 'sing') {
+    for (const o of a.list) {
+      o.a += 6 / Math.pow(o.r, 1.1) * dt; o.r -= (1 + 8 / o.r) * dt;
+      if (o.r < 3.3) Object.assign(o, orbiter(false));
+    }
+    if (a.next <= 0) { a.next = 3.5; a.fx.push({ r: 42, age: 0, max: 3.4 }); }
+    for (const f of a.fx) f.r = 42 - f.age * 12;
+  }
+}
+function drawAmb(layer) {
+  if (!amb || !T.space || REDUCED || S.phase === 'title') return;
+  const a = amb, k = a.key;
+  ctx.save();
+  if (layer === 'back') {
+    ctx.globalCompositeOperation = 'lighter';
+    if (k === 'terra') {
+      for (const f of a.fx) {
+        const u = f.age / f.max, x = f.x + f.vx * f.age, y = f.y + f.vy * f.age, al = Math.sin(u * Math.PI);
+        const g = ctx.createLinearGradient(x, y, x - f.vx * .14, y - f.vy * .14);
+        g.addColorStop(0, `rgba(255,255,255,${al * .9})`); g.addColorStop(1, 'rgba(160,190,255,0)');
+        ctx.strokeStyle = g; ctx.lineWidth = .14; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - f.vx * .14, y - f.vy * .14); ctx.stroke();
+      }
+    } else if (k === 'aste') {
+      ctx.fillStyle = '#ffd6a8';
+      for (const d of a.list) { ctx.globalAlpha = .2 + .25 * Math.sin(time + d.ph) ** 2; ctx.fillRect(d.x, d.y, d.s, d.s); }
+      ctx.globalCompositeOperation = 'source-over';
+      for (const r of [...a.rocks].sort((p, q) => p.r - q.r)) {
+        ctx.globalAlpha = r.al; ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.a);
+        ctx.drawImage(r.img, -r.r * 1.25, -r.r * 1.25, r.r * 2.5, r.r * 2.5); ctx.restore();
+      }
+    } else if (k === 'glace') {
+      // aurore boréale : trois rideaux qui ondulent
+      const cols = ['110,255,190', '110,210,255', '190,140,255'];
+      for (let r = 0; r < 3; r++) {
+        const h = 12 - r * 2, g = ctx.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, `rgba(${cols[r]},0)`); g.addColorStop(.75, `rgba(${cols[r]},0.55)`); g.addColorStop(1, `rgba(${cols[r]},0)`);
+        ctx.fillStyle = g;
+        for (let x = 0; x < COLS; x += .7) {
+          const y = 5 + r * 7 + Math.sin(x * .13 + time * .35 + r * 2) * 3 + Math.sin(x * .05 - time * .22 + r) * 2.5;
+          ctx.globalAlpha = .15 + .25 * Math.sin(x * .37 + time * 1.1 + r * 3) ** 2;
+          ctx.translate(x, y); ctx.fillRect(0, 0, .75, h); ctx.translate(-x, -y);
+        }
+      }
+    } else if (k === 'pyros') {
+      const g = ctx.createLinearGradient(0, ROWS, 0, ROWS * .4);
+      g.addColorStop(0, `rgba(255,70,20,${.22 + .08 * Math.sin(time * 1.7)})`); g.addColorStop(1, 'rgba(255,70,20,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+      for (const f of a.fx) {
+        const u = f.age / f.max, al = Math.sin(Math.min(1, u * 3) * Math.PI / 2) * (1 - u);
+        const e = ctx.createRadialGradient(f.x, ROWS + 2, 0, f.x, ROWS + 2, 16);
+        e.addColorStop(0, `rgba(255,190,90,${al * .5})`); e.addColorStop(1, 'rgba(255,60,20,0)');
+        ctx.fillStyle = e; ctx.fillRect(f.x - 16, ROWS - 16, 32, 18);
+        ctx.fillStyle = '#ffb347'; ctx.globalAlpha = 1 - u;
+        for (const s of f.sparks) { ctx.beginPath(); ctx.arc(s.x, s.y, .16, 0, PI2); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+    } else if (k === 'ocea') {
+      // rayons de lumière venus de la surface
+      const g = ctx.createLinearGradient(0, -2, 0, ROWS * .95);
+      g.addColorStop(0, 'rgba(180,255,245,0.2)'); g.addColorStop(1, 'rgba(180,255,245,0)');
+      ctx.fillStyle = g;
+      for (let r = 0; r < 4; r++) {
+        const x0 = 6 + r * 12.5 + Math.sin(time * .15 + r * 1.9) * 3, w = 2.5 + (r % 2) * 2, sw = Math.sin(time * .12 + r) * 6 + 9;
+        ctx.globalAlpha = .45 + .35 * Math.sin(time * .5 + r * 2.3) ** 2;
+        ctx.beginPath(); ctx.moveTo(x0 - w / 2, -2); ctx.lineTo(x0 + w / 2, -2); ctx.lineTo(x0 + sw + w * 1.4, ROWS); ctx.lineTo(x0 + sw - w * 1.4, ROWS); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(120,220,240,0.32)';
+      for (const s of a.fish) for (const [dx, dy, ph] of s.fish) {
+        const x = s.x + dx + Math.sin(time * .9 + ph) * .4, y = s.y + dy + Math.sin(time * 1.3 + ph + s.ph) * .5, d = s.dir, w = Math.sin(time * 9 + ph) * .12;
+        ctx.beginPath(); ctx.ellipse(x, y, .45, .17, 0, 0, PI2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x - d * .35, y); ctx.lineTo(x - d * .75, y - .2 + w); ctx.lineTo(x - d * .75, y + .2 + w); ctx.closePath(); ctx.fill();
+      }
+    } else if (k === 'nebu') {
+      for (const f of a.fx) {
+        const u = f.age / f.max, al = (u < .12 || (u > .22 && u < .5) ? 1 : .25) * (1 - u);
+        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+        g.addColorStop(0, `rgba(255,220,250,${al * .45})`); g.addColorStop(1, 'rgba(200,120,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
+      }
+    } else if (k === 'volt') {
+      ctx.globalCompositeOperation = 'source-over';
+      const g = ctx.createLinearGradient(0, 0, 0, 20);
+      g.addColorStop(0, 'rgba(6,6,22,0.6)'); g.addColorStop(1, 'rgba(6,6,22,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, 20);
+      for (const c of a.clouds) {
+        const lit = a.flash * .5, cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
+        cg.addColorStop(0, `rgba(${55 + lit * 170 | 0},${58 + lit * 170 | 0},${105 + lit * 150 | 0},0.55)`); cg.addColorStop(1, 'rgba(40,40,80,0)');
+        ctx.fillStyle = cg; ctx.fillRect(c.x - c.r, c.y - c.r, c.r * 2, c.r * 2);
+      }
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const b of a.fx) {
+        if (!(b.age < .08 || (b.age > .14 && b.age < .4))) continue;
+        const al = 1 - b.age / b.max;
+        for (const [w, c] of [[.9, `rgba(160,170,255,${al * .3})`], [.35, `rgba(225,230,255,${al * .7})`], [.12, `rgba(255,255,255,${al})`]]) {
+          ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath();
+          b.pts.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+          for (const br of b.br) br.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+          ctx.stroke();
+        }
+      }
+    } else if (k === 'sing') {
+      const cx = COLS / 2, cy = ROWS / 2;
+      // disque d'accrétion vu de biais : anneaux en pointillés qui tournent de plus en plus vite vers le centre
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(-.35); ctx.scale(1, .32);
+      for (let r = 0; r < 6; r++) {
+        ctx.strokeStyle = `rgba(255,${200 - r * 12},${110 - r * 10},${.2 - r * .025})`; ctx.lineWidth = .9;
+        ctx.setLineDash([1.4 + r * .4, .9]); ctx.lineDashOffset = -time * (7 - r);
+        ctx.beginPath(); ctx.arc(0, 0, 5.5 + r * 2, 0, PI2); ctx.stroke();
+      }
+      ctx.restore(); ctx.setLineDash([]);
+      ctx.lineWidth = .12; ctx.lineCap = 'round';
+      for (const o of a.list) {
+        const w = 6 / Math.pow(o.r, 1.1), a0 = o.a - w * .25;
+        ctx.strokeStyle = `rgba(${o.c},${Math.min(.7, 8 / o.r)})`;
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(a0) * o.r, cy + Math.sin(a0) * o.r * .75); ctx.lineTo(cx + Math.cos(o.a) * o.r, cy + Math.sin(o.a) * o.r * .75); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 5);
+      // assez clair pour ne pas être pris pour un vrai trou noir (ennemi)
+      g.addColorStop(0, 'rgba(4,2,10,0.8)'); g.addColorStop(.6, 'rgba(4,2,10,0.6)'); g.addColorStop(1, 'rgba(4,2,10,0)');
+      ctx.fillStyle = g; ctx.fillRect(cx - 5, cy - 5, 10, 10);
+      ctx.strokeStyle = 'rgba(255,230,170,0.4)'; ctx.lineWidth = .12; ctx.beginPath(); ctx.arc(cx, cy, 3.1 + Math.sin(time * 2) * .05, 0, PI2); ctx.stroke();
+    }
+  } else {
+    if (k === 'glace') {
+      const g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .4, COLS / 2, ROWS / 2, ROWS * .72);
+      g.addColorStop(0, 'rgba(225,245,255,0)'); g.addColorStop(1, 'rgba(225,245,255,0.22)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+      ctx.fillStyle = '#ffffff';
+      for (const f of a.list) { ctx.globalAlpha = Math.min(.85, .3 + f.s * 3); ctx.beginPath(); ctx.arc(f.x, f.y, f.s, 0, PI2); ctx.fill(); }
+      ctx.globalCompositeOperation = 'lighter';
+      for (const f of a.fx) {
+        const u = Math.sin(f.age / f.max * Math.PI), s = f.s * u;
+        ctx.globalAlpha = u; ctx.fillRect(f.x - s, f.y - .03, s * 2, .06); ctx.fillRect(f.x - .03, f.y - s, .06, s * 2);
+      }
+    } else if (k === 'pyros') {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const e of a.list) {
+        ctx.globalAlpha = .35 + .45 * Math.sin(time * 9 + e.ph) ** 2; ctx.fillStyle = e.c;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.s, 0, PI2); ctx.fill();
+      }
+    } else if (k === 'ocea') {
+      ctx.fillStyle = 'rgba(200,255,240,0.25)';
+      for (const m of a.motes) ctx.fillRect(m.x + Math.sin(time * .3 + m.ph) * 1.5, m.y + Math.sin(time * .2 + m.ph * 2) * 1.2, .08, .08);
+      ctx.lineWidth = .07;
+      for (const b of a.list) {
+        ctx.strokeStyle = 'rgba(210,250,255,0.55)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, PI2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(b.x - b.r * .35, b.y - b.r * .35, b.r * .25, 0, PI2); ctx.fill();
+      }
+    } else if (k === 'nebu') {
+      for (const f of a.fog) {
+        const y = f.y + Math.sin(time * .2 + f.ph) * 2, g = ctx.createRadialGradient(f.x, y, 0, f.x, y, f.r);
+        g.addColorStop(0, `rgba(${f.c},${f.al})`); g.addColorStop(1, `rgba(${f.c},0)`);
+        ctx.fillStyle = g; ctx.fillRect(f.x - f.r, y - f.r, f.r * 2, f.r * 2);
+      }
+      ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffc6f0';
+      for (const d of a.list) {
+        const u = Math.max(0, Math.sin(time * d.sp + d.ph)); if (u < .1) continue;
+        ctx.globalAlpha = u * .6; ctx.fillRect(d.x - u * .2, d.y - .02, u * .4, .04); ctx.fillRect(d.x - .02, d.y - u * .2, .04, u * .4);
+      }
+    } else if (k === 'volt') {
+      ctx.strokeStyle = 'rgba(200,210,255,0.32)'; ctx.lineWidth = .08; ctx.beginPath();
+      for (const d of a.list) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.l * .22, d.y - d.l); }
+      ctx.stroke();
+      if (a.flash > .02) { ctx.fillStyle = `rgba(225,230,255,${a.flash * .13})`; ctx.fillRect(0, 0, COLS, ROWS); }
+    } else if (k === 'sing') {
+      ctx.lineWidth = .25;
+      for (const f of a.fx) {
+        if (f.r <= 0) continue;
+        ctx.strokeStyle = `rgba(255,220,150,${.09 * Math.min(1, f.r / 30) * Math.min(1, f.age * 2)})`;
+        ctx.beginPath(); ctx.ellipse(COLS / 2, ROWS / 2, f.r, f.r * .75, 0, 0, PI2); ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// Pyros (demande de Fabien) : des gouffres de lave dans la zone à conquérir et des météores qui tombent d'en haut.
+// Gouffre (pools) : y entrer brûle le vaisseau (crash ; Casque et Super Casque passent au-dessus, le Blindé le traverse
+// en y laissant 20 %, un coup encaissé l'arrête au bord). Dès que du terrain conquis le touche (zone refermée, Territoire,
+// Super Bombe…), il refroidit (« REFROIDI », 300 × niveau). Météore : son ombre grandit sous une cible qui clignote
+// (1,4 à 1,9 s selon sa taille, il siffle en tombant) ; à l'impact, le souffle coupe le fil (onde de choc depuis le point
+// le plus proche) et touche le vaisseau, même sur son terrain ; les gros laissent une flaque de lave qui refroidit en
+// PUDDLE_T s. Les cases de lave sont marquées dans lavaG ; le pourcentage à conquérir ne change pas.
+const LAVA = [{ pools: 3, met: [7, 11], size: .55 }, { pools: 4, met: [5, 8.5], size: .8 }, { pools: 5, met: [3.5, 6.5], size: 1, salvo: .3 }];
+const MET_WARN = 1.4, PUDDLE_T = 8;
+const lavaG = new Uint8Array(N);
+let hz = null, pools = [], meteors = [], scorch = [], ecoClock = 0, hitSrc = 'ring';
+// dangers de la planète (appelée par setupLevel, après la remise à zéro du terrain)
+function ecoSetup(eco, st) {
+  ambSetup(eco ? eco.key : 'terra');
+  lavaG.fill(0); pools = []; meteors = []; scorch = []; ecoClock = 0;
+  hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
+  if (hz) makePools(hz.pools);
+}
+function makePools(n) {
+  for (let tries = 0; pools.length < n && tries < 400; tries++) {
+    // un lac de lave (un disque et ses lobes) ou une faille (chapelet de petits disques le long d'une ligne qui serpente)
+    const circ = [];
+    if (Math.random() < .5) {
+      const r0 = urand(2, 3.4), x0 = urand(7, COLS - 7), y0 = urand(14, ROWS - 6);
+      circ.push([x0, y0, r0]);
+      for (let k = 0, m = 2 + ((Math.random() * 2) | 0); k < m; k++) { const t = urand(0, PI2), d = r0 * urand(.55, 1); circ.push([x0 + Math.cos(t) * d, y0 + Math.sin(t) * d, r0 * urand(.45, .8)]); }
+    } else {
+      let x = urand(8, COLS - 8), y = urand(16, ROWS - 8), t = urand(0, PI2);
+      const m = 8 + ((Math.random() * 6) | 0);
+      for (let j = 0; j < m; j++) { circ.push([x, y, urand(.75, 1.2) * (.5 + .5 * Math.sin(Math.PI * (j + .5) / m))]); t += urand(-.35, .35); x += Math.cos(t) * .85; y += Math.sin(t) * .85; }
+    }
+    if (circ.some(([x, y, r]) => x - r < B + 3 || x + r > COLS - B - 3 || y - r < B + 3 || y + r > ROWS - B - 3)) continue;
+    const cx = circ.reduce((a, c) => a + c[0], 0) / circ.length, cy = circ.reduce((a, c) => a + c[1], 0) / circ.length;
+    const R = Math.max(...circ.map(([x, y, r]) => Math.hypot(x - cx, y - cy) + r));
+    if (pools.some(p => Math.hypot(p.cx - cx, p.cy - cy) < p.R + R + 4) || Math.hypot(cx - COLS / 2, cy) < R + 12) continue;
+    const p = makePool(circ, false);
+    if (p) pools.push(p);
+  }
+}
+function makePool(circ, temp) {
+  const cx = circ.reduce((a, c) => a + c[0], 0) / circ.length, cy = circ.reduce((a, c) => a + c[1], 0) / circ.length, cells = [];
+  const R = Math.max(...circ.map(([x, y, r]) => Math.hypot(x - cx, y - cy) + r));
+  for (let y = Math.max(0, gc(cy - R)); y <= Math.min(GR - 1, gc(cy + R)); y++) for (let x = Math.max(0, gc(cx - R)); x <= Math.min(GC - 1, gc(cx + R)); x++) {
+    const i = at(x, y), px = (x + .5) / G, py = (y + .5) / G;
+    if (grid[i] !== 0 || lavaG[i] || !circ.some(([a, b, r]) => Math.hypot(px - a, py - b) < r)) continue;
+    cells.push(i);
+  }
+  if (!cells.length) return null;
+  for (const i of cells) lavaG[i] = 1;
+  return { circ, cells, cx, cy, R, temp, live: true, born: ecoClock, end: ecoClock + PUDDLE_T, bub: [],
+    veins: Array.from({ length: 1 + Math.min(4, circ.length) }, () => ({ i: (Math.random() * circ.length) | 0, ph: urand(0, PI2), sp: urand(.3, .7) * (Math.random() < .5 ? -1 : 1), s: urand(.6, .9) })) };
+}
+// partie fixe d'un gouffre, dessinée une fois (refaite si l'échelle change) : liseré incandescent, bord de roche noire,
+// fond de magma sombre et ombre intérieure le long du bord (profondeur)
+function poolSprite(p) {
+  const k = scale, pad = 1.2, w = Math.ceil((p.R + pad) * 2 * k), ox = p.cx - p.R - pad, oy = p.cy - p.R - pad;
+  const mk = () => { const c = document.createElement('canvas'); c.width = c.height = w; const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, -ox * k, -oy * k); return [c, g]; };
+  const path = g => { g.beginPath(); for (const [x, y, r] of p.circ) { g.moveTo(x + r, y); g.arc(x, y, r, 0, PI2); } };
+  const [c, g] = mk();
+  path(g); g.strokeStyle = 'rgba(255,150,70,0.55)'; g.lineWidth = .7; g.stroke();
+  path(g); g.strokeStyle = '#2a0703'; g.lineWidth = .45; g.stroke();
+  path(g); g.fillStyle = '#b3260d'; g.fill();
+  // ombre intérieure : tout sauf le gouffre, en noir, projette son ombre à l'intérieur
+  const [inv, ig] = mk();
+  ig.fillStyle = '#000'; ig.fillRect(ox, oy, w / k, w / k); ig.globalCompositeOperation = 'destination-out'; path(ig); ig.fill();
+  const rmin = Math.min(...p.circ.map(q => q[2]));
+  g.save(); path(g); g.clip(); g.setTransform(1, 0, 0, 1, 0, 0);
+  g.shadowColor = 'rgba(25,2,0,0.95)'; g.shadowBlur = Math.min(.9, rmin * .6) * k; g.drawImage(inv, 0, 0); g.drawImage(inv, 0, 0);
+  g.restore();
+  p.img = c; p.cs = k; p.ox = ox; p.oy = oy; p.w = w / k;
+}
+function poolPath(p, grow = 1) {
+  ctx.beginPath();
+  for (const [x, y, r] of p.circ) { ctx.moveTo(x + r * grow, y); ctx.arc(x, y, r * grow, 0, PI2); }
+}
+// le vaisseau entre dans la lave : renvoie true s'il ne passe pas
+function lavaBurn(nx, ny) {
+  const x = (nx + .5) / G, y = (ny + .5) / G;
+  if (SH().key === 'rob' && armor.cd > 0) return false;
+  burst(x, y, T.rainbow ? '#ff7a2a' : T.ball, 16, 6);
+  hitSrc = 'lava'; hitPlayer(null); hitSrc = 'ring';
+  if (S.phase !== 'play') { popups.push({ x, y: y - 1.4, text: 'BRÛLÉ !', age: 0, color: T.danger }); return true; }
+  if (SH().key === 'rob') return false;
+  P.dir = { x: 0, y: 0 }; P.next = null; dash = null;
+  return true;
+}
+function coolPool(p, won) {
+  p.live = false;
+  for (const i of p.cells) lavaG[i] = 0;
+  for (let k = 0; k < (p.temp ? 10 : 28); k++) {
+    const [cx, cy, r] = p.circ[k % p.circ.length], t = urand(0, PI2), d = Math.random() * r;
+    particles.push({ x: cx + Math.cos(t) * d, y: cy + Math.sin(t) * d, vx: urand(-.6, .6), vy: urand(-3.5, -1.5), life: 0, max: urand(.7, 1.3), color: T.rainbow ? (Math.random() < .5 ? '#ffffff' : '#ffd0b0') : T.shock, size: urand(.3, .6), ng: 1 });
+  }
+  if (p.temp || !won) return;
+  scorch.push({ x: p.cx, y: p.cy, r: p.R, age: 0, max: 4, cool: true });
+  if (S.phase === 'title') return;
+  const pts = 300 * S.level; S.score += pts;
+  popups.push({ x: p.cx, y: p.cy - 1, text: 'REFROIDI +' + fmt(pts), age: 0, color: T.rainbow ? '#ffb38a' : T.ball });
+  tone(2600, .5, 'sawtooth', .012, -2000); tone(220, .3, 'triangle', .03, -80);
+  hud();
+}
+function meteorSpawn(maxS = hz.size) {
+  const s = Math.pow(Math.random(), 1.4) * maxS, R = 1.4 + s * 2.6, pp = playerPos();
+  // un peu moins d'une fois sur deux, il tombe près du vaisseau
+  let x = urand(3, COLS - 3), y = urand(4, ROWS - 3);
+  if (Math.random() < .45) { x = pp.x + urand(-5, 5); y = pp.y + urand(-5, 5); }
+  x = Math.max(2, Math.min(COLS - 2, x)); y = Math.max(2, Math.min(ROWS - 2, y));
+  const t = MET_WARN + s * .5;
+  meteors.push({ x, y, s, R, t, T: t, ox: urand(-16, 16), h: urand(40, 55) });
+  tone(1500 - s * 500, t, 'sine', .018, -1100 + s * 300);
+}
+// position du météore dans le ciel (il grossit et accélère en tombant)
+function meteorPos(m) {
+  const k = 1 - Math.max(0, m.t) / m.T, e = k * k, d = Math.hypot(m.ox, m.h);
+  return { k, x: m.x + m.ox * (1 - e), y: m.y - m.h * (1 - e), sz: (.3 + .7 * k) * (.4 + .8 * m.s), ux: -m.ox / d, uy: m.h / d };
+}
+function meteorHit(m) {
+  const { x, y, s, R } = m, hot = T.rainbow ? '#ffd27a' : T.shock, fire = T.rainbow ? '#ff5a1f' : T.ball;
+  burst(x, y, hot, (20 + s * 30) | 0, 9 + s * 8); burst(x, y, fire, (18 + s * 26) | 0, 6 + s * 6);
+  rings.push({ x, y, r: 0, max: R * .8, age: 0, color: T.rainbow ? '#ffcf6b' : T.ball, fill: true }, { x, y, r: 0, max: R * 1.2, age: 0, color: hot }, { x, y, r: 0, max: R * 1.8, age: -.06, color: fire, big: s > .5 });
+  shake = Math.max(shake, REDUCED ? 0 : .3 + s * .9); flash = Math.max(flash, .12 + s * .25);
+  tone(70 - s * 25, .45 + s * .5, 'sawtooth', .06 + s * .04, -35); tone(170, .3, 'square', .035, -130, .02); tone(1200, .1, 'sawtooth', .02, -900);
+  const land = cellW(x, y) === 1;
+  scorch.push({ x, y, r: R * .75, age: 0, max: land ? 7 : 2.5 });
+  if (s > .55 && !land) { const p = puddle(x, y, .9 + s * .9); if (p) pools.push(p); }
+  if (S.phase !== 'play' || !P || helmet() || power.sup > 0) return;
+  if (P.drawing && SH().key !== 'fur') {
+    let bk = -1, bd = 1e9; const hit = [];
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) continue;
+      const d = Math.hypot(wx(trail[k]) - x, wy(trail[k]) - y);
+      if (d < R) { hit.push(k); if (d < bd) { bd = d; bk = k; } }
+    }
+    if (bk >= 0 && !onFire(trail[bk])) { onTrailHit({ kind: 'meteor', x, y, vx: 0, vy: 0 }, trail[bk]); for (const k of hit) if (!onFire(trail[k])) eraseK(k); }
+  }
+  const pp = playerPos();
+  if (S.phase === 'play' && Math.hypot(pp.x - x, pp.y - y) < R + .3) {
+    hitSrc = 'meteor'; hitPlayer(null); hitSrc = 'ring';
+    if (S.phase === 'crash') popups.push({ x: pp.x, y: pp.y - 1.4, text: 'ÉCRASÉ !', age: 0, color: T.danger });
+  }
+}
+// flaque de lave laissée par un gros météore, seulement en pleine zone à conquérir
+function puddle(x, y, r) {
+  for (let gy = gc(y - r); gy <= gc(y + r); gy++) for (let gx = gc(x - r); gx <= gc(x + r); gx++) {
+    if (Math.hypot((gx + .5) / G - x, (gy + .5) / G - y) >= r) continue;
+    if (!inB(gx, gy) || grid[at(gx, gy)] !== 0 || lavaG[at(gx, gy)]) return null;
+  }
+  return makePool([[x, y, r]], true);
+}
+function ecoUpdate(dt) {
+  const ph = S.phase;
+  if (ph === 'pause' || ph === 'title') return;
+  if (amb && T.space && !REDUCED) ambUpdate(dt);
+  for (const s of scorch) s.age += dt;
+  if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
+  for (const p of pools) {
+    if (p.temp && ecoClock > p.end) { coolPool(p, false); continue; }
+    if (p.cells.some(i => grid[i] === 1)) { coolPool(p, true); continue; }
+    for (const b of p.bub) b.age += dt;
+    p.bub = p.bub.filter(b => b.age < b.max);
+    if (Math.random() < dt * 2.5 * p.circ.length) {
+      const [cx, cy, r] = p.circ[(Math.random() * p.circ.length) | 0], t = urand(0, PI2), d = Math.random() * r * .75;
+      p.bub.push({ x: cx + Math.cos(t) * d, y: cy + Math.sin(t) * d, age: 0, max: urand(.5, .9), r: urand(.15, .35) });
+    }
+  }
+  if (pools.length) pools = pools.filter(p => p.live);
+  if (ph !== 'play') return;
+  ecoClock += dt;
+  const fdt = dt * foeSlow();
+  if (hz && P && !P.shield) {
+    hz.next -= fdt;
+    if (hz.next <= 0) {
+      meteorSpawn();
+      if (hz.salvo && Math.random() < hz.salvo) { meteorSpawn(.35); meteorSpawn(.35); }
+      hz.next = urand(hz.met[0], hz.met[1]);
+    }
+  }
+  for (const m of meteors) {
+    m.t -= fdt;
+    if (T.glow && Math.random() < .7) {
+      const q = meteorPos(m);
+      particles.push({ x: q.x + urand(-.2, .2), y: q.y + urand(-.2, .2), vx: -q.ux * 4 + urand(-1, 1), vy: -q.uy * 4 + urand(-1, 1), life: 0, max: urand(.25, .5), color: Math.random() < .5 ? '#ffb347' : '#ff5a1f', size: .12 + m.s * .2, ng: 1 });
+    }
+    if (m.t <= 0) meteorHit(m);
+  }
+  if (meteors.length) meteors = meteors.filter(m => m.t > 0);
+}
+// au sol : cratères, lave refroidie, gouffres et cibles des météores (sous le fil et les ennemis)
+function drawGround() {
+  if (!scorch.length && !pools.length && !meteors.length) return;
+  ctx.save();
+  for (const s of scorch) {
+    const u = s.age / s.max, k = 1 - u;
+    if (!T.glow) continue;
+    if (!s.cool) {
+      const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 1.3);
+      g.addColorStop(0, `rgba(30,10,5,${.55 * k})`); g.addColorStop(1, 'rgba(30,10,5,0)');
+      ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = g; ctx.fillRect(s.x - s.r * 1.3, s.y - s.r * 1.3, s.r * 2.6, s.r * 2.6);
+    }
+    const hot = Math.max(0, 1 - s.age / (s.cool ? s.max : 1.4));
+    if (hot > 0) {
+      const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+      g.addColorStop(0, `rgba(255,150,60,${.7 * hot * hot})`); g.addColorStop(1, 'rgba(255,80,30,0)');
+      ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(s.x - s.r, s.y - s.r, s.r * 2, s.r * 2);
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  for (const p of pools) {
+    const grow = Math.min(1, (ecoClock - p.born) * 3 + (p.temp ? 0 : 1)), fade = p.temp ? Math.max(0, Math.min(1, (p.end - ecoClock) / 2)) : 1;
+    if (!T.glow) {
+      // contour d'abord : le remplissage recouvre les traits intérieurs (là où les disques se chevauchent)
+      poolPath(p, grow); ctx.strokeStyle = T.shock; ctx.lineWidth = .3; ctx.stroke();
+      ctx.fillStyle = T.ball; ctx.fill();
+      continue;
+    }
+    // halo de chaleur
+    ctx.globalCompositeOperation = 'lighter';
+    const hg = ctx.createRadialGradient(p.cx, p.cy, p.R * .3, p.cx, p.cy, p.R + 1.8);
+    hg.addColorStop(0, `rgba(255,110,30,${(.32 + .08 * Math.sin(time * 2.3 + p.cx)) * fade})`); hg.addColorStop(1, 'rgba(255,60,20,0)');
+    ctx.fillStyle = hg; ctx.fillRect(p.cx - p.R - 2, p.cy - p.R - 2, p.R * 2 + 4, p.R * 2 + 4);
+    ctx.globalCompositeOperation = 'source-over';
+    // le gouffre (partie fixe), puis le magma qui coule au fond (taches claires qui glissent) et les bulles qui éclatent
+    if (p.cs !== scale) poolSprite(p);
+    ctx.globalAlpha = .35 + .65 * fade;
+    if (grow < 1) { ctx.save(); ctx.translate(p.cx, p.cy); ctx.scale(grow, grow); ctx.translate(-p.cx, -p.cy); }
+    ctx.drawImage(p.img, p.ox, p.oy, p.w, p.w);
+    if (grow < 1) ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.save(); poolPath(p, grow); ctx.clip(); ctx.globalCompositeOperation = 'lighter';
+    for (const v of p.veins) {
+      const [x0, y0, r0] = p.circ[v.i], t = time * v.sp + v.ph, r = r0 * v.s * grow;
+      const x = x0 + Math.cos(t) * r0 * .4, y = y0 + Math.sin(t * 1.3) * r0 * .4;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(255,236,150,${.8 * fade})`); g.addColorStop(.45, `rgba(255,130,40,${.45 * fade})`); g.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    ctx.globalCompositeOperation = 'source-over'; ctx.lineWidth = .06;
+    for (const b of p.bub) {
+      const u = b.age / b.max;
+      ctx.strokeStyle = `rgba(255,240,180,${1 - u})`; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (.4 + u), 0, PI2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // cibles des météores : ombre qui grandit, cercle qui clignote de plus en plus vite
+  for (const m of meteors) {
+    const k = 1 - Math.max(0, m.t) / m.T;
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = T.glow ? `rgba(0,0,0,${.45 * k})` : `rgba(11,24,56,${.3 * k})`;
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.R * (.35 + .65 * k), 0, PI2); ctx.fill();
+    if (T.glow) { ctx.fillStyle = `rgba(255,60,30,${.14 * k})`; ctx.beginPath(); ctx.arc(m.x, m.y, m.R, 0, PI2); ctx.fill(); }
+    ctx.globalAlpha = .45 + .45 * Math.abs(Math.sin(time * (6 + k * 14)));
+    ctx.strokeStyle = T.danger; ctx.lineWidth = .14; ctx.setLineDash([.5, .35]); ctx.lineDashOffset = time * 3;
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.R, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath();
+    for (let q = 0; q < 4; q++) { const t = q * Math.PI / 2 + time * .8; ctx.moveTo(m.x + Math.cos(t) * (m.R + .25), m.y + Math.sin(t) * (m.R + .25)); ctx.lineTo(m.x + Math.cos(t) * (m.R + .8), m.y + Math.sin(t) * (m.R + .8)); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+// dans le ciel : les météores qui tombent (par-dessus tout)
+function drawMeteors() {
+  if (!meteors.length) return;
+  ctx.save();
+  for (const m of meteors) {
+    const q = meteorPos(m), L = (2.5 + 5 * m.s) * (.4 + .6 * q.k);
+    if (T.glow) {
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createLinearGradient(q.x, q.y, q.x - q.ux * L, q.y - q.uy * L);
+      g.addColorStop(0, 'rgba(255,240,190,0.9)'); g.addColorStop(.3, 'rgba(255,140,40,0.55)'); g.addColorStop(1, 'rgba(255,60,20,0)');
+      ctx.fillStyle = g; ctx.beginPath();
+      ctx.moveTo(q.x - q.uy * q.sz, q.y + q.ux * q.sz); ctx.lineTo(q.x - q.ux * L, q.y - q.uy * L); ctx.lineTo(q.x + q.uy * q.sz, q.y - q.ux * q.sz); ctx.closePath(); ctx.fill();
+      const h = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.sz * 3);
+      h.addColorStop(0, 'rgba(255,170,70,0.55)'); h.addColorStop(1, 'rgba(255,90,30,0)');
+      ctx.fillStyle = h; ctx.fillRect(q.x - q.sz * 3, q.y - q.sz * 3, q.sz * 6, q.sz * 6);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.fillStyle = T.glow ? '#4a2414' : T.ball; ctx.beginPath(); ctx.arc(q.x, q.y, q.sz * .85, 0, PI2); ctx.fill();
+    ctx.strokeStyle = T.glow ? '#ffd27a' : T.shock; ctx.lineWidth = q.sz * .22; ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /* ---------- Bonus ---------- */
@@ -3775,7 +4374,7 @@ function itemSpot(type = pickType()) {
   const pp = playerPos();
   for (let y = G; y < GR - G; y++) for (let x = G; x < GC - G; x++) {
     const v = grid[at(x, y)];
-    if (medium === 'sea' ? v !== 0 : v !== 1) continue;
+    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     if (Math.hypot(cx - pp.x, cy - pp.y) < 7) continue;
     if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
@@ -3823,7 +4422,7 @@ function announce(it) {
 }
 function moveItem(it, dt) {
   if (!it.vx && !it.vy) return;
-  const ok = ITEM[it.type].medium === 'sea' ? (x, y) => cell(x, y) === 0 : (x, y) => isLand(x, y);
+  const ok = ITEM[it.type].medium === 'sea' ? (x, y) => cell(x, y) === 0 && !lavaG[at(x, y)] : (x, y) => isLand(x, y);
   const nx = it.x + it.vx * dt;
   if (!ok(gc(nx + Math.sign(it.vx) * .5), gc(it.y))) it.vx = -it.vx; else it.x = nx;
   const ny = it.y + it.vy * dt;
@@ -4190,6 +4789,7 @@ function update(dt) {
   } else if (ph === 'title') {
     for (const e of foes) moveFoe(e, dt);
   }
+  ecoUpdate(dt);
   if (reveal && ph !== 'pause') {
     reveal.t += dt;
     const L = reveal.list;
@@ -4246,6 +4846,7 @@ function render() {
   const zf = pred.heat > 0 && !REDUCED && SH().key === 'pred' ? 1 + pred.beat * (.008 + .022 * pred.heat) : 1;
   ctx.setTransform(scale * zf, 0, 0, sy * zf, ox * scale + (1 - zf) * W / 2, oy * sy + (1 - zf) * H / 2);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
+  drawAmb('back');
   if (boardDirty || (boardRev && !reveal)) drawBoard();
   ctx.drawImage(board, 0, 0, COLS, ROWS);
   drawTwinkle();
@@ -4253,6 +4854,7 @@ function render() {
   drawEdgeGlow();
   drawStains();
   drawDrops();
+  drawGround();
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -4304,6 +4906,8 @@ function render() {
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
+  drawMeteors();
+  drawAmb('front');
   drawFx();
 }
 // Peur face au Prédateur (fr : 0 loin, 1 au contact) : l'ennemi pâlit, sue, et un « ! » apparaît au-dessus
@@ -5616,7 +6220,7 @@ function newcomers() {
   for (let l = 1; l < S.level; l++) { const c = comp(l, S.diff); for (const k of FOES) if (c[k]) seen[k] = 1; }
   let html = '';
   // arrivée sur une planète
-  if (now.eco && (now.stage === 0 || now.boss || S.shipTip)) html += `<p class="keys"><b>${now.boss ? 'NIVEAU FINAL · ' : ''}${now.eco.name}</b> · ${now.eco.tag}</p>`;
+  if (now.eco && (now.stage === 0 || now.boss || S.shipTip)) html += `<p class="keys"><b>${now.boss ? 'NIVEAU FINAL · ' : ''}${now.eco.name}</b> · ${now.eco.tag}</p>` + (now.eco.rule ? `<p class="keys">${now.eco.rule}</p>` : '');
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
@@ -5842,7 +6446,7 @@ const HOWTO = `<details><summary>COMMENT JOUER</summary>
     </details>`;
 function titleScreen() {
   S.phase = 'title'; cv.style.filter = ''; slot = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
-  applyLook(null);
+  applyLook(null); ecoSetup(null);
   startDemo();
   // plus d'écran dans le terrain : l'écran titre recouvre tout
   clearTimeout(ovTimer); ov.hidden = true; ov.innerHTML = ''; ov.classList.remove('out'); shipPick = null;
@@ -6040,6 +6644,7 @@ const TEST_GOAL = .75;
 // barre du mode test : nom du vaisseau, jeton et machine à sous seulement pour le Flambeur
 function testSync() {
   $('tship').textContent = SH().name;
+  $('teco').textContent = 'PLANÈTE · ' + ECOS[S.testEco || 0].name;
   $('tcoin').hidden = $('tforce').hidden = SH().key !== 'gam';
 }
 // pouvoirs à plein : furie, bouclier, rembobinage, blindage, jetons
@@ -6071,7 +6676,7 @@ function testItem(type) {
   const medium = ITEM[type].medium, pp = playerPos(), cands = [];
   for (let y = 1; y < GR - 1; y++) for (let x = 1; x < GC - 1; x++) {
     const v = grid[at(x, y)];
-    if (medium === 'sea' ? v !== 0 : v !== 1) continue;
+    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1) continue;
     const d = Math.hypot((x + .5) / G - pp.x, (y + .5) / G - pp.y);
     if (d < 3) continue;
     cands.push([d, (x + .5) / G - .5, (y + .5) / G - .5]);
@@ -6111,6 +6716,8 @@ $('treset').addEventListener('click', () => testReset());
 $('tprev').addEventListener('click', () => testShip(-1));
 $('tnext').addEventListener('click', () => testShip(1));
 $('tship').addEventListener('click', () => testShip(1));
+// planète du mode test (ambiance et dangers) : on passe à la suivante, terrain remis à zéro, mêmes ennemis
+$('teco').addEventListener('click', () => { if (!S.test || S.phase === 'title') return; S.testEco = ((S.testEco || 0) + 1) % ECOS.length; testReset(true); });
 $('trefill').addEventListener('click', () => { testRefill(); sfx.ready(); });
 $('ttree').addEventListener('click', () => { if (!S.test || S.phase === 'title') return; menuShip = S.ship; S.phase = 'pause'; showTree(true, 'game'); });
 const tforce = $('tforce');

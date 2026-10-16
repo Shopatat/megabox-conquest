@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -947,6 +947,94 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`ennemis universels avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${g.foes.length} ennemis`);
+  }
+}
+// 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros
+{
+  const PYR = g.ECOS.findIndex(e => e.key === 'pyros');
+  const order = [0, PYR, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== PYR)];
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  // une partie dont la 2e planète est Pyros (niveaux 4 à 6), une boule immobile en bas, pas de météore imprévu
+  const pyros = (L = 4, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 25; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
+    g.hz.next = 999;
+  };
+  const counts = [4, 5, 6].map(L => { pyros(L); return `${g.pools.length} gouffres (${g.pools.reduce((a, p) => a + p.cells.length, 0)} cases)`; });
+  console.log(`Pyros : découverte ${counts[0]}, plus dur ${counts[1]}, épreuve ${counts[2]} ; niveau 6 = ${g.S.comp.eco.name}, étape ${g.S.comp.stage}`);
+  // un couloir de terrain conquis du haut jusqu'au bord du premier gouffre
+  const corridor = () => {
+    const p = g.pools[0]; let top = p.cells[0];
+    for (const i of p.cells) if (i < top) top = i;
+    const x = top % g.GC, y0 = (top / g.GC) | 0;
+    for (let y = 0; y < y0; y++) g.grid[g.at(x, y)] = 1;
+    g.P.x = g.P.px = x; g.P.y = g.P.py = 0; p.y0 = y0;
+    return p;
+  };
+  // jusqu'à ce que le vaisseau ait dépassé le haut du gouffre (ou se soit arrêté, ou crashé)
+  const reach = p => { let n = 0; while (g.S.phase === 'play' && g.P.y <= p.y0 + 3 && (g.P.dir.y || g.P.next) && n++ < 900) step(); };
+  pyros(); reach(corridor(g.setDir('down'))); let n = 0;
+  const burned = g.S.phase;
+  pyros(); let p0 = corridor(); g.power.inv = 30; g.setDir('down'); reach(p0);
+  const helm = g.S.phase; n = 0; while (g.P.drawing && n++ < 400) step(); step(3);
+  console.log(`gouffre : le vaisseau qui y entre -> ${burned} ; sous Casque -> ${helm}, refroidi en refermant le fil posé dessus ${!p0.live}`);
+  pyros(4, shipIdx('rob')); g.armor.hp = 1; p0 = corridor(); g.setDir('down'); reach(p0); step(10);
+  const rob = `${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %`;
+  pyros(4, shipIdx('enc')); p0 = corridor(); g.setDir('down'); reach(p0);
+  const enc = `${g.S.phase}, arrêté hors de la lave ${!g.lavaG[g.at(g.P.x, g.P.y)]}`;
+  console.log(`gouffre : Blindé -> ${rob} ; Encaisseur -> ${enc}`);
+  pyros(); p0 = g.pools[0]; const s0 = g.S.score; g.grid[p0.cells[0]] = 1; step(2);
+  console.log(`gouffre touché par du terrain conquis : refroidi ${!p0.live}, +${g.S.score - s0} points, cases de lave restantes ${p0.cells.filter(i => g.lavaG[i]).length}`);
+  // météores
+  const meteor = (x, y, s, t) => g.meteors.push({ x, y, s, R: 1.4 + s * 2.6, t, T: t, ox: 5, h: 40 });
+  pyros(); g.setDir('left'); step(10); g.setDir('stop'); step(70);
+  meteor(PX(), PY(), .3, .3); n = 0; while (g.S.phase === 'play' && n++ < 60) step();
+  const still = g.S.phase;
+  pyros(); g.setDir('left'); step(10); g.setDir('stop'); step(70);
+  meteor(PX(), PY(), .3, .8); g.setDir('right'); step(60);
+  console.log(`météore : vaisseau immobile sur son terrain -> ${still} ; esquivé en bougeant -> ${g.S.phase}`);
+  pyros(); g.setDir('down'); step(30);
+  const ti = g.trail[6]; meteor((ti % g.GC + .5) / G, (((ti / g.GC) | 0) + .5) / G, .2, .05); step(4);
+  const cut = !!g.wave; n = 0; while (g.S.phase === 'play' && g.P.drawing && n++ < 300) step();
+  console.log(`météore sur le fil : onde de choc ${cut} -> ${g.S.phase}`);
+  pyros();
+  let spot = null;
+  for (let y = 20; y < 60 && !spot; y += 2) for (let x = 8; x < 42 && !spot; x += 2) if (g.pools.every(p => Math.hypot(p.cx - x, p.cy - y) > p.R + 4)) spot = [x, y];
+  const np = g.pools.length; meteor(spot[0], spot[1], .9, .05); step(3);
+  const pud = g.pools.length > np && g.pools[g.pools.length - 1].temp;
+  step(8.6 * 60);
+  console.log(`gros météore en pleine zone : flaque de lave ${pud}, refroidie 8 s plus tard ${g.pools.filter(p => p.temp).length === 0}`);
+  // chaque planète : son ambiance tourne sans erreur (avec des touches au hasard)
+  let s = 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const amb = [];
+  for (let i = 0; i < g.ECOS.length; i++) {
+    g.newGame(2, 1, 0); g.go(); g.ecoSetup(g.ECOS[i], 2);
+    for (let f = 0; f < 400; f++) { if (g.S.phase === 'ready') g.setDir('down'); if (rnd() < .04) g.setDir(DIRS[(rnd() * 4) | 0]); step(); }
+    amb.push(g.amb.key);
+  }
+  console.log(`ambiances : ${amb.join(', ')}`);
+  // mode test : la planète choisie dans la barre donne son ambiance et ses dangers
+  g.S.test = true; g.S.ship = 0; g.S.testEco = PYR; g.testReset();
+  console.log(`mode test sur ${g.ECOS[PYR].name} : ambiance ${g.amb.key}, ${g.pools.length} gouffres, météores ${!!g.hz}`);
+  g.S.testEco = 0; g.testReset(); g.S.test = false;
+  // après un crash, on repart aussitôt (sans écran d'info), dans la zone protégée, là où on est mort
+  pyros(); g.setDir('down'); step(20); const lv = g.S.lives, cx = PX(); g.crash(); n = 0; while (g.S.phase === 'crash' && n++ < 400) step();
+  console.log(`reprise après un crash : phase ${g.S.phase} après ${(n / 60).toFixed(1)} s, zone protégée ${g.P.shield}, vies ${lv} -> ${g.S.lives}, repart à ${Math.abs(PX() - cx).toFixed(1)} case(s) du crash`);
+  // Pyros épreuve avec chaque vaisseau, au hasard
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '', met = 0;
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      const m0 = g.meteors.length; step(); if (g.meteors.length < m0) met++;
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Pyros épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${met} météores tombés, ${g.pools.length} gouffres`);
   }
 }
 
