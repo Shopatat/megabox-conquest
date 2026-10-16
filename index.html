@@ -2657,6 +2657,9 @@ function predBite() {
   sfx.lunge(pred.combo); pwHud();
 }
 function updatePred(dt) {
+  // plus aucune proie dans la zone à conquérir, même tuée autrement qu'en la dévorant (Super Casque, compétence…) :
+  // toute la zone tombe, comme après la dernière proie dévorée (signalé par Fabien : sinon le niveau ne finit pas et il meurt à sec)
+  if (S.phase === 'play' && P && !P.shield && !spawned.length && !seaSeeds().length) predSweep();
   // SANG ! : la jauge se vide (une fois le vaisseau parti), plus vite avec le niveau ; à sec, il meurt (EXSANGUE !)
   if (S.phase === 'play' && P && !P.shield) {
     pred.blood = Math.max(0, pred.blood - dt * (1 + .5 * (S.level - 1) / (MAX_LEVEL - 1)) * (sk('metab') ? .85 : 1) * (sk('reserve') && pred.blood < bloodMax() * BLOOD_LOW ? .5 : 1));
@@ -2842,6 +2845,17 @@ function predConquer(x, y, c) {
   startReveal(rv);
   awardCells(list.length, { x, y: y + 2.4 }, list.length >= S.interior * 0.15, c);
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
+  items = items.filter(it => !it.done);
+  checkGoal();
+}
+function predSweep() {
+  const list = [];
+  for (let i = 0; i < N; i++) if (grid[i] === 0) { grid[i] = 1; list.push(i); }
+  if (!list.length) return;
+  const pp = playerPos();
+  startReveal(list.map(i => ({ i, t: Math.min(1.4, Math.hypot(wx(i) - pp.x, wy(i) - pp.y) * .03) })).sort((a, b) => a.t - b.t));
+  awardCells(list.length, { x: pp.x, y: pp.y + 2.4 }, list.length >= S.interior * 0.15, Math.max(1, pred.combo));
+  for (const it of items) if (ITEM[it.type].medium === 'sea') collect(it);
   items = items.filter(it => !it.done);
   checkGoal();
 }

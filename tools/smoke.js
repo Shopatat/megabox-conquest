@@ -461,7 +461,9 @@ console.log(`reprise près d'un ennemi : ${deaths} mort(s) en 5 s sans bouger (a
   g.skSave('cla', [], false); g.skSave('cla', [], true); g.mxp.cla = 0; g.newGame(1, 1, 0);
 }
 // 5s) Compétences, vaisseau par vaisseau (withSk : nouvelle partie avec ces compétences, niveau L)
-const withSk = (ship, list, L = 1) => { g.newGame(1, L, ship); g.setSkills(list); g.setupLevel(L); g.go(); g.foes.length = 0; };
+// Prédateur : une proie immobile tout au fond, sinon la zone vide de proies tombe d'un coup et le niveau finit
+const withSk = (ship, list, L = 1) => { g.newGame(1, L, ship); g.setSkills(list); g.setupLevel(L); g.go(); g.foes.length = 0;
+  if (g.SHIPS[ship].key === 'pred') { const b = g.makeFoe('out', 1); b.x = 46; b.y = 62; b.vx = b.vy = 0; g.foes.push(b); } };
 const fmtN = n => String(Math.round(n));
 const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
 // Veinard
@@ -826,6 +828,10 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   start(); g.foes.length = 0; const last = g.makeFoe('out', 1); last.x = PX(); last.y = PY() + 4; last.vx = 0; last.vy = 0; g.foes.push(last);
   g.usePower(); step(30);
   console.log(`prédateur : dernière proie dévorée -> ${(g.S.filled / g.S.interior * 100).toFixed(0)} % conquis, phase ${g.S.phase}`);
+  // dernière proie tuée autrement (ici pulvérisée sous Super Casque) : la zone tombe quand même
+  start(); g.foes.length = 0; const sm = g.makeFoe('out', 1); sm.x = PX(); sm.y = PY() + 1.2; sm.vx = 0; sm.vy = 0; g.foes.push(sm);
+  g.power.sup = 10; step(10);
+  console.log(`prédateur : dernière proie pulvérisée sous Super Casque (${sm.dead}) -> ${(g.S.filled / g.S.interior * 100).toFixed(0)} % conquis, phase ${g.S.phase}`);
   // jauge SANG ! : elle se vide, chaque proie la remplit (plus pour un doublé), à sec il meurt ; morsure plus large
   start(); const b0 = g.pred.blood; step(60); const drain = b0 - g.pred.blood;
   const p1 = g.makeFoe('out', 1); p1.x = PX(); p1.y = PY() + 6; p1.vx = 0; p1.vy = 0; g.foes.push(p1);
