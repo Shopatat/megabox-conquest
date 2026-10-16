@@ -1034,7 +1034,9 @@ const PRED_SWALLOW = .42;
 const PRED_CARRY = .22, PRED_TAIL = .35;
 const jawsOpen = () => pred.bite > 0 || pred.tail > 0;
 let slow = 0, superFlash = 0, superTint = '255,226,122', musicT = 0, musicStep = 0, combo = 0, bolts = [];
-let menuDiff = Math.min(2, Math.max(0, store.get('diff', 0))), menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
+// une seule difficulté proposée, Expert (demande de Fabien : on lance la partie sans choisir) ; DIFFS garde les trois réglages
+const menuDiff = 2;
+let menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
 /* ---------- Son ---------- */
 let actx = null, muted = store.get('mute', false);
@@ -1477,7 +1479,7 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = sv.d; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
+  S.diff = menuDiff; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
   const pw = sv.pow || {}; S.tresor = pw.tresor || null; S.tresor2 = pw.tresor2 || null; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
@@ -5491,7 +5493,7 @@ function tweenScore(dt) {
 function hud() {
   xpHud();
   $('lab').textContent = S.phase === 'title' ? 'SPACE CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
-    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL} · ${DIFFS[S.diff].name.toUpperCase()}`;
+    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(SH().lives, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
@@ -5519,7 +5521,6 @@ function hideOverlay() {
 function infoRows(done) {
   const D = DIFFS[S.diff];
   return `<div class="rows">
-      <div><span>Difficulté</span><span>${D.name}</span></div>
       <div><span>Vaisseau</span><span>${SH().name}</span></div>
       <div><span>Vies</span><span>${S.lives}</span></div>
       <div><span>${done ? 'Réalisé' : 'Objectif'}</span><span>${done ? Math.floor(S.filled / S.interior * 100) + ' %' : Math.round(D.goal * 100) + ' %'}</span></div>
@@ -5641,18 +5642,18 @@ function endScreen(title, sub) {
   if (rec) store.set(key, S.score);
   store.del('save');
   showOverlay(`
-    ${rec ? `<h2 class="rec"><span>${title}</span>FÉLICITATIONS ! VOUS AVEZ BATTU LE RECORD !</h2>` : `<h2><span>${DIFFS[S.diff].name.toUpperCase()}</span>${title}</h2>`}
+    ${rec ? `<h2 class="rec"><span>${title}</span>FÉLICITATIONS ! VOUS AVEZ BATTU LE RECORD !</h2>` : `<h2><span>SPACE CONQUEST</span>${title}</h2>`}
     ${sub ? `<p>${sub}</p>` : ''}
     <div class="rows">
       <div><span>Niveau atteint</span><span>${S.level}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
-      ${rec ? '' : `<div><span>Record ${DIFFS[S.diff].name}</span><span>${fmt(best)}</span></div>`}
+      ${rec ? '' : `<div><span>Record</span><span>${fmt(best)}</span></div>`}
     </div>
     ${masteryRow()}
     <button class="btn" id="go">MENU</button>`, titleScreen);
 }
 function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); }
-function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', `Tu as conquis les 25 niveaux en mode ${DIFFS[S.diff].name}.`); }
+function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', 'Tu as conquis les 25 niveaux.'); }
 
 // Écran titre plein écran (demande de Fabien) : il recouvre tout, HUD compris. Fond animé dans son propre canvas
 // (ciel de nuit, étoiles qui défilent, grille néon en perspective, vaisseaux du jeu qui passent), logo en lettres
@@ -5760,7 +5761,8 @@ function titleScreen() {
   startDemo();
   // plus d'écran dans le terrain : l'écran titre recouvre tout
   clearTimeout(ovTimer); ov.hidden = true; ov.innerHTML = ''; ov.classList.remove('out'); shipPick = null;
-  const maxL = Math.max(1, store.get('max' + menuDiff, 1));
+  // plus haut niveau atteint, toutes difficultés confondues (les parties d'avant comptent)
+  const maxL = Math.max(1, store.get('max0', 1), store.get('max1', 1), store.get('max2', 1));
   menuLevel = Math.min(menuLevel, maxL);
   const sv = store.get('save', null);
   const best = store.get('best' + menuDiff, 0);
@@ -5773,10 +5775,6 @@ function titleScreen() {
       <span class="tag">Conquiers l'espace, case par case</span>
     </div>
     <div class="tmenu">
-      <div class="seg" role="radiogroup" aria-label="Difficulté">
-        ${DIFFS.map((d, i) => `<button role="radio" aria-checked="${i === menuDiff}" data-d="${i}">${d.name.toUpperCase()}</button>`).join('')}
-      </div>
-      <p class="keys">${DIFFS[menuDiff].note}</p>
       <div class="stepper"><span class="k">NIVEAU DE DÉPART</span>
         <button id="lm" aria-label="Niveau précédent" ${menuLevel <= 1 ? 'disabled' : ''}>−</button>
         <span class="v" id="lv">${pad2(menuLevel)}</span>
@@ -5784,17 +5782,16 @@ function titleScreen() {
       </div>
       <button class="btn play" id="tgo">JOUER</button>
       <div class="duo">
-        ${sv ? `<button class="btn ghost" id="cont">CONTINUER<small>NIV ${pad2(sv.L)} · ${DIFFS[sv.d].short}</small></button>` : ''}
+        ${sv ? `<button class="btn ghost" id="cont">CONTINUER<small>NIVEAU ${pad2(sv.L)}</small></button>` : ''}
         <button class="btn ghost" id="tmode">MODE TEST<small>BAC À SABLE</small></button>
       </div>
-      ${best ? `<div class="rows"><div><span>Record ${DIFFS[menuDiff].name}</span><span>${fmt(best)}</span></div></div>` : ''}
+      ${best ? `<div class="rows"><div><span>Record</span><span>${fmt(best)}</span></div></div>` : ''}
       ${HOWTO}
       <div class="tfoot"><button class="mini" id="tscr">${$('scr').textContent}</button><button class="mini" id="tsnd">${$('snd').textContent}</button></div>
     </div>`);
   onGo = () => { hideTitle(); showShips(false); };
   const tin = $('tin');
   $('tgo').addEventListener('click', () => { ensureAudio(); go(); });
-  tin.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { menuDiff = +b.dataset.d; store.set('diff', menuDiff); menuLevel = 1; titleScreen(); }));
   const lm = $('lm'), lp = $('lp');
   lm && lm.addEventListener('click', () => { menuLevel = Math.max(1, menuLevel - 1); titleScreen(); });
   lp && lp.addEventListener('click', () => { menuLevel = Math.min(maxL, menuLevel + 1); titleScreen(); });
@@ -5815,7 +5812,7 @@ function showShips(test) {
   showOverlay(`
     <div class="shead">
       <button class="back" id="sback" aria-label="Retour au menu">${ARROW('M15 5 L8 12 L15 19')}</button>
-      <h2><span>${test ? 'MODE TEST' : DIFFS[menuDiff].name.toUpperCase() + ' · NIVEAU ' + pad2(menuLevel)}</span>VAISSEAU</h2>
+      <h2><span>${test ? 'MODE TEST' : 'NIVEAU ' + pad2(menuLevel)}</span>VAISSEAU</h2>
     </div>
     <div class="sstage">
       <canvas id="shipcv" aria-label="Aperçu du vaisseau ${sh.name}"></canvas>

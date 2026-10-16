@@ -55,6 +55,8 @@ Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil 
 
 ## Difficultés et niveaux
 
+**Une seule difficulté proposée : Expert** (demande de Fabien, octobre 2026 : pas de choix, on lance la partie). Le menu n'a plus de sélecteur ; `menuDiff` vaut toujours 2, une ancienne sauvegarde continue en Expert, le niveau de départ va jusqu'au plus haut atteint toutes difficultés confondues (`max0/1/2`), le record est celui d'Expert (`best2`). Les trois réglages restent dans `DIFFS` et `comp()` (le test de fumée s'en sert encore), mais ne sont plus affichés nulle part.
+
 | Difficulté | Objectif | Vitesse ennemis | Nombre d'ennemis | Perforateurs max | Bonus mobiles à partir de la paire |
 |---|---|---|---|---|---|
 | Débutant | **75 %** | ×0,85 | environ −30 % (au moins un de chaque type prévu, deux boules) | 3 | jamais |
@@ -243,8 +245,8 @@ Plus on joue avec un vaisseau, plus on le maîtrise. Proposition validée par Fa
 
 ## Écrans et interface
 
-- **Écran titre plein écran** (demande de Fabien, `titleScreen`, `showTitle`, `hideTitle`, élément `#title` en `position: fixed` au-dessus de tout) : fond animé dans son propre canvas (`drawTitle`, appelé par `frame()` tant qu'il est affiché) avec ciel de nuit, halos, étoiles qui défilent et scintillent, **grille néon en perspective** qui avance sous un horizon lumineux, et **les vaisseaux du jeu qui passent** (`drawHull`, de loin en près, avec une traînée). Logo SPACE (dégradé or → rose) / CONQUEST (dégradé cyan → violet) en Orbitron 900, lettres qui tombent une à une à la première apparition (classe `intro`) puis flottent doucement. Menu en verre dépoli en bas (difficulté, niveau de départ, gros bouton **JOUER** qui pulse, Continuer et Mode test côte à côte, record, « Comment jouer » (`HOWTO`), boutons écran et son recopiés du pied de page). Entrée lance JOUER. Le choix du vaisseau et le jeu reprennent ensuite la mise en page habituelle.
-- **Menu** : choix de la difficulté, niveau de départ (jusqu'au plus haut atteint), Nouveau jeu (puis choix du vaisseau), **Continuer** (sauvegarde), **Mode test** (puis choix du vaisseau), record par difficulté, « Comment jouer ».
+- **Écran titre plein écran** (demande de Fabien, `titleScreen`, `showTitle`, `hideTitle`, élément `#title` en `position: fixed` au-dessus de tout) : fond animé dans son propre canvas (`drawTitle`, appelé par `frame()` tant qu'il est affiché) avec ciel de nuit, halos, étoiles qui défilent et scintillent, **grille néon en perspective** qui avance sous un horizon lumineux, et **les vaisseaux du jeu qui passent** (`drawHull`, de loin en près, avec une traînée). Logo SPACE (dégradé or → rose) / CONQUEST (dégradé cyan → violet) en Orbitron 900, lettres qui tombent une à une à la première apparition (classe `intro`) puis flottent doucement. Menu en verre dépoli en bas (niveau de départ, gros bouton **JOUER** qui pulse, Continuer et Mode test côte à côte, record, « Comment jouer » (`HOWTO`), boutons écran et son recopiés du pied de page). Entrée lance JOUER. Le choix du vaisseau et le jeu reprennent ensuite la mise en page habituelle.
+- **Menu** : niveau de départ (jusqu'au plus haut atteint), Nouveau jeu (puis choix du vaisseau), **Continuer** (sauvegarde), **Mode test** (puis choix du vaisseau), record (Expert), « Comment jouer ».
 - **Écran d'info** avant chaque niveau et après un crash : niveau, difficulté, vies, objectif ou réalisé, score, présentation des nouveaux ennemis, chacun avec son **portrait animé** (petit canvas `.foecv` : un ennemi factice dessiné par `drawFoe` en lui prêtant le contexte, il tourne lentement et flotte ; `setupFoePics`, `drawFoePics`, appelé par `frame()` ; pas de portrait pour le trou noir, dont la lentille copie le terrain). **Pas de compte à rebours** (retiré à la demande de Fabien) : bouton DÉCOLLAGE (« C’EST REPARTI » après un crash ; « PARTIR » sonnait bizarre à Fabien ; toujours visible en bas de la carte) ou tap n'importe où.
 - **Pause** uniquement via le bouton ⏸ en haut à droite du HUD (ou P/Échap au clavier), plus une pause automatique si l'onglet est masqué. Boutons REPRENDRE et QUITTER LA PARTIE (retour au menu ; la partie reste sauvegardée au début du niveau). Pas de chrono : jeu « tranquillou », sans limite de temps.
 - **Game over** : si le record est battu, « FÉLICITATIONS ! VOUS AVEZ BATTU LE RECORD ! » (texte de l'original).
@@ -290,7 +292,7 @@ Simplifié à la demande de Fabien (« que tout soit testable ») :
 
 ## Stockage (`localStorage`, préfixe `mbc2-`)
 
-`theme`, `mute`, `diff` (dernière difficulté choisie), `ship` (dernier vaisseau choisi), `mxp` (expérience de chaque vaisseau), `sk` et `sktest` (arbres de maîtrise, normal et mode test), `max0/1/2` (plus haut niveau atteint par difficulté), `best0/1/2` (record par difficulté), `save` (`{d, L, score, lives, ship, pow: {fury, tresor, guard, rw, hp, chips}, used}`, partie en cours, mise à jour au début de chaque niveau et effacée au game over ou à la victoire). Tous les accès sont protégés par `try/catch`.
+`theme`, `mute`, `diff` (dernière difficulté choisie, plus utilisé), `ship` (dernier vaisseau choisi), `mxp` (expérience de chaque vaisseau), `sk` et `sktest` (arbres de maîtrise, normal et mode test), `max0/1/2` (plus haut niveau atteint par difficulté), `best0/1/2` (record par difficulté), `save` (`{d, L, score, lives, ship, pow: {fury, tresor, guard, rw, hp, chips}, used}`, partie en cours, mise à jour au début de chaque niveau et effacée au game over ou à la victoire). Tous les accès sont protégés par `try/catch`.
 
 ---
 
