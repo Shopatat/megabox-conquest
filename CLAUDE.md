@@ -59,44 +59,40 @@ Quand un ennemi touche le fil, une onde part du point d'impact et efface le fil 
 
 | Difficulté | Objectif | Vitesse ennemis | Nombre d'ennemis | Perforateurs max | Bonus mobiles à partir de la paire |
 |---|---|---|---|---|---|
-| Débutant | **75 %** | ×0,85 | environ −30 % (au moins un de chaque type prévu, deux boules) | 3 | jamais |
-| Confirmé | **80 %** | ×1 | valeurs de la table | 6 | 6 |
-| Expert | **85 %** | ×1,2 | +25 % et une boule de plus | 6 | 3 |
+| Débutant | **75 %** | ×0,85 | 60 % (au moins un de chaque type prévu) | 3 | jamais |
+| Confirmé | **80 %** | ×1 | 80 % (au moins un de chaque) | 6 | 6 |
+| Expert | **85 %** | ×1,2 | valeurs de la table des écosystèmes | 6 | 3 |
 
 Les objectifs 75/80/85 ont été **choisis par Fabien**. L'original avait 75/65/55.
 
-**25 niveaux par difficulté, écrits un par un** dans la table `LEVELS` (valeurs Confirmé), que `comp(L, d)` adapte à la difficulté. Refonte demandée par Fabien : les derniers niveaux étaient devenus l'enfer (jusqu'à 35-37 ennemis, impossible de tracer un long fil). Désormais **moins d'ennemis mais des ennemis plus coriaces**, **un seul trou noir au maximum** et seulement sur certains niveaux (7, 14, 19, 22, 25), et de la **variété** : des niveaux à thème (nom affiché sur l'écran d'info, `comp().name`) avec un seul type d'ennemi ou un combo. Les débuts restent doux mais chaque niveau change quelque chose (Fabien ne voyait pas la différence entre les trois premiers, à une époque).
+### Les écosystèmes (planètes)
 
-Arrivée des ennemis (Confirmé) : boule (1), gardien (3), perforateur (4), spectre (5), trou noir (7), chasseur (8), diviseur (10), pulsar (11). Un ennemi n'est présenté (« NOUVEAU · … ») que la première fois qu'il apparaît.
+Demande de Fabien (octobre 2026), validée avec lui : **8 écosystèmes de 3 niveaux**, puis un **niveau 25 final** sur la dernière planète traversée. Table `ECOS` : clé, nom, phrase d'accroche (`tag`, affichée en arrivant sur la planète), ennemi « signature » (`sig`, envoyé en visiteur), couleurs (`look`) et les 3 niveaux, **écrits directement en Expert**. Dans chaque planète : niveau 1 **DÉCOUVERTE**, niveau 2 **PLUS DUR**, niveau 3 **ÉPREUVE** (avec un nom de thème) (`STAGES`). Menace visée (en « boules », voir le dosage) : environ 5, 9 et 13.
 
-| Niv. | Thème | Ennemis (Confirmé) |
-|---|---|---|
-| 1-2 | | 2 puis 3 boules |
-| 3 | | 2 boules, 1 gardien |
-| 4 | | 3 boules, 1 perforateur |
-| 5 | | 2 boules, 1 spectre, 1 gardien |
-| 6 | DUEL | 2 boules, 2 perforateurs, 1 gardien |
-| 7 | | 3 boules, 1 trou noir |
-| 8 | | 3 boules, 1 chasseur, 1 gardien |
-| 9 | ESSAIM | 8 boules |
-| 10 | | 3 boules, 1 diviseur, 1 gardien |
-| 11 | | 3 boules, 1 pulsar, 2 gardiens |
-| 12 | FANTÔMES | 4 spectres, 1 gardien |
-| 13 | LA MEUTE | 3 chasseurs, 2 boules |
-| 14 | | 3 boules, 2 perforateurs, 2 gardiens, 1 trou noir |
-| 15 | MITOSE | 3 diviseurs, 1 gardien |
-| 16 | PULSATIONS | 2 pulsars, 2 boules, 2 gardiens |
-| 17 | | 3 boules, 2 chasseurs, 2 spectres, 2 gardiens |
-| 18 | FOREUSES | 5 perforateurs, 2 gardiens |
-| 19 | | 2 boules, 2 diviseurs, 2 spectres, 2 gardiens, 1 trou noir |
-| 20 | OMBRES | 3 spectres, 2 chasseurs, 1 pulsar, 2 gardiens |
-| 21 | GARDE RAPPROCHÉE | 6 gardiens, 3 boules, 1 perforateur |
-| 22 | | 3 boules, 2 chasseurs, 2 pulsars, 2 gardiens, 1 trou noir |
-| 23 | TEMPÊTE | 4 perforateurs, 2 diviseurs, 2 boules, 2 gardiens |
-| 24 | | 2 boules, 2 chasseurs, 2 spectres, 2 pulsars, 2 diviseurs, 2 gardiens |
-| 25 | BOUQUET FINAL | 3 boules, 2 perforateurs, 2 chasseurs, 2 spectres, 1 pulsar, 1 diviseur, 3 gardiens, 1 trou noir |
+- **Ordre** : Terra Nova toujours en premier, les 7 autres **tirées au sort à chaque partie** (`ecoOrder`, `S.ecos`, sauvegardé dans `save.eco` ; une ancienne sauvegarde sans ordre en reçoit un nouveau). `ecoRank(L)` (1 à 8), `ecoAt(L)`.
+- **Rang** (dans `comp`) : aux niveaux 2 et 3, un ennemi de moins si la planète tombe en 2e ou 3e position (le plus nombreux), un **visiteur** en plus en 7e et 8e (la `sig` de la planète précédente). La vitesse monte toujours de 2 % par niveau. Débutant et Confirmé (plus proposés) : 60 % et 80 % des ennemis.
+- **Niveau 25**, en attendant les boss : l'épreuve de la dernière planète plus les visiteurs des deux précédentes (« BOUQUET FINAL »).
+- **Ennemis prévus mais pas encore créés** : joués par une doublure (`STANDIN`) : ricocheur et lucioles → boule, embusqué et piranhas → chasseur, givreur et salamandre → étincelle, patineur → perforateur, bulle de magma → diviseur, méduse → serpent, mirage → spectre, bobines jumelles et condensateur → pulsar, étoile à neutrons → aimant, vortex → boule. Quand l'un d'eux est créé, on l'ajoute à `FOES` et on le retire de `STANDIN`.
+- **Couleurs** : en thème COULEUR, `applyLook(eco)` (appelée par `setupLevel`, `null` au titre et en mode test) remplace le thème par celui de la planète (`lookTheme` : `THEMES.color` + `look`, mis en cache dans `LOOKS`) : fond de l'espace, vignette, nébuleuses (`T.nebulas`, lues par `drawBg`), dégradé du terrain, liseré, particules. `themeKey` garde le thème choisi (COULEUR ou MYX-3, qui ne change pas).
+- **Écrans** : sous-titre de l'écran d'info « PLANÈTE · ÉTAPE » (`ecoLabel`), ligne « Planète · rang/8 », accroche de la planète en arrivant ; HUD « NIVEAU 05/25 · GLACIA » ; fin de niveau : nom de la planète, « Prochaine planète » et bouton « CAP SUR … » après une épreuve.
+- **Pas encore faits** : la mécanique de chaque planète, ses 2 ennemis, les 8 boss.
 
-Totaux au départ du niveau : 2 à 15 en Confirmé, 4 à 21 en Expert, 2 à 10 en Débutant (les diviseurs se multiplient ensuite). La vitesse augmente de 2 % par niveau. L'équilibrage reste à valider en jouant.
+| Planète | Mécanique prévue | Ennemis à elle (à créer) | Découverte | Plus dur | Épreuve |
+|---|---|---|---|---|---|
+| **Terra Nova** (néon bleu-violet, toujours 1re) | aucune | aucun | 3 boules, 1 gardien | 3 boules, 1 perforateur, 1 chapardeur, 1 gardien | **DUEL** : 2 boules, 2 perforateurs, 1 scarabée, 2 gardiens |
+| **Astéria** (ambre, roche) | astéroïdes fixes (murs pour tous) | ricocheur (accélère à chaque rebond), embusqué (caché dans un rocher) | 3 boules, 2 ricocheurs | 2 boules, 2 ricocheurs, 1 embusqué, 1 chasseur | **PLUIE DE MÉTÉORES** : 2 ricocheurs, 1 embusqué, 1 chasseur, 1 comète, 1 mine, 1 gardien |
+| **Glacia** (cyan, glace) | plaques de glace (on glisse) | givreur (fil gelé qui éclate 2 s plus tard), patineur (tout droit, très vite sur la glace) | 3 boules, 1 givreur, 1 gardien | 2 boules, 2 givreurs, 1 patineur, 1 scarabée | **BANQUISE** : 2 givreurs, 2 patineurs, 1 diviseur, 2 gardiens |
+| **Pyros** (orange, rouge) | geysers de lave annoncés | salamandre (cases brûlantes), bulle de magma (éclate en gouttes) | 3 boules, 1 salamandre, 1 gardien | 2 boules, 1 salamandre, 2 bulles, 1 perforateur | **ÉRUPTION** : 2 salamandres, 2 bulles, 2 perforateurs, 1 étincelle |
+| **Océania** (turquoise, bleu) | île, 30 s d'oxygène, plus lent sous l'eau | méduse (tentacules), banc de piranhas (suit le fil) | 2 boules, 1 méduse | 2 méduses, 1 banc, 1 mine | **ABYSSES** : 2 méduses, 1 banc, 1 serpent, 2 mines |
+| **Nébula** (rose, violet) | brouillard | mirage (3 copies), lucioles (seules lumières, elles piquent) | 2 boules, 2 spectres, 1 essaim | 2 spectres, 1 mirage, 1 essaim, 1 chapardeur | **FANTÔMES** : 3 spectres, 1 mirage, 1 écho, 1 essaim, 1 gardien |
+| **Voltaria** (jaune, indigo) | orages (cible au sol avant l'éclair) | bobines jumelles (arc électrique), condensateur (absorbe les ondes, décharge) | 2 boules, 1 pulsar, 1 étincelle | 1 pulsar, 2 étincelles, 1 bobines, 1 aimant | **TEMPÊTE** : 1 pulsar, 2 étincelles, 1 bobines, 1 condensateur, 1 aimant |
+| **Singularité** (or, nuit) | gravité (tout dévie vers le centre) | étoile à neutrons (courbe les trajectoires), vortex jumeaux (portails) | 3 boules, 1 étoile | 2 boules, 1 étoile, 1 vortex, 1 chasseur, 1 comète | **HORIZON** : 1 trou noir, 1 étoile, 1 vortex, 2 chasseurs, 1 comète |
+
+Boss prévus (un par planète, on n'en affronte qu'un par partie) : le Colosse, le Broyeur, la Reine des glaces, le Titan de lave, le Léviathan, le Roi spectre, la Dynamo, le Dévoreur. Principe retenu pour commencer : **3 noyaux à enfermer** (chaque noyau capturé le rend plus agressif, le dernier le fait exploser). Deuxième piste de Fabien : **le capturer plusieurs fois** pour lui faire des dégâts.
+
+Un ennemi n'est présenté (« NOUVEAU · … ») que la première fois qu'il apparaît dans la partie. Totaux au départ du niveau (Expert) : 3 à 8 ennemis (les diviseurs se multiplient ensuite). L'équilibrage reste à valider en jouant.
+
+L'ancienne table des 25 niveaux écrits un par un (`LEVELS`, thèmes ESSAIM, LA MEUTE, MITOSE, FOREUSES, GARDE RAPPROCHÉE…) a été remplacée par les écosystèmes.
 
 Fin de niveau : bonus de niveau et bonus de dépassement de l'objectif. **Plus de vie offerte** en fin de niveau (retirée à la demande de Fabien) : les vies ne se gagnent qu'avec le bonus vie. Les pouvoirs actifs sont perdus. Après le niveau 25 : écran de victoire.
 
@@ -344,15 +340,13 @@ Test de fumée : `node tools/smoke.js index.html`. Il extrait le `<script>`, l'e
 ## Pistes pour la suite
 
 ### Prochaine grosse étape : les écosystèmes (planètes)
-Discuté avec Fabien en octobre 2026. Ce qu'il a retenu « pour l'instant, plus simple » :
-- **25 niveaux** comme aujourd'hui : **8 écosystèmes de 3 niveaux**, puis un **boss au niveau 25**, celui du **dernier écosystème traversé**. Dans chaque écosystème : niveau 1 **découverte**, niveau 2 **plus dur**, niveau 3 **épreuve**. Les difficultés, objectifs, vaisseaux, bonus et la courbe de maîtrise (calée sur 25 niveaux) restent.
-- Il faut **beaucoup d'ennemis** : d'abord des universels (première fournée faite, voir « Ennemis universels »), ensuite des ennemis propres à chaque écosystème (faune), avec un **bon dosage** selon les niveaux.
-- Proposé, **pas encore confirmé** : Terra Nova toujours en premier puis les 7 autres dans un ordre tiré au sort à chaque partie (c'est ce qui fait varier le boss), ou bien choisir la planète suivante entre deux ; la difficulté monte aussi avec le rang de l'écosystème ; 8 boss (un par écosystème, battu en enfermant ses 3 noyaux) ; écosystèmes proposés : Terra Nova (sans mécanique), Astéria (astéroïdes fixes), Glacia (glace qui fait glisser), Pyros (geysers de lave annoncés), Océania, Nébula (brouillard), Voltaria (orages), Singularité (gravité, trou noir). Les anciens ennemis : chez eux, ou en « visiteurs » dans les épreuves (à trancher).
+Le socle est fait (voir « Les écosystèmes ») : 8 planètes de 3 niveaux, ordre tiré au sort après Terra Nova (validé par Fabien), couleurs, écrans. Reste, **planète par planète** (sa mécanique, ses 2 ennemis, puis son boss), en commençant par **Océania** :
 - **Océania** (idée de Fabien) : une **île** à la surface autour du point de départ (un peu plus grande que lui), **tout le reste sous l'eau** ; **réserve d'oxygène d'environ 30 s**, qui se recharge sur l'île ; **sous l'eau, déplacements 20 % plus lents** (et l'onde de choc d'autant, proposé). À sec : noyé. Proposé, pas tranché : l'oxygène baisse moitié moins vite sur le terrain conquis, poches d'air à enfermer pour en faire des stations, reprise sur l'île après une noyade. Faune proposée : méduse, piranhas, anguille électrique, courants, bulles d'air ; boss Léviathan.
 - Plus tard peut-être, façon **roguelike** (Binding of Isaac, idée de Fabien) : des runs de 8 planètes aux enchaînements variés, carte à embranchements (monde, élite, trésor, boutique, pacte, anomalie), reliques gardées pendant la run, déblocages entre les runs. Les arbres de maîtrise (longs) iraient bien avec ça.
 - Autres ennemis universels proposés, pas encore faits : tisseuse (fils de toile), limaille (colle au fil et ralentit), phare (rayon tournant), mirage (copies), ricocheur, taupe et tourelle (sur le terrain), phénix (renaît), vortex jumeaux (portails), inverseur.
 
 ### Divers
+- **À faire, demande de Fabien** : après un crash, ne plus passer par l'écran d'info ni relancer : le vaisseau renaît aussitôt là où il est mort (comme aujourd'hui, `respawnCell`) avec la zone protégée, comme au début de chaque niveau. Le mode test fait déjà ça.
 - Nouveaux objets proposés à Fabien (mine, téléporteur, leurre, aimant, score ×2, pièges à éviter, boîte mystère…) : il a préféré des compétences permanentes (les arbres de maîtrise).
 - Arbres de maîtrise : Fabien « verra en jouant » ; l'équilibrage des 198 compétences reste à faire. Page de référence à jour : https://claude.ai/artifact/64CnHJcakJiiKyuXDGLXKE.
 - Équilibrage à affiner en jouant : nouveaux niveaux et nouveaux ennemis (rythme du pulsar, ruée du chasseur, invisibilité du spectre), vaisseaux.

@@ -623,13 +623,13 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(M, ['tresor']); g.items.length = 0; g.spawnItem(); const ty = g.items[0].type; g.collect(g.items[0]); const stored = g.S.tresor === ty; g.usePower(); const used = !g.S.tresor;
   withSk(M, ['divin']); g.items.length = 0; g.spawnItem(); const pair = g.items.length; g.collect(g.items[0]); const gone = g.items[1] && g.items[1].done;
   withSk(M, ['heraut'], 2); g.items.length = 0; g.S.bonusLeft = 1; g.S.bonusWait = 2.5; step(2); const h = g.S_.herald; step(200); const at = h && g.items[0] && Math.hypot(g.items[0].x - h.x, g.items[0].y - h.y) < .01;
-  const inn = list => { withSk(M, list, 21); g.setupLevel(21); return g.foes.filter(e => e.kind === 'inn').length; };
+  const inn = list => { withSk(M, list, 3); g.setupLevel(3); return g.foes.filter(e => e.kind === 'inn').length; };
   withSk(M, ['tribut']); const s0 = g.S.score; g.awardCells(Math.ceil(g.S.interior * .25), { x: 10, y: 10 }, false); const trib = g.S.score - s0 - Math.round(Math.ceil(g.S.interior * .25) * 10 / G / G);
   withSk(M, ['couronne']); const ml = g.maxLives();
   const sd = list => { withSk(M, list); return g.supDur(); };
   withSk(M, ['magnif']); { const e = g.makeFoe('out', 1); e.x = 30; e.y = 40; e.vx = e.vy = 0; g.foes.push(e); g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); var mag = e.dead; }
   const pr = list => { let n = 0, w = 0; for (let k = 0; k < 400; k++) { withSk(M, list); n += g.S.bonusLeft; w += g.S.bonusWait; } return (n / 400).toFixed(2) + ' bonus, 1er à ' + (w / 400).toFixed(1) + ' s'; };
-  console.log(`monarque : durée de vie ${t0} s, patience ${t1}, majesté ${t2} ; trésor, gardé ${stored}, déclenché ${used} ; droit divin, ${pair} proposés, l'autre disparaît ${gone} ; héraut, annoncé et apparu au même endroit ${!!at} ; gardiens au niveau 21 : ${inn([])}, garde royale ${inn(['garde'])}`);
+  console.log(`monarque : durée de vie ${t0} s, patience ${t1}, majesté ${t2} ; trésor, gardé ${stored}, déclenché ${used} ; droit divin, ${pair} proposés, l'autre disparaît ${gone} ; héraut, annoncé et apparu au même endroit ${!!at} ; gardiens au niveau 3 : ${inn([])}, garde royale ${inn(['garde'])}`);
   console.log(`monarque : tribut sur 25 % +${fmtN(trib)} ; couronnement ${ml} vies max ; super bonus ${sd([])} s, apparat ${sd(['apparat'])}, splendeur ${sd(['apparat', 'splendeur'])} ; magnificence, ennemi détruit ${mag} ; ${pr([])} -> prodigalité ${pr(['prodig'])}`);
 }
 // Flambeur
@@ -769,10 +769,10 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(M, ['tresor', 'coffret']); for (let k = 0; k < 2; k++) { g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); } const two = !!(g.S_.tresor && g.S_.tresor2); g.usePower(); const left = !!g.S_.tresor;
   withSk(M, ['tresor', 'joyau']); g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); g.usePower(); const joy = g.S.safe > 0;
   withSk(M, ['emissaire'], 3); let far = 0; for (let k = 0; k < 30; k++) { g.items.length = 0; g.spawnItem(); const it = g.items[0]; if (it && Math.hypot(it.x - PX(), it.y - PY()) > 15.5) far++; }
-  const inn = list => { withSk(M, list, 21); g.setupLevel(21); return g.foes.filter(e => e.kind === 'inn').length; };
+  const inn = list => { withSk(M, list, 3); g.setupLevel(3); return g.foes.filter(e => e.kind === 'inn').length; };
   let cor = 0; for (let k = 0; k < 400; k++) { withSk(M, ['cortege'], 3); g.S.lives = 1; g.items.length = 0; g.spawnItem(); g.collect(g.items[0]); if (g.S.lives > 1) cor++; }
   withSk(M, ['divin'], 3); g.items.length = 0; g.spawnItem(); const three = g.items.length; g.collect(g.items[0]); const gone = g.items.filter(x => x.done).length;
-  console.log(`monarque 4-5 : coffret, deux trésors ${two}, il en reste un après usage ${left} ; joyau, invincible ${joy} ; émissaire, loin ${far}/30 ; gardiens niveau 21 : ${inn([])}, garde + courtisans ${inn(['garde', 'courtisans'])} ; cortège, vie ${(cor / 4).toFixed(0)} % ; droit divin, ${three} proposés, ${gone} retirés`);
+  console.log(`monarque 4-5 : coffret, deux trésors ${two}, il en reste un après usage ${left} ; joyau, invincible ${joy} ; émissaire, loin ${far}/30 ; gardiens niveau 3 : ${inn([])}, garde + courtisans ${inn(['garde', 'courtisans'])} ; cortège, vie ${(cor / 4).toFixed(0)} % ; droit divin, ${three} proposés, ${gone} retirés`);
 }
 // Rangs 4 et 5 : Flambeur, Prédateur
 {

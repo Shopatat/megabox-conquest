@@ -978,7 +978,14 @@ let ctx = cv.getContext('2d');
 const bg = document.createElement('canvas'), gctx = bg.getContext('2d');
 const board = document.createElement('canvas'), bctx = board.getContext('2d');
 
-let T = THEMES[store.get('theme', 'color')] || THEMES.color;
+// themeKey : thème choisi (COULEUR ou MYX-3) ; T : thème affiché (en couleur, celui de la planète en cours, applyLook)
+let themeKey = THEMES[store.get('theme', 'color')] ? store.get('theme', 'color') : 'color';
+let T = THEMES[themeKey];
+// planète en cours (null : écran titre, mode test) ; ses couleurs s'ajoutent au thème COULEUR
+let lookEco = null;
+const LOOKS = {};
+const lookTheme = () => themeKey === 'color' && lookEco && lookEco.look ? (LOOKS[lookEco.key] || (LOOKS[lookEco.key] = Object.assign({}, THEMES.color, lookEco.look))) : THEMES[themeKey];
+function applyLook(eco) { lookEco = eco; const t = lookTheme(); if (t !== T) { T = t; drawBg(); } }
 const grid = new Uint8Array(N); // 0 à conquérir, 1 conquis, 2 fil
 const trailPos = new Int32Array(N).fill(-1);
 const at = (x, y) => y * GC + x;
@@ -1134,7 +1141,7 @@ function drawBg() {
   // espace : nébuleuses discrètes et champ d'étoiles (tirage fixe, identique à chaque redimensionnement)
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (const [x, y, r, c] of [[12, 18, 16, '140,90,255'], [38, 46, 18, '60,140,255'], [30, 10, 10, '255,80,170'], [8, 54, 11, '80,200,255']]) {
+  for (const [x, y, r, c] of T.nebulas || [[12, 18, 16, '140,90,255'], [38, 46, 18, '60,140,255'], [30, 10, 10, '255,80,170'], [8, 54, 11, '80,200,255']]) {
     const n = gctx.createRadialGradient(x, y, 0, x, y, r);
     n.addColorStop(0, `rgba(${c},0.13)`); n.addColorStop(1, `rgba(${c},0)`);
     gctx.fillStyle = n; gctx.fillRect(0, 0, COLS, ROWS);
@@ -1395,51 +1402,102 @@ function resetGrid() {
 }
 
 /* ---------- Composition des niveaux ---------- */
-// Les 25 niveaux, un par un (valeurs Confirmé). Demande de Fabien : moins d'ennemis à la fin mais des ennemis plus
-// coriaces, un seul trou noir au plus et pas à chaque niveau, de la variété (niveaux à thème, combos).
-// Nouveaux venus : gardien (3), perforateur (4), spectre (5), trou noir (7), chasseur (8), diviseur (10), pulsar (11).
-// Ennemis universels (première fournée, pas encore dans les niveaux : mode test) : étincelle, serpent, mine, comète,
-// aimant, écho, scarabée, chapardeur.
+// Ennemis du jeu ; les universels (étincelle, serpent, mine, comète, aimant, écho, scarabée, chapardeur) vont partout.
 const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost', 'spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief'];
-const LEVELS = [
-  { out: 2 },
-  { out: 3 },
-  { out: 2, inn: 1 },
-  { out: 3, perf: 1 },
-  { out: 2, ghost: 1, inn: 1 },
-  { name: 'DUEL', out: 2, perf: 2, inn: 1 },
-  { out: 3, amph: 1 },
-  { out: 3, hunt: 1, inn: 1 },
-  { name: 'ESSAIM', out: 8 },
-  { out: 3, div: 1, inn: 1 },
-  { out: 3, puls: 1, inn: 2 },
-  { name: 'FANTÔMES', ghost: 4, inn: 1 },
-  { name: 'LA MEUTE', hunt: 3, out: 2 },
-  { out: 3, perf: 2, inn: 2, amph: 1 },
-  { name: 'MITOSE', div: 3, inn: 1 },
-  { name: 'PULSATIONS', puls: 2, out: 2, inn: 2 },
-  { out: 3, hunt: 2, ghost: 2, inn: 2 },
-  { name: 'FOREUSES', perf: 5, inn: 2 },
-  { out: 2, div: 2, ghost: 2, inn: 2, amph: 1 },
-  { name: 'OMBRES', ghost: 3, hunt: 2, puls: 1, inn: 2 },
-  { name: 'GARDE RAPPROCHÉE', inn: 6, out: 3, perf: 1 },
-  { out: 3, hunt: 2, puls: 2, inn: 2, amph: 1 },
-  { name: 'TEMPÊTE', perf: 4, div: 2, out: 2, inn: 2 },
-  { out: 2, hunt: 2, ghost: 2, puls: 2, div: 2, inn: 2 },
-  { name: 'BOUQUET FINAL', out: 3, perf: 2, hunt: 2, ghost: 2, puls: 1, div: 1, inn: 3, amph: 1 }
+// Les écosystèmes (planètes, demande de Fabien) : 8 planètes de 3 niveaux (découverte, plus dur, épreuve), puis un
+// boss au niveau 25, celui de la dernière planète traversée. Terra Nova vient toujours en premier, les 7 autres dans un
+// ordre tiré au sort à chaque partie (S.ecos). Les niveaux sont écrits pour l'Expert, seule difficulté proposée.
+// Chaque planète aura sa mécanique et deux ennemis à elle : en attendant, ceux qui n'existent pas encore sont joués par
+// leur plus proche cousin (STANDIN). sig : l'ennemi qu'elle envoie en visiteur aux planètes des rangs 7 et 8.
+// look : couleurs du thème COULEUR (terrain, espace, nébuleuses) ; le thème MYX-3 ne change pas.
+const ECOS = [
+  { key: 'terra', name: 'TERRA NOVA', tag: 'Le berceau : là où tout commence.', sig: 'perf', look: null, levels: [
+    { out: 3, inn: 1 },
+    { out: 3, perf: 1, thief: 1, inn: 1 },
+    { name: 'DUEL', out: 2, perf: 2, scar: 1, inn: 2 } ] },
+  { key: 'aste', name: 'ASTÉRIA', tag: 'Une ceinture d\'astéroïdes à la dérive.', sig: 'comet',
+    look: { empty: '#120d12', vignette: 'rgba(255,160,80,0.17)', landGrad: ['#c47a34', '#6b4a96'], edge: '#ffe6c8', landP: '#ffc89a',
+      nebulas: [[12, 18, 16, '255,140,60'], [38, 46, 18, '170,90,60'], [30, 10, 10, '255,205,120'], [8, 54, 11, '140,80,200']] },
+    levels: [
+    { out: 3, ricoch: 2 },
+    { out: 2, ricoch: 2, ambush: 1, hunt: 1 },
+    { name: 'PLUIE DE MÉTÉORES', ricoch: 2, ambush: 1, hunt: 1, comet: 1, mine: 1, inn: 1 } ] },
+  { key: 'glace', name: 'GLACIA', tag: 'Un monde de glace, où tout glisse.', sig: 'scar',
+    look: { empty: '#07132a', vignette: 'rgba(120,220,255,0.2)', landGrad: ['#86e0ff', '#4b6dff'], edge: '#f0fbff', landP: '#e2f7ff',
+      nebulas: [[12, 18, 16, '120,220,255'], [38, 46, 18, '90,140,255'], [30, 10, 10, '220,245,255'], [8, 54, 11, '140,190,255']] },
+    levels: [
+    { out: 3, frost: 1, inn: 1 },
+    { out: 2, frost: 2, skate: 1, scar: 1 },
+    { name: 'BANQUISE', frost: 2, skate: 2, div: 1, inn: 2 } ] },
+  { key: 'pyros', name: 'PYROS', tag: 'Des volcans qui crachent la lave.', sig: 'spark',
+    look: { empty: '#190a0a', vignette: 'rgba(255,80,40,0.2)', landGrad: ['#ff8a3d', '#b8185a'], edge: '#ffe0cc', landP: '#ffb38a',
+      nebulas: [[12, 18, 16, '255,90,40'], [38, 46, 18, '200,40,80'], [30, 10, 10, '255,180,80'], [8, 54, 11, '255,60,60']] },
+    levels: [
+    { out: 3, sala: 1, inn: 1 },
+    { out: 2, sala: 1, magma: 2, perf: 1 },
+    { name: 'ÉRUPTION', sala: 2, magma: 2, perf: 2, spark: 1 } ] },
+  { key: 'ocea', name: 'OCÉANIA', tag: 'Une île, et l\'océan à perte de vue.', sig: 'mine',
+    look: { empty: '#04162a', vignette: 'rgba(40,180,255,0.22)', landGrad: ['#22c9b2', '#2a58d6'], edge: '#dcfff8', landP: '#b8fff2',
+      nebulas: [[12, 18, 16, '40,200,255'], [38, 46, 18, '30,120,220'], [30, 10, 10, '120,255,220'], [8, 54, 11, '60,160,255']] },
+    levels: [
+    { out: 2, jelly: 1 },
+    { jelly: 2, piranha: 1, mine: 1 },
+    { name: 'ABYSSES', jelly: 2, piranha: 1, snake: 1, mine: 2 } ] },
+  { key: 'nebu', name: 'NÉBULA', tag: 'Un brouillard où rôdent les fantômes.', sig: 'ghost',
+    look: { empty: '#120a1e', vignette: 'rgba(255,110,220,0.2)', landGrad: ['#ff6fd2', '#7a4dff'], edge: '#ffe6fa', landP: '#ffd0f2',
+      nebulas: [[12, 18, 18, '255,110,220'], [38, 46, 20, '150,90,255'], [30, 10, 12, '255,170,240'], [8, 54, 13, '190,110,255']] },
+    levels: [
+    { out: 2, ghost: 2, fly: 1 },
+    { ghost: 2, mirage: 1, fly: 1, thief: 1 },
+    { name: 'FANTÔMES', ghost: 3, mirage: 1, echo: 1, fly: 1, inn: 1 } ] },
+  { key: 'volt', name: 'VOLTARIA', tag: 'L\'orage gronde en permanence.', sig: 'mag',
+    look: { empty: '#0a0c1a', vignette: 'rgba(255,230,90,0.14)', landGrad: ['#f5c93a', '#5146ff'], edge: '#fffbe0', landP: '#fff3b0',
+      nebulas: [[12, 18, 16, '255,230,90'], [38, 46, 18, '90,110,255'], [30, 10, 10, '255,250,180'], [8, 54, 11, '120,160,255']] },
+    levels: [
+    { out: 2, puls: 1, spark: 1 },
+    { puls: 1, spark: 2, coils: 1, mag: 1 },
+    { name: 'TEMPÊTE', puls: 1, spark: 2, coils: 1, capa: 1, mag: 1 } ] },
+  { key: 'sing', name: 'SINGULARITÉ', tag: 'Au bord du gouffre, tout tombe vers le centre.', sig: 'hunt',
+    look: { empty: '#05040a', vignette: 'rgba(200,160,80,0.14)', landGrad: ['#caa24b', '#3b2a60'], edge: '#fff1cc', landP: '#ffe7a8',
+      nebulas: [[12, 18, 16, '200,160,80'], [38, 46, 18, '110,70,180'], [30, 10, 10, '255,220,140'], [8, 54, 11, '80,60,160']] },
+    levels: [
+    { out: 3, nstar: 1 },
+    { out: 2, nstar: 1, vortex: 1, hunt: 1, comet: 1 },
+    { name: 'HORIZON', amph: 1, nstar: 1, vortex: 1, hunt: 2, comet: 1 } ] }
 ];
-// Débutant : environ 30 % d'ennemis en moins (au moins un de chaque type prévu, deux boules) ; Expert : 25 % de plus et
-// une boule de plus. Jamais plus d'un trou noir.
-function comp(L, d) {
-  const R = LEVELS[Math.min(L, MAX_LEVEL) - 1], D = DIFFS[d], c = { name: R.name || '' };
-  for (const k of FOES) {
-    const n = R[k] || 0;
-    c[k] = !n ? 0 : k === 'amph' ? 1 : d === 0 ? Math.max(k === 'out' ? Math.min(n, 2) : 1, Math.round(n * .7)) : d === 2 ? Math.round(n * 1.25) : n;
+// Ennemis prévus pour les planètes, pas encore créés, et leur doublure : ricocheur et lucioles → boule, embusqué et
+// piranhas → chasseur, givreur et salamandre → étincelle, patineur → perforateur, bulle de magma → diviseur, méduse →
+// serpent, mirage → spectre, bobines jumelles et condensateur → pulsar, étoile à neutrons → aimant, vortex → boule.
+const STANDIN = { ricoch: 'out', ambush: 'hunt', frost: 'spark', skate: 'perf', sala: 'spark', magma: 'div', jelly: 'snake', piranha: 'hunt',
+  mirage: 'ghost', fly: 'out', coils: 'puls', capa: 'puls', nstar: 'mag', vortex: 'out' };
+const STAGES = ['DÉCOUVERTE', 'PLUS DUR', 'ÉPREUVE'];
+function ecoOrder() {
+  const r = [1, 2, 3, 4, 5, 6, 7];
+  for (let i = r.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [r[i], r[j]] = [r[j], r[i]]; }
+  return [0, ...r];
+}
+const ECO0 = [0, 1, 2, 3, 4, 5, 6, 7];
+// rang de la planète (1 à 8) et son étape (0 découverte, 1 plus dur, 2 épreuve) ; le niveau 25 est le boss de la 8e
+const ecoRank = L => Math.min(8, Math.ceil(L / 3));
+function ecoAt(L, order = S.ecos || ECO0) { return ECOS[order[ecoRank(L) - 1]]; }
+// Composition d'un niveau. Le rang ajuste les niveaux 2 et 3 : un ennemi de moins si la planète tombe en 2e ou 3e
+// position, un visiteur venu de la planète précédente en 7e et 8e. Débutant et Confirmé (plus proposés) : 60 % et 80 %
+// des ennemis, au moins un de chaque. Jamais plus d'un trou noir.
+function comp(L, d, order = S.ecos || ECO0) {
+  const D = DIFFS[d], boss = L > 24, rank = ecoRank(L), E = ecoAt(L, order), st = boss ? 2 : (L - 1) % 3;
+  const R = E.levels[st], c = Object.fromEntries(FOES.map(k => [k, 0]));
+  for (const k in R) if (k !== 'name') c[FOES.includes(k) ? k : STANDIN[k]] += R[k];
+  // niveau 25, en attendant les boss : l'épreuve de la dernière planète, avec un visiteur de chacune des deux d'avant
+  if (boss) { c[ECOS[order[6]].sig]++; c[ECOS[order[5]].sig]++; }
+  if (!boss && st > 0 && rank <= 3) {
+    const k = FOES.filter(k => k !== 'amph' && c[k] > 0).sort((a, b) => c[b] - c[a] || (b === 'out') - (a === 'out'))[0];
+    if (k) c[k]--;
   }
-  if (d === 2) c.out++;
-  c.perf = Math.min(D.maxPerf, c.perf);
+  if (!boss && st > 0 && rank >= 7) c[ECOS[order[rank - 2]].sig]++;
+  if (d < 2) for (const k of FOES) if (c[k]) c[k] = Math.max(1, Math.round(c[k] * (d ? .8 : .6)));
+  c.amph = Math.min(1, c.amph); c.perf = Math.min(D.maxPerf, c.perf);
   const p = Math.ceil(L / 2);
-  return Object.assign(c, { bonus: true, mobile: p >= D.mobile, sp: D.sp * (1 + 0.02 * (L - 1)), p });
+  return Object.assign(c, { name: boss ? 'BOUQUET FINAL' : R.name || '', eco: E, stage: st, rank, boss, bonus: true, mobile: p >= D.mobile, sp: D.sp * (1 + 0.02 * (L - 1)), p });
 }
 const foeCount = c => FOES.reduce((a, k) => a + (c[k] || 0), 0);
 function makeFoe(kind, sp) {
@@ -1469,7 +1527,7 @@ function makeFoe(kind, sp) {
 /* ---------- Partie ---------- */
 function newGame(d, L, ship = 0) {
   ensureAudio(); S.test = false;
-  S.diff = d; S.ship = ship; S.score = 0; S.shipTip = true; S.usedGame = {}; S.tresor = null; S.tresor2 = null; loadSkills(); S.lives = startLives();
+  S.diff = d; S.ship = ship; S.score = 0; S.ecos = ecoOrder(); S.shipTip = true; S.usedGame = {}; S.tresor = null; S.tresor2 = null; loadSkills(); S.lives = startLives();
   rw.charge = rwSpan(); ab.fury = 0; camo.cd = 0; carry = null; armor.hp = armorMax(); gam.chips = 1;
   store.set('diff', d);
   setupLevel(L);
@@ -1479,7 +1537,7 @@ function continueGame() {
   const sv = store.get('save', null);
   if (!sv) return;
   ensureAudio(); S.test = false;
-  S.diff = menuDiff; S.score = sv.score; S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
+  S.diff = menuDiff; S.score = sv.score; S.ecos = Array.isArray(sv.eco) && sv.eco.length === 8 ? sv.eco : ecoOrder(); S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
   const pw = sv.pow || {}; S.tresor = pw.tresor || null; S.tresor2 = pw.tresor2 || null; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
   setupLevel(sv.L);
 }
@@ -1487,6 +1545,7 @@ function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
   S.xp = 0; S.mlv0 = mLevel(SH().key); S.lives0 = S.lives; S.contreT = 0; S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
   if (S.test) S.comp = Object.assign(Object.fromEntries(FOES.map(k => [k, 0])), { name: '', out: 2, inn: 1, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 });
+  applyLook(S.test ? null : S.comp.eco);
   resetGrid();
   S.filled = 0;
   zapT.fill(0); zaps = [];
@@ -1518,7 +1577,7 @@ function setupLevel(L, instant) {
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
-    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState() });
+    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), eco: S.ecos });
   }
   $('testbar').hidden = !S.test; S.testWipe = 0;
   if (S.test) testSync();
@@ -5507,7 +5566,7 @@ function tweenScore(dt) {
 function hud() {
   xpHud();
   $('lab').textContent = S.phase === 'title' ? 'SPACE CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
-    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL}`;
+    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL}${S.comp && S.comp.eco ? ' · ' + S.comp.eco.name : ''}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(SH().lives, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
@@ -5535,11 +5594,19 @@ function hideOverlay() {
 function infoRows(done) {
   const D = DIFFS[S.diff];
   return `<div class="rows">
+      ${S.test || !S.comp.eco ? '' : `<div><span>Planète</span><span>${S.comp.eco.name} · ${S.comp.boss ? 'FINAL' : S.comp.rank + '/8'}</span></div>`}
       <div><span>Vaisseau</span><span>${SH().name}</span></div>
       <div><span>Vies</span><span>${S.lives}</span></div>
       <div><span>${done ? 'Réalisé' : 'Objectif'}</span><span>${done ? Math.floor(S.filled / S.interior * 100) + ' %' : Math.round(D.goal * 100) + ' %'}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
     </div>`;
+}
+// sous-titre de l'écran d'info : planète et étape (ou nom de l'épreuve)
+function ecoLabel() {
+  const c = S.comp;
+  if (!c.eco) return 'NIVEAU';
+  if (c.boss) return 'NIVEAU FINAL · ' + c.eco.name;
+  return c.eco.name + ' · ' + (c.name ? STAGES[c.stage] + ' « ' + c.name + ' »' : STAGES[c.stage]);
 }
 function newcomers() {
   if (S.test) return '<p class="keys">Vies infinies, pas d’objectif : à 75 %, le terrain s’efface tout seul. Sous le terrain : change de vaisseau, recharge son pouvoir, fais apparaître bonus et ennemis, et réinitialise d’un tap.</p>';
@@ -5548,6 +5615,8 @@ function newcomers() {
   const now = S.comp, seen = {};
   for (let l = 1; l < S.level; l++) { const c = comp(l, S.diff); for (const k of FOES) if (c[k]) seen[k] = 1; }
   let html = '';
+  // arrivée sur une planète
+  if (now.eco && (now.stage === 0 || now.boss || S.shipTip)) html += `<p class="keys"><b>${now.boss ? 'NIVEAU FINAL · ' : ''}${now.eco.name}</b> · ${now.eco.tag}</p>`;
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
@@ -5606,7 +5675,7 @@ function showReady(mode) {
   S.readyMode = mode; S.phase = 'ready';
   hud(); pwHud();
   showOverlay(`
-    <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : S.comp.name ? 'NIVEAU · « ' + S.comp.name + ' »' : 'NIVEAU'}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
+    <h2><span>${mode === 'restart' ? 'ON REPART' : S.test ? 'BAC À SABLE' : ecoLabel()}</span>${S.test ? 'MODE TEST' : `NIVEAU ${pad2(S.level)} / ${MAX_LEVEL}`}</h2>
     ${infoRows(mode === 'restart')}
     ${newcomers()}
     <button class="btn" id="go">${mode === 'restart' ? 'C\'EST REPARTI' : 'DÉCOLLAGE'}</button>
@@ -5628,18 +5697,19 @@ function showClear() {
   powersHud(); pwHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
-  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame });
+  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos });
   // réaffiché au retour de l'arbre
   S.reshow = () => { showOverlay(`
-    <h2><span>${D.name.toUpperCase()}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
+    <h2><span>${S.comp.eco ? S.comp.eco.name : 'SPACE CONQUEST'}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
     <div class="rows">
       <div><span>Terrain</span><span>${Math.floor(pct * 100)} %</span></div>
       <div><span>Bonus niveau</span><span>+${fmt(diffB)}</span></div>
       <div><span>Bonus dépassement</span><span>+${fmt(extra)}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
+      ${S.level % 3 === 0 ? `<div><span>${S.level === 24 ? 'Niveau final' : 'Prochaine planète'}</span><span>${ecoAt(S.level + 1).name}</span></div>` : ''}
     </div>
     ${masteryRow()}
-    <button class="btn" id="go">NIVEAU SUIVANT</button>`, () => setupLevel(S.level + 1));
+    <button class="btn" id="go">${S.level % 3 === 0 && S.level < 24 ? 'CAP SUR ' + ecoAt(S.level + 1).name : 'NIVEAU SUIVANT'}</button>`, () => setupLevel(S.level + 1));
     const ct = $('ctree'); if (ct) ct.addEventListener('click', () => { menuShip = S.ship; showTree(false, 'run'); });
   };
   S.reshow();
@@ -5772,6 +5842,7 @@ const HOWTO = `<details><summary>COMMENT JOUER</summary>
     </details>`;
 function titleScreen() {
   S.phase = 'title'; cv.style.filter = ''; slot = null; gam.snail = 0; stage.classList.remove('super'); S.test = false; $('testbar').hidden = true;
+  applyLook(null);
   startDemo();
   // plus d'écran dans le terrain : l'écran titre recouvre tout
   clearTimeout(ovTimer); ov.hidden = true; ov.innerHTML = ''; ov.classList.remove('out'); shipPick = null;
@@ -6108,8 +6179,8 @@ const scr = $('scr');
 const scrLabel = () => scr.textContent = 'ÉCRAN : ' + T.label;
 scrLabel();
 scr.addEventListener('click', () => {
-  const key = T === THEMES.color ? 'myx3' : 'color';
-  T = THEMES[key]; store.set('theme', key); scrLabel();
+  themeKey = themeKey === 'color' ? 'myx3' : 'color';
+  T = lookTheme(); store.set('theme', themeKey); scrLabel();
   for (const r of rings) r.color = T.items.terr;
   drawBg(); drawBoard();
 });
