@@ -392,7 +392,7 @@ details li b{color:var(--text);font-weight:600}
       <button class="mini gold" data-item="coin" id="tcoin" hidden>+JETON</button><button class="mini" data-item="inv">CASQUE</button><button class="mini gold" data-item="sup">SUPER CASQUE</button><button class="mini" data-item="spd">VITESSE</button><button class="mini" data-item="life">VIE</button><button class="mini" data-item="terr">TERRITOIRE</button><button class="mini gold" data-item="sterr">SUPER BOMBE</button><button class="mini gold" data-item="sspd">SUPER VITESSE</button><button class="mini gold" data-item="slife">SUPER VIE</button><button class="mini" data-item="chr">CHRONO</button><button class="mini gold" data-item="schr">SUPER CHRONO</button>
     </div>
     <div class="trow"><span class="k">ENNEMIS</span>
-      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="puls">+PULSAR</button><button class="mini" data-foe="hunt">+CHASSEUR</button><button class="mini" data-foe="div">+DIVISEUR</button><button class="mini" data-foe="ghost">+SPECTRE</button><button class="mini" id="tclear">VIDER</button>
+      <button class="mini" data-foe="out">+BOULE</button><button class="mini" data-foe="perf">+PERFO</button><button class="mini" data-foe="inn">+GARDIEN</button><button class="mini" data-foe="amph">+TROU NOIR</button><button class="mini" data-foe="puls">+PULSAR</button><button class="mini" data-foe="hunt">+CHASSEUR</button><button class="mini" data-foe="div">+DIVISEUR</button><button class="mini" data-foe="ghost">+SPECTRE</button><button class="mini" data-foe="spark">+ÉTINCELLE</button><button class="mini" data-foe="snake">+SERPENT</button><button class="mini" data-foe="mine">+MINE</button><button class="mini" data-foe="comet">+COMÈTE</button><button class="mini" data-foe="mag">+AIMANT</button><button class="mini" data-foe="echo">+ÉCHO</button><button class="mini" data-foe="scar">+SCARABÉE</button><button class="mini" data-foe="thief">+CHAPARDEUR</button><button class="mini" id="tclear">VIDER</button>
     </div>
   </div>
 
@@ -424,6 +424,9 @@ const THEMES = {
   color: { label: 'COULEUR', empty:'#0b0e22', dot:'#1c2148', vignette:'rgba(120,90,255,0.22)', landA:'#5468ff', landB:'#5468ff', landGrad:['#4a6dff', '#9a5cff'], shine:null, space:true, smooth:true, edge:'#dfe4ff',
     trail:'#ff7a4d', trailCore:'rgba(42,15,42,0.85)', trailFill:'rgba(255,122,77,0.16)', shock:'#ffffff',
     ball:'#ffd23f', ballHi:'#fff7cf', ballLo:'#d9901a', ballEye:'#5a3200', perf:'#7dff9a', perfLo:'#1e8a4a', puls:'#46d9ff', pulsHi:'#e6fbff', hunt:'#ff4466', huntHi:'#ffd0da', div:'#ff9f43', divHi:'#ffe2bd', ghost:'#d9d4ff', ink:'#1a0c24',
+    spark:'#7fb8ff', sparkHi:'#f2f8ff', snake:'#2fe0b4', snakeHi:'#c8fff0', snakeLo:'#0b6d5c', mine:'#7f89b5', mineHi:'#dfe4fa', mineLo:'#262b47',
+    comet:'#8fe3ff', cometHi:'#ffffff', magA:'#ff4d5e', magR:'#4d8bff', echo:'#ff5fd2', scar:'#30e69e', scarHi:'#d8fff0', scarLo:'#0a6b4c',
+    thief:'#eef1ff', thiefLo:'#1b1f3a', thiefWing:'#6f8cff', outline:null,
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
@@ -431,6 +434,9 @@ const THEMES = {
   myx3: { label: 'MYX-3', empty:'#8fbaf2', dot:'#80ace9', vignette:'rgba(230,242,255,0.5)', landA:'#14295c', landB:'#183066', shine:'rgba(255,255,255,0.05)', edge:'#081430',
     trail:'#0b1838', trailCore:'#8fbaf2', trailFill:'rgba(11,24,56,0.10)', shock:'#0b1838',
     ball:'#0b1838', ballHi:'#5a80c8', ballLo:'#0b1838', ballEye:'#8fbaf2', perf:'#0b1838', perfLo:'#5a80c8', puls:'#0b1838', pulsHi:'#5a80c8', hunt:'#0b1838', huntHi:'#5a80c8', div:'#0b1838', divHi:'#5a80c8', ghost:'#0b1838', ink:'#8fbaf2',
+    spark:'#0b1838', sparkHi:'#5a80c8', snake:'#0b1838', snakeHi:'#5a80c8', snakeLo:'#0b1838', mine:'#0b1838', mineHi:'#5a80c8', mineLo:'#0b1838',
+    comet:'#0b1838', cometHi:'#5a80c8', magA:'#0b1838', magR:'#0b1838', echo:'#0b1838', scar:'#cfe2ff', scarHi:'#ffffff', scarLo:'#8fbaf2',
+    thief:'#0b1838', thiefLo:'#0b1838', thiefWing:'#0b1838', outline:'#cfe2ff',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
@@ -646,7 +652,15 @@ const INTRO = {
   puls: ['PULSAR', 'Presque immobile, il envoie régulièrement une onde circulaire. Si ton fil est dans l\'anneau quand elle passe, l\'onde de choc part (et dans la zone à conquérir, elle te touche aussi). Il s\'illumine juste avant : observe son rythme.'],
   hunt: ['CHASSEUR', 'Tranquille tant que tu restes sur ton terrain. Dès que tu traces, il te vise (un pointillé te prévient) et fonce sur toi par à-coups.'],
   div:  ['DIVISEUR', 'Une grosse cellule : chaque fois qu\'elle touche ton fil, elle se coupe en deux, plus petites et plus rapides (2 fois au plus).'],
-  ghost:['SPECTRE', 'Il disparaît de temps en temps. Invisible, il est toujours là : seul un léger scintillement le trahit.']
+  ghost:['SPECTRE', 'Il disparaît de temps en temps. Invisible, il est toujours là : seul un léger scintillement le trahit.'],
+  spark:['ÉTINCELLE', 'Si elle touche ton fil, elle s\'y accroche et le remonte jusqu\'à toi. Pas d\'onde de choc : regagne ton terrain avant qu\'elle t\'atteigne et ta conquête tient.'],
+  snake:['SERPENT', 'Sa tête rebondit comme une boule, mais tout son long corps touche ton fil : ne coupe jamais derrière lui.'],
+  mine: ['MINE', 'Elle dérive lentement. Si ton fil ou ton vaisseau passe à moins de 3 cases, elle s\'arme et explose : son cercle clignote, sors-en vite. Elle se reforme quelques secondes plus tard.'],
+  comet:['COMÈTE', 'Une flèche s\'allume sur un bord et vise l\'endroit où tu es : la comète traverse tout l\'écran en ligne droite, même ton terrain. Écarte-toi de sa trajectoire.'],
+  mag:  ['AIMANT', 'Il change de pôle toutes les 3 secondes. Rouge, il t\'attire quand tu traces près de lui ; bleu, il te repousse. Joue avec son rythme.'],
+  echo: ['ÉCHO', 'Ton fantôme : il refait ton trajet 5 secondes après toi. Ne reviens pas sur tes pas, et ne reste pas immobile trop longtemps.'],
+  scar: ['SCARABÉE', 'Il longe le bord de ton terrain, là où tu sors et où tu reviens. Surveille-le avant de partir et avant de rentrer.'],
+  thief:['CHAPARDEUR', 'Il file vers les bonus et les vole avant toi. Détruit, il rend tout son butin.']
 };
 
 /* ---------- Stockage ---------- */
@@ -1382,7 +1396,9 @@ function resetGrid() {
 // Les 25 niveaux, un par un (valeurs Confirmé). Demande de Fabien : moins d'ennemis à la fin mais des ennemis plus
 // coriaces, un seul trou noir au plus et pas à chaque niveau, de la variété (niveaux à thème, combos).
 // Nouveaux venus : gardien (3), perforateur (4), spectre (5), trou noir (7), chasseur (8), diviseur (10), pulsar (11).
-const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost'];
+// Ennemis universels (première fournée, pas encore dans les niveaux : mode test) : étincelle, serpent, mine, comète,
+// aimant, écho, scarabée, chapardeur.
+const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost', 'spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief'];
 const LEVELS = [
   { out: 2 },
   { out: 3 },
@@ -1427,7 +1443,7 @@ const foeCount = c => FOES.reduce((a, k) => a + (c[k] || 0), 0);
 function makeFoe(kind, sp) {
   const deg = kind === 'inn' ? [30, 60] : [30, 45, 60];
   const a = (deg[(Math.random() * deg.length) | 0] + 90 * ((Math.random() * 4) | 0)) * Math.PI / 180;
-  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, puls: 1.4, hunt: 3.2, div: 5.2, ghost: 6.6 }[kind] * sp;
+  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, puls: 1.4, hunt: 3.2, div: 5.2, ghost: 6.6, spark: 6, snake: 5, mine: 1.2, comet: 0, mag: 2.4, echo: 0, scar: 0, thief: 5 }[kind] * sp;
   let x, y;
   if (kind === 'inn' || kind === 'amph') { x = 4 + Math.random() * (COLS - 8); y = ROWS - 1; }
   else { x = B + 3 + Math.random() * (COLS - 2*B - 6); y = B + 12 + Math.random() * (ROWS - 2*B - 16); }
@@ -1437,6 +1453,14 @@ function makeFoe(kind, sp) {
   if (kind === 'hunt') { e.st = 'roam'; e.t = 0; e.base = base; e.hd = Math.atan2(e.vy, e.vx); }
   if (kind === 'div') { e.gen = 0; e.r = DIV_R[0]; e.cd = 0; }
   if (kind === 'ghost') e.gt = Math.random() * GHOST_T;
+  if (kind === 'spark') { e.ride = null; e.cd = 0; e.base = base; }
+  if (kind === 'snake') { e.body = []; e.r = .5; }
+  if (kind === 'mine') { e.st = 'idle'; e.t = 0; e.grow = 1; e.r = .55; }
+  if (kind === 'comet') { e.st = 'wait'; e.t = 2 + Math.random() * 4; e.x = e.y = -50; }
+  if (kind === 'mag') { e.pol = Math.random() < .5 ? 1 : -1; e.pt = MAG_T * (.3 + Math.random() * .7); e.r = .55; }
+  if (kind === 'echo') echoReset(e);
+  if (kind === 'scar') scarPlace(e, 4 + Math.random() * (COLS - 8), ROWS - 1);
+  if (kind === 'thief') { e.loot = []; e.full = 0; }
   return e;
 }
 
@@ -1460,7 +1484,7 @@ function continueGame() {
 function setupLevel(L, instant) {
   S.level = L; S.comp = comp(L, S.diff);
   S.xp = 0; S.mlv0 = mLevel(SH().key); S.lives0 = S.lives; S.contreT = 0; S.used = {}; S.safe = 0; if (!S.usedGame) S.usedGame = {};
-  if (S.test) S.comp = { name: '', out: 2, inn: 1, perf: 0, amph: 0, puls: 0, hunt: 0, div: 0, ghost: 0, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 };
+  if (S.test) S.comp = Object.assign(Object.fromEntries(FOES.map(k => [k, 0])), { name: '', out: 2, inn: 1, bonus: false, mobile: false, sp: DIFFS[S.diff].sp, p: 1 });
   resetGrid();
   S.filled = 0;
   zapT.fill(0); zaps = [];
@@ -1524,7 +1548,7 @@ function respawnCell(px, py) {
 
 /* ---------- Fil ---------- */
 function pushTrail(i) { trailPos[i] = trail.length; trail.push(i); erased.push(0); grid[i] = 2; }
-function resetTrailArrays() { for (const i of trail) trailPos[i] = -1; trail = []; erased = []; wave = null; grab = null; }
+function resetTrailArrays() { for (const i of trail) trailPos[i] = -1; trail = []; erased = []; wave = null; grab = null; trailId++; }
 function clearTrail() {
   for (let k = 0; k < trail.length; k++) if (!erased[k] && grid[trail[k]] === 2) grid[trail[k]] = 0;
   resetTrailArrays();
@@ -1564,9 +1588,13 @@ function onTrailHit(e, i) {
   if (power.frag > 0) { crash(); return; }
   const k = trailPos[i];
   if (k < 0) return;
+  // mine : le contact l'arme (l'explosion soufflera le fil) ; étincelle : elle se pose sur le fil et le remonte
+  if (e.kind === 'mine' && !e.blast) { mineArm(e); return; }
+  if (e.kind === 'spark' && (e.cd > 0 || e.ride != null)) return;
   const fast = e.kind === 'perf';
   if (sk('collet')) e.slowT = 2;
   if (sk('glu')) stunBy(e, 1);
+  if (e.kind === 'spark') { sparkBoard(e, k); return; }
   // Le vaisseau n'est pas figé : s'il regagne son terrain avant que l'onde le rattrape, il survit (conquête annulée)
   if (!wave) { wave = { lo: k, hi: k, k0: k, kills: true, fast, speed: (fast ? 65 : 30) * G * (sk('filet') ? .75 : 1) }; sfx.shock(); }
   else {
@@ -1708,8 +1736,9 @@ function updatePull(dt) {
   suckStep(best, s);
 }
 // Déplace le vaisseau d'une case vers le trou (jamais sur son propre fil)
-function suckStep(e, s) {
-  const pp = playerPos(), dx = e.x - pp.x, dy = e.y - pp.y;
+// sgn = -1 : le vaisseau est repoussé (aimant bleu)
+function suckStep(e, s, sgn = 1) {
+  const pp = playerPos(), dx = (e.x - pp.x) * sgn, dy = (e.y - pp.y) * sgn;
   const sx = Math.sign(dx), sy = Math.sign(dy);
   const opts = Math.abs(dx) > Math.abs(dy) ? [[sx, 0], [0, sy]] : [[0, sy], [sx, 0]];
   for (const [ax, ay] of opts) {
@@ -1747,9 +1776,9 @@ function playerPos() {
 }
 
 /* ---------- Conquête ---------- */
-const SEA = { out: 1, perf: 1, puls: 1, hunt: 1, div: 1, ghost: 1 };
+const SEA = { out: 1, perf: 1, puls: 1, hunt: 1, div: 1, ghost: 1, spark: 1, snake: 1, mine: 1, mag: 1, thief: 1 };
 const isSea = e => !!SEA[e.kind];
-function seaSeeds() { return foes.filter(e => !e.dead && isSea(e)); }
+function seaSeeds() { return foes.filter(e => !e.dead && isSea(e) && !(e.kind === 'mine' && e.st === 'gone')); }
 function capture() {
   const tcells = [];
   for (let k = 0; k < trail.length; k++) if (!erased[k]) { grid[trail[k]] = 1; tcells.push(trail[k]); }
@@ -1851,13 +1880,13 @@ function moveSea(e, dt) {
   const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || helmet() || SH().key === 'fur');
   for (let s = 0; s < steps; s++) {
     let nx = e.x + e.vx * h, cx = gc(nx + Math.sign(e.vx) * R), cy = gc(e.y), c = cell(cx, cy);
-    if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.x = nx; else e.vx = -e.vx; }
+    if (c === 2) { onTrailHit(e, at(cx, cy)); if (e.ride != null) return; if (pierce) e.x = nx; else e.vx = -e.vx; }
     else if (c === 1) e.vx = -e.vx; else e.x = nx;
     let ny = e.y + e.vy * h; cx = gc(e.x); cy = gc(ny + Math.sign(e.vy) * R); c = cell(cx, cy);
-    if (c === 2) { onTrailHit(e, at(cx, cy)); if (pierce) e.y = ny; else e.vy = -e.vy; }
+    if (c === 2) { onTrailHit(e, at(cx, cy)); if (e.ride != null) return; if (pierce) e.y = ny; else e.vy = -e.vy; }
     else if (c === 1) e.vy = -e.vy; else e.y = ny;
     cx = gc(e.x + Math.sign(e.vx) * R); cy = gc(e.y + Math.sign(e.vy) * R); c = cell(cx, cy);
-    if (c === 2) { onTrailHit(e, at(cx, cy)); if (!pierce) { e.vx = -e.vx; e.vy = -e.vy; } }
+    if (c === 2) { onTrailHit(e, at(cx, cy)); if (e.ride != null) return; if (!pierce) { e.vx = -e.vx; e.vy = -e.vy; } }
     else if (c === 1) { e.vx = -e.vx; e.vy = -e.vy; }
   }
 }
@@ -1952,7 +1981,263 @@ function ghostAlpha(e) {
   const t = e.gt % GHOST_T;
   return t < 3.2 ? 1 : t < 3.7 ? 1 - (t - 3.2) / .5 : t < 5.9 ? 0 : (t - 5.9) / .5;
 }
-const foeColor = e => ({ out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, puls: T.puls, hunt: T.hunt, div: T.div, ghost: T.ghost })[e.kind];
+// ---- Ennemis universels (première fournée, avant les écosystèmes) ----
+// Étincelle : erre comme une boule ; si elle touche le fil, pas d'onde de choc : elle s'y pose et le remonte jusqu'au
+// vaisseau (SPARK_V cases/s, un peu moins que l'onde de choc). Le fil reste : si le vaisseau regagne son terrain avant
+// elle, la conquête tient. Comme le fil s'allonge pendant le retour, elle rattrape le vaisseau si le fil devant elle fait
+// moins d'environ la moitié (26/17 − 1) du chemin du retour.
+const SPARK_V = 26;
+let trailId = 0;
+function sparkBoard(e, k) {
+  e.ride = k; e.rideId = trailId; e.x = wx(trail[k]); e.y = wy(trail[k]);
+  burst(e.x, e.y, T.spark, 14, 6); burst(e.x, e.y, T.sparkHi, 6, 4);
+  if (!muted) { tone(2400, .06, 'sawtooth', .025, -1400); tone(1200, .12, 'square', .02, 900, .03); }
+}
+function sparkDrop(e) {
+  e.ride = null; e.cd = .8;
+  const a = Math.random() * Math.PI * 2; e.vx = Math.cos(a); e.vy = Math.sin(a); setSpeed(e, e.base);
+}
+function sparkRide(e, dt) {
+  if (!P || !P.drawing || !trail.length || e.rideId !== trailId) { sparkDrop(e); return; }
+  const last = trail.length - 1, k0 = Math.min(last, Math.floor(e.ride)), k = Math.min(last, e.ride + SPARK_V * e.sp * G * dt);
+  // une case effacée (onde de choc) sur sa route : elle retombe dans la zone à conquérir
+  for (let j = k0; j <= Math.floor(k); j++) if (erased[j]) { e.x = wx(trail[j]); e.y = wy(trail[j]); sparkDrop(e); return; }
+  e.ride = k;
+  const a = trail[Math.floor(k)], b = trail[Math.min(last, Math.floor(k) + 1)], f = k - Math.floor(k);
+  const nx = wx(a) + (wx(b) - wx(a)) * f, ny = wy(a) + (wy(b) - wy(a)) * f;
+  if (dt > 0 && (nx !== e.x || ny !== e.y)) { e.vx = (nx - e.x) / dt; e.vy = (ny - e.y) / dt; }
+  e.x = nx; e.y = ny;
+  if (T.glow && Math.random() < .6) particles.push({ x: e.x, y: e.y, vx: (Math.random() - .5) * 6, vy: (Math.random() - .5) * 6, life: 0, max: .2 + Math.random() * .2, color: Math.random() < .5 ? T.sparkHi : T.spark, size: .1 + Math.random() * .1, ng: 1 });
+  if (!muted && Math.random() < .25) tone(2600 + Math.random() * 1800, .02, 'sawtooth', .01, -1500);
+}
+// Serpent : un long corps en anneaux qui ondule ; la tête rebondit comme une boule, mais tout le corps touche le fil
+const SNAKE_N = 11, SNAKE_GAP = .21;
+function snakeTick(e, dt) {
+  // ondulation : la direction oscille autour de sa trajectoire
+  const v = Math.hypot(e.vx, e.vy), a = Math.atan2(e.vy, e.vx) + Math.cos(e.ph * .75) * 2.2 * dt;
+  e.vx = Math.cos(a) * v; e.vy = Math.sin(a) * v;
+}
+function snakeBody(e) {
+  const b = e.body, l = b[0];
+  if (!l || Math.hypot(e.x - l.x, e.y - l.y) >= SNAKE_GAP) { b.unshift({ x: e.x, y: e.y }); if (b.length > SNAKE_N * 2 + 2) b.pop(); }
+}
+// points du corps (un anneau tous les deux relevés), sans la tête
+function snakeSegs(e) { const s = []; for (let j = 2; j < e.body.length; j += 2) s.push(e.body[j]); return s; }
+function snakeHits(e) {
+  if (!P || !P.drawing) return;
+  for (const s of snakeSegs(e)) {
+    const cx = gc(s.x), cy = gc(s.y);
+    if (cell(cx, cy) === 2) { onTrailHit(e, at(cx, cy)); return; }
+  }
+}
+// Mine : dérive lentement ; si le fil ou le vaisseau passe à moins de MINE_R cases, elle s'arme (cercle qui clignote)
+// et explose MINE_ARM s plus tard : le fil pris dans l'explosion est soufflé (onde de choc), le vaisseau touché s'il y est.
+// Elle se reforme sur place MINE_BACK s plus tard (pendant ce temps, on peut conquérir sa zone).
+const MINE_R = 3, MINE_ARM = .7, MINE_BACK = 5;
+function mineArm(e) {
+  if (e.st !== 'idle') return;
+  e.st = 'arm'; e.t = MINE_ARM; e.beep = 0;
+  if (!muted) tone(1800, .07, 'square', .03);
+}
+function mineTick(e, dt) {
+  if (e.st === 'gone') { e.t -= dt; if (e.t <= 0) { e.st = 'idle'; e.grow = 0; rings.push({ x: e.x, y: e.y, r: 0, max: 1.6, age: 0, color: T.mine }); } return; }
+  if (e.grow < 1) e.grow = Math.min(1, e.grow + dt * 2);
+  if (e.st === 'arm') {
+    e.t -= dt; e.beep -= dt;
+    if (e.beep <= 0) { e.beep = .12; if (!muted && S.phase === 'play') tone(2200, .04, 'square', .025); }
+    if (e.t <= 0) mineBlast(e);
+    return;
+  }
+  if (S.phase !== 'play' || !P || P.shield || helmet() || power.sup > 0 || e.grow < 1) return;
+  const pp = playerPos();
+  if (inSeaNow() && Math.hypot(pp.x - e.x, pp.y - e.y) < MINE_R) { mineArm(e); return; }
+  if (P.drawing && SH().key !== 'fur') for (let k = 0; k < trail.length; k += 2) {
+    if (!erased[k] && Math.hypot(wx(trail[k]) - e.x, wy(trail[k]) - e.y) < MINE_R) { mineArm(e); return; }
+  }
+}
+function mineBlast(e) {
+  e.st = 'gone'; e.t = MINE_BACK;
+  burst(e.x, e.y, T.danger, 40, 14); burst(e.x, e.y, T.mineHi, 18, 9); burst(e.x, e.y, T.mine, 14, 6);
+  rings.push({ x: e.x, y: e.y, r: 0, max: MINE_R, age: 0, color: T.danger }, { x: e.x, y: e.y, r: 0, max: MINE_R * .7, age: -.06, color: T.shock });
+  shake = Math.max(shake, REDUCED ? 0 : .55); flash = Math.max(flash, .25);
+  if (!muted) { tone(60, .6, 'sawtooth', .08, -30); tone(180, .4, 'square', .05, -140, .02); }
+  if (S.phase !== 'play' || !P || helmet() || power.sup > 0) return;
+  // le fil dans le rayon est soufflé : l'onde de choc part du point le plus proche de la mine
+  if (P.drawing && SH().key !== 'fur') {
+    let bk = -1, bd = 1e9; const hit = [];
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) continue;
+      const d = Math.hypot(wx(trail[k]) - e.x, wy(trail[k]) - e.y);
+      if (d < MINE_R) { hit.push(k); if (d < bd) { bd = d; bk = k; } }
+    }
+    if (bk >= 0) { e.blast = true; onTrailHit(e, trail[bk]); e.blast = false; for (const k of hit) if (!onFire(trail[k])) eraseK(k); }
+  }
+  const pp = playerPos();
+  if (S.phase === 'play' && inSeaNow() && Math.hypot(pp.x - e.x, pp.y - e.y) < MINE_R) hitPlayer(e);
+}
+// Comète : une alerte s'allume sur un bord (flèche et trajectoire en pointillé, visée sur la position du vaisseau), puis
+// elle traverse tout l'écran en ligne droite, terrain conquis compris. Elle coupe le fil (onde de choc) et tue au contact.
+const COMET_V = 26, COMET_WARN = 1.3, COMET_R = .5;
+const cometWait = () => 3 + Math.random() * 5;
+function cometAim(e) {
+  const pp = P ? playerPos() : { x: COLS / 2, y: ROWS / 2 };
+  // elle part du côté le plus éloigné du vaisseau (parmi deux tirés au hasard), et vise un peu à côté de lui
+  const sides = [0, 1, 2, 3].sort(() => Math.random() - .5).slice(0, 2), far = s => [pp.y, COLS - pp.x, ROWS - pp.y, pp.x][s];
+  const s = far(sides[0]) > far(sides[1]) ? sides[0] : sides[1], m = 2;
+  const sx = s === 1 ? COLS + m : s === 3 ? -m : 4 + Math.random() * (COLS - 8);
+  const sy = s === 0 ? -m : s === 2 ? ROWS + m : 4 + Math.random() * (ROWS - 8);
+  const tx = pp.x + (Math.random() - .5) * 3, ty = pp.y + (Math.random() - .5) * 3, d = Math.hypot(tx - sx, ty - sy) || 1;
+  e.sx = sx; e.sy = sy; e.dx = (tx - sx) / d; e.dy = (ty - sy) / d; e.x = sx; e.y = sy;
+}
+function cometTick(e, dt) {
+  e.t -= dt;
+  if (e.st === 'wait') {
+    e.x = -50; e.y = -50;
+    if (e.t <= 0 && S.phase === 'play' && P && !P.shield) {
+      cometAim(e); e.st = 'warn'; e.t = COMET_WARN;
+      if (!muted) [0, .18, .36].forEach(d => tone(1500, .06, 'square', .025, 200, d));
+    }
+    return;
+  }
+  if (e.st === 'warn') {
+    e.x = e.sx; e.y = e.sy;
+    if (e.t <= 0) { e.st = 'fly'; e.vx = e.dx * COMET_V * e.sp; e.vy = e.dy * COMET_V * e.sp; if (!muted) tone(900, .5, 'sawtooth', .035, -700); }
+    return;
+  }
+  const steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / .25)), h = dt / steps;
+  for (let s = 0; s < steps; s++) {
+    e.x += e.vx * h; e.y += e.vy * h;
+    const cx = gc(e.x), cy = gc(e.y);
+    if (P && P.drawing && cell(cx, cy) === 2) onTrailHit(e, at(cx, cy));
+  }
+  if (T.glow && Math.random() < .8) particles.push({ x: e.x - e.vx * .02, y: e.y - e.vy * .02, vx: -e.vx * .1 + (Math.random() - .5) * 3, vy: -e.vy * .1 + (Math.random() - .5) * 3, life: 0, max: .35 + Math.random() * .3, color: Math.random() < .5 ? T.comet : T.cometHi, size: .12 + Math.random() * .14, ng: 1 });
+  if (e.x < -4 || e.x > COLS + 4 || e.y < -4 || e.y > ROWS + 4) { e.st = 'wait'; e.t = cometWait(); e.vx = e.vy = 0; }
+}
+// Aimant : change de pôle toutes les MAG_T s. Rouge : il attire le vaisseau qui trace à moins de MAG_R cases ; bleu : il le repousse.
+const MAG_T = 3, MAG_R = 9;
+function magTick(e, dt) {
+  e.pt -= dt;
+  if (e.pt <= 0) {
+    e.pt = MAG_T; e.pol = -e.pol;
+    rings.push({ x: e.x, y: e.y, r: 0, max: 2.4, age: 0, color: e.pol > 0 ? T.magA : T.magR });
+    if (!muted && S.phase === 'play') tone(e.pol > 0 ? 330 : 660, .18, 'triangle', .03, e.pol > 0 ? -150 : 300);
+  }
+}
+function updateMag(dt) {
+  if (!P) return;
+  if (P.shield || helmet() || power.sup > 0 || !inSeaNow() || grab) { P.magAcc = 0; return; }
+  const pp = playerPos();
+  let best = null, bd = 1e9;
+  for (const e of foes) { if (e.kind !== 'mag' || e.dead || e.stun > 0) continue; const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; best = e; } }
+  if (!best || bd > MAG_R) { P.magAcc = 0; return; }
+  const s = 1 - bd / MAG_R;
+  P.magAcc = (P.magAcc || 0) + dt * (2 + 12 * s * s) * G;
+  if (P.magAcc < 1) return;
+  P.magAcc = 0;
+  suckStep(best, s * .5, best.pol);
+}
+// Écho : il rejoue la trajectoire du vaisseau ECHO_D s plus tard. Sans effet sur le fil, il tue au contact :
+// impossible de revenir sur ses pas, ni de rester immobile plus de ECHO_D s. Il s'efface après un coup encaissé.
+const ECHO_D = 5;
+function echoReset(e) { e.path = []; e.clock = 0; e.on = 0; e.x = -50; e.y = -50; }
+function echoTick(e, dt) {
+  if (!P || P.shield || S.phase !== 'play') { if (P && P.shield) echoReset(e); return; }
+  e.clock += dt;
+  const pp = playerPos();
+  e.path.push({ t: e.clock, x: pp.x, y: pp.y });
+  const t = e.clock - ECHO_D;
+  if (t < 0) { e.on = 0; e.x = -50; e.y = -50; return; }
+  while (e.path.length > 2 && e.path[1].t <= t) e.path.shift();
+  const a = e.path[0], b = e.path[1] || a, f = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 1;
+  const nx = a.x + (b.x - a.x) * f, ny = a.y + (b.y - a.y) * f;
+  if (e.on > 0 && dt > 0 && Math.hypot(nx - e.x, ny - e.y) > 1e-4) { e.vx = (nx - e.x) / dt; e.vy = (ny - e.y) / dt; }
+  if (!e.on) { burst(nx, ny, T.echo, 14, 5); if (!muted) tone(440, .25, 'sine', .025, -220); }
+  e.on = Math.min(1, e.on + dt * 2); e.x = nx; e.y = ny;
+}
+// Scarabée : il longe le bord du terrain conquis (les cases conquises qui touchent la zone à conquérir ou le fil),
+// à SCAR_V cases/s ; le point de sortie et de retour n'est plus jamais tranquille.
+const SCAR_V = 5.5;
+const isCoast = (x, y) => isLand(x, y) && ((x > 0 && grid[at(x - 1, y)] !== 1) || (x < GC - 1 && grid[at(x + 1, y)] !== 1) || (y > 0 && grid[at(x, y - 1)] !== 1) || (y < GR - 1 && grid[at(x, y + 1)] !== 1));
+function scarPlace(e, px, py) {
+  let best = -1, bd = 1e9;
+  for (let i = 0; i < N; i++) {
+    if (grid[i] !== 1 || !isCoast(i % GC, (i / GC) | 0)) continue;
+    const d = Math.hypot(wx(i) - px, wy(i) - py);
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) { e.dead = true; return; }
+  e.gx = e.ox = best % GC; e.gy = e.oy = (best / GC) | 0; e.f = 0; e.mem = [];
+  e.x = wx(best); e.y = wy(best);
+}
+function scarStep(e) {
+  const nb = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const x = e.gx + dx, y = e.gy + dy;
+    if (!isCoast(x, y)) continue;
+    // la zone protégée le fait demi-tourner
+    if (P && P.shield && Math.hypot((x + .5) / G - (P.x + .5) / G, (y + .5) / G - (P.y + .5) / G) < SHIELD_R + .45) continue;
+    nb.push([x, y, dx, dy]);
+  }
+  const ux = e.gx - e.ox, uy = e.gy - e.oy, a0 = Math.atan2(uy, ux), score = ([, , dx, dy]) => {
+    let da = Math.abs(Math.atan2(dy, dx) - a0); if (da > Math.PI) da = Math.PI * 2 - da;
+    return (ux || uy ? da : Math.random()) + (dx && dy ? .05 : 0);
+  };
+  let opts = nb.filter(([x, y]) => !e.mem.includes(at(x, y)));
+  if (!opts.length) { e.mem = []; opts = nb.filter(([x, y]) => !(x === e.ox && y === e.oy)); }
+  if (!opts.length) opts = nb;
+  if (!opts.length) { e.ox = e.gx; e.oy = e.gy; return; }
+  opts.sort((p, q) => score(p) - score(q));
+  const [x, y] = opts[0];
+  e.ox = e.gx; e.oy = e.gy; e.gx = x; e.gy = y;
+  e.mem.push(at(x, y)); if (e.mem.length > 10) e.mem.shift();
+}
+function scarTick(e, dt) {
+  if (!isCoast(e.gx, e.gy)) { scarPlace(e, e.x, e.y); if (e.dead) return; }
+  e.f += dt * SCAR_V * e.sp * G;
+  while (e.f >= 1) { e.f -= 1; scarStep(e); }
+  const f = Math.min(1, e.f), x = ((e.ox + (e.gx - e.ox) * f) + .5) / G, y = ((e.oy + (e.gy - e.oy) * f) + .5) / G;
+  if (dt > 0 && (x !== e.x || y !== e.y)) { const vx = (x - e.x) / dt, vy = (y - e.y) / dt; e.vx += (vx - e.vx) * .3; e.vy += (vy - e.vy) * .3; }
+  e.x = x; e.y = y;
+}
+// Chapardeur : il file vers les bonus posés dans la zone à conquérir et les vole avant toi (il rebondit sur le fil comme
+// une boule). Détruit (Super Casque, piège, flammes, Prédateur…), il rend tout son butin d'un coup.
+const THIEF_V = 5, THIEF_RUSH = 7.5;
+function thiefTick(e, dt) {
+  if (e.full > 0) e.full -= dt;
+  let best = null, bd = 1e9;
+  for (const it of items) {
+    if (it.done || ITEM[it.type].medium !== 'sea' || cellW(it.x, it.y) !== 0) continue;
+    const d = Math.hypot(it.x - e.x, it.y - e.y);
+    if (d < bd) { bd = d; best = it; }
+  }
+  e.tgt = best;
+  if (!best) { setSpeed(e, THIEF_V * e.sp); return; }
+  if (bd < .9) {
+    best.done = true; (e.loot || (e.loot = [])).push(best.type); e.full = 2.5;
+    burst(best.x, best.y, T.items[best.type], 24, 8);
+    popups.push({ x: best.x, y: best.y - 1.2, text: 'VOLÉ !', age: 0, color: T.thiefWing });
+    if (!muted) { tone(1568, .06, 'square', .03); tone(1175, .1, 'square', .03, 0, .07); tone(784, .16, 'square', .03, 0, .15); }
+    return;
+  }
+  // il vire vers sa cible
+  const v = THIEF_RUSH * e.sp, a = Math.atan2(e.vy, e.vx);
+  let da = Math.atan2(best.y - e.y, best.x - e.x) - a;
+  while (da > Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  const b = a + Math.max(-3.2 * dt, Math.min(3.2 * dt, da));
+  e.vx = Math.cos(b) * v; e.vy = Math.sin(b) * v;
+}
+function lootBack(e) {
+  if (!e.loot || !e.loot.length) return;
+  const loot = e.loot; e.loot = [];
+  popups.push({ x: e.x, y: e.y - 2.2, text: 'BUTIN RENDU', age: -.1, color: T.thiefWing });
+  for (const type of loot) if (type !== 'life' && type !== 'slife' || S.lives < maxLives()) collect({ type, x: e.x, y: e.y, vx: 0, vy: 0, age: 0, ttl: 30, done: false });
+}
+// hors jeu (aucun contact) : mine qui se reforme, écho pas encore là, comète pas encore lancée
+const absent = e => (e.kind === 'mine' && e.st === 'gone') || (e.kind === 'echo' && !e.on) || (e.kind === 'comet' && e.st !== 'fly');
+const foeColor = e => ({ out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, puls: T.puls, hunt: T.hunt, div: T.div, ghost: T.ghost,
+  spark: T.spark, snake: T.snake, mine: T.mine, comet: T.comet, mag: e.pol > 0 ? T.magA : T.magR, echo: T.echo, scar: T.scar, thief: T.thiefWing })[e.kind];
 const isLand = (x, y) => inB(x, y) && grid[at(x, y)] === 1;
 function moveLand(e, dt) {
   const R = R_LAND, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
@@ -1985,7 +2270,7 @@ function moveAmph(e, dt) {
 }
 // Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, ennemi sous Casque) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
 function unstick(e) {
-  if (e.kind === 'amph') return;
+  if (e.kind === 'amph' || e.kind === 'comet' || e.kind === 'echo' || e.kind === 'scar' || e.ride != null) return;
   const c = cellW(e.x, e.y), sea = isSea(e);
   if (sea ? c !== 1 : c === 1) return;
   const want = sea ? 0 : 1;
@@ -1995,7 +2280,7 @@ function unstick(e) {
     if (d < bd) { bd = d; best = i; }
   }
   if (best < 0) { e.dead = true; return; }
-  e.x = wx(best); e.y = wy(best); e.hist.length = 0;
+  e.x = wx(best); e.y = wy(best); e.hist.length = 0; if (e.body) e.body.length = 0;
 }
 function moveFoe(e, dt) {
   if (e.stun > 0) {
@@ -2014,31 +2299,54 @@ function moveFoe(e, dt) {
   else if (e.kind === 'puls') pulsarTick(e, dt);
   else if (e.kind === 'ghost') e.gt += dt;
   else if (e.kind === 'div' && e.cd > 0) e.cd -= dt;
-  if (isSea(e)) moveSea(e, dt);
+  else if (e.kind === 'spark' && e.cd > 0) e.cd -= dt;
+  else if (e.kind === 'snake') snakeTick(e, dt);
+  else if (e.kind === 'mag') magTick(e, dt);
+  else if (e.kind === 'thief') thiefTick(e, dt);
+  if (e.kind === 'mine') { mineTick(e, dt); if (e.st === 'gone') { e.ph += dt * 3; return; } }
+  if (e.kind === 'spark' && e.ride != null) sparkRide(e, dt);
+  else if (e.kind === 'comet') cometTick(e, dt);
+  else if (e.kind === 'echo') echoTick(e, dt);
+  else if (e.kind === 'scar') scarTick(e, dt);
+  else if (isSea(e)) moveSea(e, dt);
   else if (e.kind === 'inn') moveLand(e, dt);
   else moveAmph(e, dt);
+  if (e.kind === 'snake') { snakeBody(e); if (S.phase === 'play' && !(e.stun > 0)) snakeHits(e); }
   e.ph += dt * 3;
   e.hist.unshift({ x: e.x, y: e.y }); if (e.hist.length > 7) e.hist.pop();
 }
 function updateFoes(dt) {
   const pp = playerPos();
   for (const e of foes) {
+    if (e.dead) { lootBack(e); continue; }
     const ox = e.x, oy = e.y;
     moveFoe(e, dt);
-    if (P && P.shield) shieldBounce(e, ox, oy);
+    if (P && P.shield && e.kind !== 'echo' && e.kind !== 'scar') shieldBounce(e, ox, oy);
     if (S.phase !== 'play' || e.stun > 0) continue;
     if (e.kind === 'puls') pulsarHits(e);
-    const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : 0.9, dd = Math.hypot(e.x - pp.x, e.y - pp.y), near = dd < r;
+    if (absent(e)) continue;
+    const r = e.kind === 'amph' ? R_AMPH + .25 : e.kind === 'comet' ? COMET_R + .45 : e.kind === 'echo' ? .75 : e.r ? e.r + .45 : 0.9, dd = foeDist(e, pp), near = dd < r;
     if (e.froleCd > 0) e.froleCd -= dt;
     else if (!near && dd < r + .6 && sk('frole') && P && P.drawing) { e.froleCd = 2; const p = 300 * S.level; S.score += p; popups.push({ x: pp.x, y: pp.y - 1.6, text: 'FRÔLÉ ! +' + fmt(p), age: 0, color: T.rainbow ? '#7dff9a' : T.ball }); hud(); }
     // flammes de la furie (le contact avec le vaisseau passe avant : lui n'est pas invincible)
     if (!near && fires.length && e.kind !== 'amph' && fireHits(e)) { burnFoe(e); continue; }
     if (zaps.length && e.kind !== 'amph' && !(e.stun > 0) && zapT[at(Math.max(0, Math.min(GC - 1, gc(e.x))), Math.max(0, Math.min(GR - 1, gc(e.y))))] > fireClock) { stunBy(e, 1.5); continue; }
     if (e.hitCd > 0) { e.hitCd -= dt; continue; }
-    if (near) hitPlayer(e);
+    if (near) {
+      hitPlayer(e);
+      // coup encaissé : l'étincelle retombe du fil, l'écho s'efface (il revient ECHO_D s plus tard)
+      if (S.phase === 'play' && !e.dead) { if (e.ride != null) sparkDrop(e); if (e.kind === 'echo') { burst(e.x, e.y, T.echo, 16, 6); echoReset(e); } }
+    }
   }
   if (spawned.length) { foes.push(...spawned); spawned = []; }
+  for (const e of foes) if (e.dead) lootBack(e);
   foes = foes.filter(e => !e.dead);
+}
+// distance du vaisseau à l'ennemi (au plus proche des anneaux pour le serpent)
+function foeDist(e, pp) {
+  let d = Math.hypot(e.x - pp.x, e.y - pp.y);
+  if (e.kind === 'snake' && e.body) for (const s of snakeSegs(e)) if (cellW(s.x, s.y) !== 1) d = Math.min(d, Math.hypot(s.x - pp.x, s.y - pp.y) + .15);
+  return d;
 }
 // Le vaisseau est touché (par un ennemi, ou par l'anneau d'un pulsar si e est nul)
 function hitPlayer(e) {
@@ -2282,7 +2590,7 @@ function updateAbility(dt) {
     // Réflexes : un ennemi frôle le vaisseau pendant la furie, le temps ralentit un instant
     if (ab.on > 0 && sk('reflexes') && P && !((S.refCd -= dt) > 0)) {
       const pp = playerPos();
-      if (foes.some(e => !e.dead && e.kind !== 'amph' && Math.hypot(e.x - pp.x, e.y - pp.y) < 2.6)) { slow = Math.max(slow, .35); S.refCd = 1.5; }
+      if (foes.some(e => !e.dead && !absent(e) && e.kind !== 'amph' && Math.hypot(e.x - pp.x, e.y - pp.y) < 2.6)) { slow = Math.max(slow, .35); S.refCd = 1.5; }
     }
     pwHud();
   }
@@ -2310,7 +2618,7 @@ function updateAbility(dt) {
   if (S.bulleT > 0) S.bulleT -= dt;
   if (sk('reflexe') && P && P.drawing && !((S.refCd -= dt) > 0)) {
     const pp = playerPos();
-    if (foes.some(e => !e.dead && !(e.stun > 0) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .9)) { slow = Math.max(slow, .5); S.refCd = 2; }
+    if (foes.some(e => !e.dead && !absent(e) && !(e.stun > 0) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .9)) { slow = Math.max(slow, .5); S.refCd = 2; }
   }
   if (armor.jolt > 0) armor.jolt -= dt;
   if (armor.cd > 0) armor.cd -= dt;
@@ -2372,7 +2680,7 @@ function updatePred(dt) {
 }
 // portée de la morsure (en plus du contact) : large de base, elle s'étend avec le carnage
 const biteReach = () => .7 + .3 * pred.combo + (sk('machoires') ? .3 : 0);
-const biteable = e => !e.dead && (e.kind !== 'amph' || sk('apex')) && !(e.kind === 'ghost' && ghostAlpha(e) < .35) && !(e.kind === 'div' && e.cd > 0);
+const biteable = e => !e.dead && !absent(e) && (e.kind !== 'amph' || sk('apex')) && !(e.kind === 'ghost' && ghostAlpha(e) < .35) && !(e.kind === 'div' && e.cd > 0);
 // 0 tant qu'il reste du sang, jusqu'à 1 quand la jauge est vide
 const bloodLow = () => SH().key === 'pred' && S.phase !== 'title' ? Math.max(0, 1 - pred.blood / (bloodMax() * BLOOD_LOW)) : 0;
 function exsangue() {
@@ -2790,7 +3098,7 @@ function updateDash(dt) {
     if (sk('sillage')) { zapT[i] = fireClock + 2; zaps.push({ x: (nx + .5) / G, y: (ny + .5) / G, end: fireClock + 2 }); }
     if (T.glow) for (let k = 0; k < 2; k++) particles.push({ x: (nx + .5) / G + (Math.random() - .5) * .4, y: (ny + .5) / G + (Math.random() - .5) * .4, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 0, max: .35, color: Math.random() < .5 ? '#ffffff' : '#9fe8ff', size: .16, ng: 1 });
     for (const e of foes) {
-      if (e.dead) continue;
+      if (e.dead || absent(e)) continue;
       const r = e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9;
       const d = Math.hypot(e.x - (nx + .5) / G, e.y - (ny + .5) / G);
       if (d < r) { hitPlayer(e); break; }
@@ -2817,7 +3125,7 @@ function chainBolt() {
 function drawPremon() {
   ctx.save(); ctx.lineWidth = .1; ctx.setLineDash([.25, .25]); ctx.lineDashOffset = -time * 2;
   for (const e of foes) {
-    if (e.dead || e.kind === 'amph' || e.kind === 'inn' || e.kind === 'puls' || (e.stun > 0)) continue;
+    if (e.dead || !isSea(e) || e.kind === 'puls' || e.kind === 'mine' || e.ride != null || (e.stun > 0)) continue;
     const R = e.r || R_SEA, h = .05;
     let x = e.x, y = e.y, vx = e.vx, vy = e.vy;
     const wall = c => c !== 0 && !(e.kind === 'perf' && c === 2);
@@ -2912,7 +3220,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, ring: .08, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -2921,7 +3229,7 @@ const armorCells = () => ARMOR_CELLS / (sk('soudeur') ? 2 : 1);
 // un ennemi au contact du vaisseau : l'onde qu'il déclenche en touchant le bout du fil fait partie du même choc
 function foeTouching() {
   const pp = playerPos();
-  return foes.some(e => !e.dead && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .4);
+  return foes.some(e => !e.dead && !absent(e) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .4);
 }
 function armorHit(src) {
   const e = typeof src === 'object' ? src : null, kind = e ? e.kind : src;
@@ -3464,7 +3772,7 @@ function collect(it) {
   // Magnificence : le super bonus détruit l'ennemi le plus proche
   if (SUPER[it.type] && sk('magnif')) {
     let best = null, bd = 1e9;
-    for (const e of foes) { if (e.dead || e.kind === 'amph') continue; const d = Math.hypot(e.x - it.x, e.y - it.y); if (d < bd) { bd = d; best = e; } }
+    for (const e of foes) { if (e.dead || absent(e) || e.kind === 'amph') continue; const d = Math.hypot(e.x - it.x, e.y - it.y); if (d < bd) { bd = d; best = e; } }
     if (best) { bolts.push({ x0: it.x, y0: it.y, x1: best.x, y1: best.y, age: 0, max: .45 }); killFoe(best, 'MAGNIFICENCE', T.rainbow ? '#ffd23f' : T.shock); }
   }
   // Trésor : le premier super bonus va dans la couronne, à déclencher quand on veut
@@ -3782,6 +4090,7 @@ function update(dt) {
     S.figeT = plan ? (S.figeT || 0) + dt : 0;
     const fdt = dt * foeSlow();
     if (S.phase === 'play') updatePull(fdt);
+    if (S.phase === 'play') updateMag(fdt);
     if (S.phase === 'play') updateWave(fdt);
     if (S.phase === 'play') updateFoes(fdt);
     if (chronoOn()) chronoTick(dt);
@@ -3908,7 +4217,7 @@ function render() {
   const fearAt = SH().key === 'pred' && P && !P.shield && (S.phase === 'play' || S.phase === 'pause') ? playerPos() : null;
   for (const e of foes) {
     if (e.kind === 'amph') continue;
-    const fr = fearAt && e.kind !== 'hunt' && !(e.kind === 'ghost' && ghostAlpha(e) < .35) ? Math.max(0, 1 - Math.hypot(e.x - fearAt.x, e.y - fearAt.y) / PRED_FEAR) : 0;
+    const fr = fearAt && e.kind !== 'hunt' && !absent(e) && !(e.kind === 'ghost' && ghostAlpha(e) < .35) ? Math.max(0, 1 - Math.hypot(e.x - fearAt.x, e.y - fearAt.y) / PRED_FEAR) : 0;
     ctx.globalAlpha = e.stun > 0 ? 0.55 : 1;
     if (fr > 0) { ctx.save(); ctx.translate((Math.random() - .5) * fr * .18, (Math.random() - .5) * fr * .18); }
     drawFoe(e);
@@ -3947,6 +4256,14 @@ function drawFoe(e) {
     else if (e.kind === 'hunt') drawHunt(e);
     else if (e.kind === 'div') drawDiv(e);
     else if (e.kind === 'ghost') drawGhost(e);
+    else if (e.kind === 'spark') drawSpark(e);
+    else if (e.kind === 'snake') drawSnake(e);
+    else if (e.kind === 'mine') drawMine(e);
+    else if (e.kind === 'comet') drawComet(e);
+    else if (e.kind === 'mag') drawMag(e);
+    else if (e.kind === 'echo') drawEcho(e);
+    else if (e.kind === 'scar') drawScar(e);
+    else if (e.kind === 'thief') drawThief(e);
     else drawOut(e);
   }
 }
@@ -4398,7 +4715,7 @@ function drawPlayer(pp) {
       ctx.scale(br, br * (1 - sw * .3));
       // ses yeux suivent la proie la plus proche
       let bd = 1e9; predLook = null;
-      for (const e of foes) { if (e.dead || e.kind === 'amph') continue; const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; predLook = Math.atan2(e.y - pp.y, e.x - pp.x); } }
+      for (const e of foes) { if (e.dead || absent(e) || e.kind === 'amph') continue; const d = Math.hypot(e.x - pp.x, e.y - pp.y); if (d < bd) { bd = d; predLook = Math.atan2(e.y - pp.y, e.x - pp.x); } }
     }
     drawHull(ctx, sh, { neon, hot, rage, moving, fast: power.spd > 0 || power.hyp > 0, px: scale, ang: P.ang });
     jaw = null; predLook = null;
@@ -4667,6 +4984,240 @@ function drawGhost(e) {
   for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * .18 + Math.cos(a) * .06, -.1 + Math.sin(a) * .06, .08, .12, 0, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+// Étincelle : boule blanche qui crépite, arcs électriques qui changent à chaque image (plus vifs sur le fil)
+function drawSpark(e) {
+  const riding = e.ride != null, R = .3, TAU = Math.PI * 2, a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, riding ? 1.7 : 1.1, T.spark, riding ? .55 : .3);
+  ctx.save(); ctx.translate(e.x, e.y);
+  glowOn(T.spark, 1.4); ctx.strokeStyle = T.rainbow ? '#ffffff' : T.sparkHi; ctx.lineWidth = .055; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const n = riding ? 6 : 4;
+  for (let k = 0; k < n; k++) {
+    const b = k / n * TAU + time * 7 + Math.sin(time * 31 + k) * .6, L = .48 + .32 * Math.abs(Math.sin(time * 23 + k * 2.1)) + (riding ? .25 : 0);
+    ctx.beginPath(); ctx.moveTo(Math.cos(b) * R * .6, Math.sin(b) * R * .6);
+    for (let j = 1; j <= 3; j++) {
+      const t = j / 3, off = j < 3 ? Math.sin(time * 57 + k * 3 + j * 5) * .14 : 0;
+      ctx.lineTo(Math.cos(b) * L * t - Math.sin(b) * off, Math.sin(b) * L * t + Math.cos(b) * off);
+    }
+    ctx.stroke();
+  }
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+  g.addColorStop(0, T.rainbow ? '#ffffff' : T.sparkHi); g.addColorStop(.5, T.sparkHi); g.addColorStop(1, T.spark);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * (1 + .12 * Math.sin(time * 40)), 0, TAU); ctx.fill();
+  glowOff(); ctx.restore();
+  eye(e.x + Math.cos(a) * .05, e.y + Math.sin(a) * .05, .1, a, T.ink);
+}
+// Serpent : anneaux en dégradé de plus en plus fins vers la queue, écailles, tête en amande et langue fourchue
+function drawSnake(e) {
+  const segs = snakeSegs(e), a = Math.atan2(e.vy, e.vx), TAU = Math.PI * 2;
+  for (let j = segs.length - 1; j >= 0; j--) {
+    const s = segs[j], f = 1 - (j + 1) / (SNAKE_N + 1), r = .17 + .27 * f;
+    const g = ctx.createRadialGradient(s.x - r * .3, s.y - r * .35, r * .1, s.x, s.y, r);
+    g.addColorStop(0, T.snakeHi); g.addColorStop(.55, T.snake); g.addColorStop(1, T.snakeLo);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.fill();
+    if (T.rainbow) {
+      ctx.strokeStyle = 'rgba(4,40,34,0.45)'; ctx.lineWidth = .035; ctx.stroke();
+      if (j % 2) { ctx.fillStyle = 'rgba(255,240,140,0.55)'; ctx.beginPath(); ctx.arc(s.x, s.y, r * .32, 0, TAU); ctx.fill(); }
+    }
+  }
+  halo(e.x, e.y, 1.2, T.snake, .3);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  // langue fourchue, par à-coups
+  if (Math.sin(time * 4 + e.ph) > .55) {
+    ctx.strokeStyle = T.rainbow ? '#ff3b6b' : T.snakeHi; ctx.lineWidth = .05; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(.45, 0); ctx.lineTo(.78, 0); ctx.lineTo(.92, -.09); ctx.moveTo(.78, 0); ctx.lineTo(.92, .09); ctx.stroke();
+  }
+  glowOn(T.snake, 1);
+  const g = ctx.createLinearGradient(0, -.4, 0, .4);
+  g.addColorStop(0, T.snakeHi); g.addColorStop(.5, T.snake); g.addColorStop(1, T.snakeLo);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(.56, 0); ctx.quadraticCurveTo(.35, -.42, -.15, -.36); ctx.quadraticCurveTo(-.42, -.2, -.42, 0); ctx.quadraticCurveTo(-.42, .2, -.15, .36); ctx.quadraticCurveTo(.35, .42, .56, 0); ctx.fill();
+  glowOff(); ctx.restore();
+  for (const s of [-1, 1]) eye(e.x + Math.cos(a) * .12 - Math.sin(a) * .2 * s, e.y + Math.sin(a) * .12 + Math.cos(a) * .2 * s, .1, a, T.ink);
+}
+// Mine : sphère de métal à pointes, voyant rouge ; son rayon est marqué très discrètement, puis clignote quand elle s'arme
+function drawMine(e) {
+  if (e.st === 'gone') return;
+  const TAU = Math.PI * 2, armed = e.st === 'arm', k = armed ? 1 - Math.max(0, e.t) / MINE_ARM : 0, R = .36 * e.grow;
+  ctx.save();
+  if (armed) {
+    const blink = Math.floor(time * (8 + k * 14)) % 2;
+    ctx.globalAlpha = .1 + .12 * k; ctx.fillStyle = T.danger; ctx.beginPath(); ctx.arc(e.x, e.y, MINE_R, 0, TAU); ctx.fill();
+    ctx.globalAlpha = .35 + .55 * blink; glowOn(T.danger, 1.2); ctx.strokeStyle = T.danger; ctx.lineWidth = .14;
+    ctx.beginPath(); ctx.arc(e.x, e.y, MINE_R, 0, TAU); ctx.stroke(); glowOff();
+  } else {
+    ctx.globalAlpha = .22 * e.grow; ctx.strokeStyle = T.rainbow ? 'rgba(255,110,110,0.8)' : T.shock; ctx.lineWidth = .05;
+    ctx.setLineDash([.3, .35]); ctx.lineDashOffset = time * .6; ctx.beginPath(); ctx.arc(e.x, e.y, MINE_R, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.restore();
+  halo(e.x, e.y, 1, T.mine, .2);
+  ctx.save(); ctx.translate(e.x + (armed ? Math.sin(time * 80) * .04 : 0), e.y); ctx.rotate(e.ph * .12);
+  ctx.strokeStyle = T.mine; ctx.lineWidth = .1; ctx.lineCap = 'round'; ctx.fillStyle = T.mineHi;
+  for (let j = 0; j < 8; j++) {
+    const b = j * TAU / 8, c = Math.cos(b), s = Math.sin(b);
+    ctx.beginPath(); ctx.moveTo(c * R * .7, s * R * .7); ctx.lineTo(c * R * 1.45, s * R * 1.45); ctx.stroke();
+    ctx.beginPath(); ctx.arc(c * R * 1.5, s * R * 1.5, .055 * e.grow, 0, TAU); ctx.fill();
+  }
+  const g = ctx.createRadialGradient(-R * .35, -R * .4, R * .05, 0, 0, R);
+  g.addColorStop(0, T.mineHi); g.addColorStop(.5, T.mine); g.addColorStop(1, T.mineLo);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  ctx.strokeStyle = T.rainbow ? 'rgba(10,12,30,0.5)' : T.mineHi; ctx.lineWidth = .035; ctx.beginPath(); ctx.arc(0, 0, R * .62, 0, TAU); ctx.stroke();
+  ctx.restore();
+  // voyant : lent au repos, frénétique une fois armée
+  const on = armed ? Math.floor(time * 16) % 2 : Math.sin(time * 3 + e.ph) > .4;
+  if (on) { halo(e.x, e.y, .9, T.danger, .45); glowOn(T.danger, 1.5); }
+  ctx.fillStyle = on ? (T.rainbow ? '#ff3b3b' : T.danger) : (T.rainbow ? '#5a1218' : T.mineHi);
+  ctx.beginPath(); ctx.arc(e.x, e.y, .11 * e.grow, 0, TAU); ctx.fill(); glowOff();
+}
+// Comète : à l'alerte, chevrons au bord et trajectoire en pointillé ; en vol, tête blanche et longue queue lumineuse
+function drawComet(e) {
+  if (e.st === 'wait') return;
+  const TAU = Math.PI * 2;
+  if (e.st === 'warn') {
+    const k = 1 - Math.max(0, e.t) / COMET_WARN, blink = Math.floor(time * 8) % 2, a = Math.atan2(e.dy, e.dx);
+    ctx.save(); ctx.globalAlpha = .3 + .4 * k; ctx.strokeStyle = T.comet; ctx.lineWidth = .18; ctx.lineCap = 'round';
+    ctx.setLineDash([.2, .5]); ctx.lineDashOffset = -time * 6;
+    ctx.beginPath(); ctx.moveTo(e.sx, e.sy); ctx.lineTo(e.sx + e.dx * 100, e.sy + e.dy * 100); ctx.stroke(); ctx.setLineDash([]);
+    // chevrons juste à l'intérieur du bord, là où elle va entrer
+    let t = 0; while (t < 30 && !(e.sx + e.dx * t > 1.2 && e.sx + e.dx * t < COLS - 1.2 && e.sy + e.dy * t > 1.2 && e.sy + e.dy * t < ROWS - 1.2)) t += .25;
+    ctx.restore(); ctx.save();
+    const hx = e.sx + e.dx * t, hy = e.sy + e.dy * t;
+    halo(hx, hy, 3.2, T.comet, .25 + .35 * blink);
+    ctx.translate(hx, hy); ctx.rotate(a); ctx.scale(1.6, 1.6);
+    ctx.globalAlpha = .65 + .35 * blink; glowOn(T.comet, 2); ctx.fillStyle = T.rainbow ? '#ffffff' : T.comet;
+    for (let j = 0; j < 3; j++) {
+      const x = j * .7 - .4 + ((time * 2) % .7);
+      ctx.beginPath(); ctx.moveTo(x + .45, 0); ctx.lineTo(x - .1, -.5); ctx.lineTo(x + .05, 0); ctx.lineTo(x - .1, .5); ctx.closePath(); ctx.fill();
+    }
+    glowOff(); ctx.restore(); ctx.globalAlpha = 1;
+    return;
+  }
+  const a = Math.atan2(e.vy, e.vx), L = 6.5, c = rgbOf(T.comet);
+  halo(e.x, e.y, 2, T.comet, .45);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  if (T.glow) ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createLinearGradient(0, 0, -L, 0);
+  g.addColorStop(0, `rgba(${c},0.85)`); g.addColorStop(1, `rgba(${c},0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(.1, -.5); ctx.quadraticCurveTo(-L * .35, -.42, -L, 0); ctx.quadraticCurveTo(-L * .35, .42, .1, .5); ctx.closePath(); ctx.fill();
+  if (T.glow) {
+    const w = ctx.createLinearGradient(0, 0, -L * .6, 0);
+    w.addColorStop(0, 'rgba(255,255,255,0.9)'); w.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = w; ctx.beginPath(); ctx.moveTo(0, -.18); ctx.quadraticCurveTo(-L * .25, -.12, -L * .6, 0); ctx.quadraticCurveTo(-L * .25, .12, 0, .18); ctx.closePath(); ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  glowOn(T.comet, 1.6);
+  const h = ctx.createRadialGradient(.08, -.08, .02, 0, 0, COMET_R);
+  h.addColorStop(0, T.cometHi); h.addColorStop(.55, T.rainbow ? '#dff6ff' : T.comet); h.addColorStop(1, T.comet);
+  ctx.fillStyle = h; ctx.beginPath(); ctx.arc(0, 0, COMET_R, 0, TAU); ctx.fill(); glowOff();
+  if (T.outline) { ctx.strokeStyle = T.outline; ctx.lineWidth = .06; ctx.stroke(); }
+  ctx.restore();
+}
+// Aimant : fer à cheval qui tourne lentement ; rouge quand il attire, bleu quand il repousse (il clignote avant de changer),
+// lignes de champ qui se resserrent ou s'élargissent
+function drawMag(e) {
+  const TAU = Math.PI * 2, flick = e.pt < .5 && Math.floor(time * 10) % 2, pol = flick ? -e.pol : e.pol, col = pol > 0 ? T.magA : T.magR;
+  ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = .07;
+  for (let k = 0; k < 3; k++) {
+    let f = (time * .5 + k / 3) % 1; if (pol > 0) f = 1 - f;
+    ctx.globalAlpha = .26 * Math.sin(f * Math.PI); ctx.beginPath(); ctx.arc(e.x, e.y, 1 + f * (MAG_R - 1), 0, TAU); ctx.stroke();
+  }
+  ctx.restore();
+  halo(e.x, e.y, 1.4, col, .38);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.ph * .2);
+  ctx.lineCap = 'butt'; ctx.lineWidth = .26;
+  ctx.strokeStyle = T.rainbow ? '#d7dcef' : T.mine; ctx.beginPath(); ctx.arc(0, .02, .3, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-.3, .02); ctx.lineTo(-.3, -.22); ctx.moveTo(.3, .02); ctx.lineTo(.3, -.22); ctx.stroke();
+  // pôles : le pôle actif brille
+  for (const [x, c, on] of [[-.3, T.magA, pol > 0], [.3, T.magR, pol < 0]]) {
+    if (on) glowOn(c, 1.6);
+    ctx.strokeStyle = c; ctx.globalAlpha = on ? 1 : .55; ctx.beginPath(); ctx.moveTo(x, -.2); ctx.lineTo(x, -.46); ctx.stroke(); glowOff();
+  }
+  ctx.globalAlpha = 1;
+  if (!T.rainbow) { ctx.fillStyle = T.shock; ctx.font = '900 .5px "Exo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(pol > 0 ? '+' : '−', 0, -.1); }
+  ctx.restore();
+  eye(e.x, e.y + .1, .1, Math.atan2(e.vy, e.vx), T.ink);
+}
+// Écho : la silhouette du vaisseau en fantôme magenta, couleurs décalées et lignes de balayage, comme une vieille vidéo ;
+// un pointillé très discret montre le trajet qu'il va refaire
+function drawEcho(e) {
+  if (!e.on) return;
+  ctx.save(); ctx.fillStyle = T.echo;
+  for (let k = 4; k < e.path.length; k += 9) { ctx.globalAlpha = .16 * e.on * (1 - k / e.path.length); ctx.beginPath(); ctx.arc(e.path[k].x, e.path[k].y, .09, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+  const a = Math.atan2(e.vy, e.vx), al = e.on * (.6 + .15 * Math.sin(time * 9)), gl = Math.sin(time * 3.1 + e.ph) > .93 ? Math.sin(time * 90) * .15 : 0;
+  const ship = () => { ctx.beginPath(); ctx.moveTo(.6, 0); ctx.lineTo(-.42, -.44); ctx.quadraticCurveTo(-.2, 0, -.42, .44); ctx.closePath(); };
+  halo(e.x, e.y, 1.2, T.echo, .3 * e.on);
+  ctx.save(); ctx.translate(e.x + gl, e.y); ctx.rotate(a);
+  if (T.rainbow) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [c, o] of [['#ff3b6b', .08], ['#3bd1ff', -.08]]) { ctx.globalAlpha = al * .45; ctx.fillStyle = c; ctx.save(); ctx.translate(o * .5, o); ship(); ctx.fill(); ctx.restore(); }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.globalAlpha = al; glowOn(T.echo, 1.2); ctx.fillStyle = T.echo; ship(); ctx.fill(); glowOff();
+  ctx.save(); ship(); ctx.clip(); ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  for (let y = -.5 + (time * .8) % .14; y < .5; y += .14) ctx.fillRect(-.6, y, 1.3, .045);
+  ctx.restore();
+  if (T.outline) { ctx.strokeStyle = T.outline; ctx.lineWidth = .05; ship(); ctx.stroke(); }
+  ctx.restore();
+  ctx.globalAlpha = e.on; eye(e.x + Math.cos(a) * .08, e.y + Math.sin(a) * .08, .1, a, T.ink); ctx.globalAlpha = 1;
+}
+// Scarabée : carapace d'émeraude en deux élytres avec un reflet, six pattes qui s'agitent, antennes
+function drawScar(e) {
+  const a = Math.atan2(e.vy, e.vx), TAU = Math.PI * 2, w = Math.sin(time * 20 + e.ph);
+  halo(e.x, e.y, 1, T.scar, .28);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  ctx.strokeStyle = T.scarLo; ctx.lineWidth = .06; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+    const x0 = .16 - k * .17, sw = (k % 2 ? w : -w) * s * .07;
+    ctx.beginPath(); ctx.moveTo(x0, s * .16); ctx.lineTo(x0 + .05 + sw, s * .4); ctx.lineTo(x0 + .13 + sw, s * .48); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(.38, -.05); ctx.quadraticCurveTo(.55, -.12, .62, -.26); ctx.moveTo(.38, .05); ctx.quadraticCurveTo(.55, .12, .62, .26); ctx.stroke();
+  ctx.fillStyle = T.scarLo; ctx.beginPath(); ctx.arc(.3, 0, .14, 0, TAU); ctx.fill();
+  glowOn(T.scar, .8);
+  const g = ctx.createLinearGradient(-.3, -.3, .3, .3);
+  g.addColorStop(0, T.scarHi); g.addColorStop(.45, T.scar); g.addColorStop(1, T.scarLo);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(-.04, 0, .36, .29, 0, 0, TAU); ctx.fill(); glowOff();
+  ctx.strokeStyle = T.rainbow ? 'rgba(0,50,36,0.6)' : T.scarLo; ctx.lineWidth = .035; ctx.beginPath(); ctx.moveTo(.22, 0); ctx.lineTo(-.39, 0); ctx.stroke();
+  if (T.rainbow) {
+    ctx.save(); ctx.beginPath(); ctx.ellipse(-.04, 0, .36, .29, 0, 0, TAU); ctx.clip();
+    const sx = -.5 + ((time * .5 + e.ph * .1) % 1.4);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(sx, -.12, .08, .3, .6, 0, TAU); ctx.fill(); ctx.restore();
+  }
+  ctx.fillStyle = T.rainbow ? '#ffe27a' : T.scarHi;
+  for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(.36, s * .07, .035, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
+// Chapardeur : pie de l'espace (corps sombre, ventre blanc, ailes bleues qui battent, longue queue, bec doré) ;
+// un pointillé file vers le bonus qu'il vise, son butin scintille autour de lui
+function drawThief(e) {
+  const a = Math.atan2(e.vy, e.vx), flap = Math.sin(time * 16 + e.ph), TAU = Math.PI * 2;
+  if (e.tgt && !e.tgt.done) {
+    ctx.save(); ctx.globalAlpha = .3; ctx.strokeStyle = T.thiefWing; ctx.lineWidth = .08; ctx.lineCap = 'round';
+    ctx.setLineDash([.12, .4]); ctx.lineDashOffset = -time * 3; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.tgt.x, e.tgt.y); ctx.stroke(); ctx.restore();
+  }
+  halo(e.x, e.y, 1.15, T.thiefWing, e.full > 0 ? .5 : .3);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  glowOn(T.thiefWing, 1);
+  ctx.fillStyle = T.thiefWing;
+  for (const s of [-1, 1]) {
+    ctx.beginPath(); ctx.moveTo(.08, s * .08); ctx.quadraticCurveTo(-.1, s * (.48 + flap * .16), -.42, s * (.34 + flap * .22)); ctx.quadraticCurveTo(-.2, s * .16, -.14, s * .05); ctx.closePath(); ctx.fill();
+  }
+  glowOff();
+  ctx.fillStyle = T.thiefLo;
+  ctx.beginPath(); ctx.moveTo(-.2, -.06); ctx.lineTo(-.78, -.13); ctx.lineTo(-.72, 0); ctx.lineTo(-.78, .13); ctx.lineTo(-.2, .06); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, .32, .19, 0, 0, TAU); ctx.fill();
+  if (T.rainbow) { ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = .04; ctx.stroke(); }
+  ctx.fillStyle = T.thief; ctx.beginPath(); ctx.ellipse(-.04, 0, .17, .11, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = T.thiefLo; ctx.beginPath(); ctx.arc(.28, 0, .15, 0, TAU); ctx.fill();
+  ctx.fillStyle = T.rainbow ? '#ffd23f' : T.thief; ctx.beginPath(); ctx.moveTo(.4, -.06); ctx.lineTo(.6, 0); ctx.lineTo(.4, .06); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  eye(e.x + Math.cos(a) * .3, e.y + Math.sin(a) * .3, .07, a, T.ink);
+  const n = e.loot ? e.loot.length : 0;
+  for (let k = 0; k < n; k++) {
+    const b = time * 3 + k * TAU / n, x = e.x + Math.cos(b) * .7, y = e.y + Math.sin(b) * .7;
+    ctx.fillStyle = T.items[e.loot[k]] || T.ball; glowOn(ctx.fillStyle, 1);
+    ctx.beginPath(); for (let j = 0; j < 8; j++) { const rr = j % 2 ? .05 : .14, c = j * Math.PI / 4; ctx.lineTo(x + Math.cos(c) * rr, y + Math.sin(c) * rr); } ctx.closePath(); ctx.fill(); glowOff();
+  }
 }
 // Gardien : shuriken rose qui tourne et pulse, étincelles en orbite
 function drawInn(e) {
@@ -5008,6 +5559,11 @@ function setupFoePics() {
   foePics = [...ov.querySelectorAll('canvas.foecv')].map(c => {
     const e = makeFoe(c.dataset.k, 1);
     e.x = e.y = PIC / 2; e.hist = []; if (e.kind === 'ghost') e.gt = 0;
+    // portraits : la comète en vol, l'écho visible, le serpent avec un bout de corps enroulé
+    if (e.kind === 'comet') e.st = 'fly';
+    if (e.kind === 'echo') { e.on = 1; e.vx = 1; e.vy = 0; }
+    if (e.kind === 'scar') { e.vx = 1; e.vy = 0; }
+    if (e.kind === 'snake') e.body = Array.from({ length: SNAKE_N * 2 + 1 }, (_, j) => ({ x: PIC / 2 - Math.cos(j * .32) * (.2 + j * .045), y: PIC / 2 + Math.sin(j * .32) * (.2 + j * .045) }));
     return { c, g: c.getContext('2d'), e, a: Math.random() * 6 };
   });
 }
@@ -5447,7 +6003,9 @@ function testItem(type) {
 function testFoe(kind) {
   if (!S.test || !P) return;
   const e = makeFoe(kind, DIFFS[S.diff].sp);
-  const want = kind === 'inn' ? 1 : kind === 'amph' ? -1 : 0;
+  // la comète et l'écho arrivent tout seuls (alerte au bord, trajet du vaisseau) ; le scarabée va sur le bord du terrain
+  const want = kind === 'inn' || kind === 'scar' ? 1 : kind === 'amph' ? -1 : kind === 'comet' || kind === 'echo' ? -2 : 0;
+  if (want === -2) { if (kind === 'comet') e.t = .3; foes.push(e); sfx.appear(); return; }
   if (want >= 0) {
     const pp = playerPos(), cands = [];
     for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
@@ -5458,6 +6016,7 @@ function testFoe(kind) {
     if (!cands.length) return;
     const [x, y] = cands[(Math.random() * cands.length) | 0];
     e.x = x + .5; e.y = y + .5;
+    if (kind === 'scar') scarPlace(e, e.x, e.y);
   } else { e.x = COLS / 2; e.y = ROWS * .7; }
   foes.push(e);
   rings.push({ x: e.x, y: e.y, r: 0, max: 2.5, age: 0, color: T.shock });

@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -846,6 +846,102 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const q3 = g.makeFoe('out', 1); q3.x = PX(); q3.y = PY() + 1.3; q3.vx = 0; q3.vy = 0; g.foes.push(q3); step(8);
   console.log(`prédateur, élan : proie suivante percutée juste après le bond mangée ${carried} ; élan retombé, contact -> ${g.S.phase}`);
   console.log(`prédateur, SANG ! à sec -> ${ph}, ${lv} vie(s) ; il repart avec ${g.pred.blood.toFixed(0)} s de sang`);
+}
+
+// 5r) Ennemis universels (première fournée) : étincelle, serpent, mine, comète, aimant, écho, scarabée, chapardeur
+{
+  const W = i => [(i % g.GC + .5) / G, (((i / g.GC) | 0) + .5) / G];
+  // une boule immobile tout en bas garde la zone à conquérir (sans ennemi, une conquête prendrait tout)
+  const begin = (ship = 0) => { g.newGame(1, 1, ship); g.go(); g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 25; b.y = 60; b.vx = b.vy = 0; g.foes.push(b); };
+  const add = (kind, x, y, vx = 0, vy = 0) => { const e = g.makeFoe(kind, 1); if (x !== undefined) { e.x = x; e.y = y; } e.vx = vx; e.vy = vy; g.foes.push(e); return e; };
+  // Étincelle : elle se pose sur le fil sans onde, remonte jusqu'au vaisseau ; un aller-retour en U lui échappe
+  begin(); g.setDir('down'); step(60);
+  let sp = add('spark', ...W(g.trail[4])); g.onTrailHit(sp, g.trail[4]);
+  const rides = sp.ride != null, noWave = !g.wave;
+  let n = 0; while (g.S.phase === 'play' && n++ < 200) step();
+  const caught = g.S.phase === 'crash';
+  begin(); g.setDir('down'); step(45); g.setDir('right'); step(45);
+  sp = add('spark', ...W(g.trail[2])); g.onTrailHit(sp, g.trail[2]); const f0 = g.S.filled;
+  g.setDir('up'); n = 0; while (g.P.drawing && g.S.phase === 'play' && n++ < 200) step(); step(5);
+  console.log(`étincelle : se pose sur le fil ${rides}, sans onde ${noWave}, rattrape un vaisseau qui file tout droit ${caught} ; aller-retour en U : ${g.S.phase}, zone conquise ${g.S.filled > f0}, retombée du fil ${sp.ride == null}`);
+  // Serpent : son corps qui touche le fil déclenche l'onde de choc ; son corps tue au contact
+  begin(); g.setDir('down'); step(60);
+  const [tx, ty] = W(g.trail[20]);
+  let sn = add('snake', tx + 9, ty, 5, 0); sn.body = Array.from({ length: 24 }, (_, j) => ({ x: tx + 9 - j * .21 * 2, y: ty }));
+  step(1);
+  const snWave = !!g.wave;
+  begin(); g.setDir('down'); step(30); g.setDir('stop');
+  sn = add('snake', PX() + 6, PY() + 6, 0, 5); sn.body = Array.from({ length: 24 }, (_, j) => ({ x: PX() + 6 - j * .3, y: PY() + (j > 18 ? .1 : 6) }));
+  sn.body[19] = { x: PX(), y: PY() }; sn.body[20] = { x: PX(), y: PY() }; step(1);
+  console.log(`serpent : corps sur le fil -> onde ${snWave} ; corps sur le vaisseau -> ${g.S.phase}`);
+  // Mine : s'arme quand le fil passe à moins de 3 cases, explose (onde de choc), se reforme
+  begin(); g.setDir('down'); step(40);
+  const mi = add('mine', PX() + 2.4, PY() + 6); step(30);
+  const armed = mi.st === 'arm' || mi.st === 'gone';
+  g.setDir('left'); step(1); g.setDir('up'); step(60);
+  const blew = mi.st === 'gone', ph1 = g.S.phase;
+  n = 0; while (mi.st === 'gone' && n++ < 400) step();
+  console.log(`mine : armée ${armed}, explosion ${blew} (phase ${ph1}), reformée après ${(n / 60).toFixed(1)} s`);
+  begin(); g.setDir('down'); step(40); g.power.chr = 30; g.setDir('stop');
+  add('mine', PX() + 1.5, PY() + 1.5); n = 0; while (g.S.phase === 'play' && n++ < 200) step(); const ph2 = g.S.phase;
+  begin(); const m3 = add('mine', 25, 50); m3.st = 'gone'; m3.t = 5; n = 0; while (m3.st === 'gone' && n++ < 400) step();
+  console.log(`mine : vaisseau arrêté dans le rayon -> ${ph2} ; une mine qui a explosé se reforme après ${(n / 60).toFixed(1)} s`);
+  // Comète : alerte, puis traversée en ligne droite, même au-dessus du terrain conquis
+  begin(); g.setDir('left'); step(12); g.setDir('stop'); step(70);
+  const co = add('comet'); co.t = .05; n = 0; let warned = false;
+  while (g.S.phase === 'play' && n++ < 400) { step(); if (co.st === 'warn') warned = true; }
+  console.log(`comète : alerte ${warned}, vaisseau immobile sur son terrain -> ${g.S.phase} (${(n / 60).toFixed(1)} s)`);
+  begin(); g.setDir('left'); step(12); g.setDir('stop'); step(70);
+  const c2 = add('comet'); c2.t = .05; n = 0; while (c2.st !== 'fly' && n++ < 200) step(); g.setDir('down'); step(3); g.setDir('right');
+  n = 0; while (c2.st === 'fly' && g.S.phase === 'play' && n++ < 300) step();
+  console.log(`comète : esquivée en bougeant -> ${g.S.phase}, repartie en attente ${c2.st === 'wait'}`);
+  // Aimant : rouge, il attire ; bleu, il repousse
+  const magRun = pol => { begin(); g.setDir('down'); step(40); g.setDir('stop'); g.power.chr = 30; g.setDir('stop'); const x0 = PX(); const m = add('mag', x0 + 5, PY()); m.pol = pol; m.pt = 99; step(40); return +(PX() - x0).toFixed(2); };
+  const pull = magRun(1), push = magRun(-1);
+  console.log(`aimant : attire de ${pull} cases, repousse de ${push} cases en 2/3 s (vaisseau arrêté sous Chrono)`);
+  // Écho : il refait le trajet du vaisseau 5 s plus tard ; immobile, on se fait rattraper
+  begin(); g.setDir('left'); step(2);
+  const ec = add('echo'); n = 0; let seen = 0;
+  while (g.S.phase === 'play' && n++ < 900) { step(); if (ec.on && !seen) seen = n; }
+  console.log(`écho : apparaît après ${(seen / 60).toFixed(1)} s, le vaisseau arrêté au mur est rattrapé -> ${g.S.phase} après ${(n / 60).toFixed(1)} s`);
+  begin(); g.setDir('left'); step(2); add('echo'); step(170); g.setDir('down'); step(370);
+  console.log(`écho : vaisseau qui longe le bord sans revenir sur ses pas pendant 9 s -> ${g.S.phase}`);
+  // Scarabée : il reste sur le bord du terrain conquis et avance
+  begin(); const sc2 = add('scar');
+  let onCoast = true, dist = 0, px = sc2.x, py = sc2.y;
+  const coastAt = (x, y) => { const gx = Math.floor(x * G), gy = Math.floor(y * G), at = (a, b) => a < 0 || b < 0 || a >= g.GC || b >= g.GR ? 1 : g.grid[b * g.GC + a]; return at(gx, gy) === 1 && (at(gx - 1, gy) !== 1 || at(gx + 1, gy) !== 1 || at(gx, gy - 1) !== 1 || at(gx, gy + 1) !== 1); };
+  for (let k = 0; k < 300; k++) { step(); dist += Math.hypot(sc2.x - px, sc2.y - py); px = sc2.x; py = sc2.y; if (!coastAt(sc2.x, sc2.y)) onCoast = false; }
+  g.setDir('down'); step(20); g.setDir('right'); step(20); g.setDir('up'); n = 0; while (g.P.drawing && n++ < 200) step();
+  let onCoast2 = true; for (let k = 0; k < 300; k++) { step(); if (g.S.phase !== 'play') break; if (!coastAt(sc2.x, sc2.y)) onCoast2 = false; }
+  console.log(`scarabée : ${dist.toFixed(1)} cases en 5 s, toujours sur le bord ${onCoast} ; après une conquête, toujours sur le bord ${onCoast2}`);
+  begin(); g.setDir('down'); step(20); g.setDir('right'); step(20); g.setDir('up'); n = 0; while (g.P.drawing && n++ < 200) step(); step(70);
+  const sc3 = add('scar', PX(), PY()); sc3.gx = sc3.ox = g.P.x; sc3.gy = sc3.oy = g.P.y; step(2);
+  console.log(`scarabée : au contact du vaisseau -> ${g.S.phase}`);
+  // Chapardeur : il vole le bonus avant le vaisseau, et le rend s'il est détruit
+  begin(); g.items.push({ type: 'inv', x: 25.5, y: 40.5, vx: 0, vy: 0, age: 0, ttl: 60, done: false });
+  const th = add('thief', 33, 40, -5, 0); n = 0; while (g.items.length && n++ < 300) step();
+  const stolen = th.loot.length === 1 && g.power.inv === 0;
+  th.dead = true; step(1);
+  console.log(`chapardeur : bonus volé ${stolen} (en ${(n / 60).toFixed(1)} s), détruit -> butin rendu, Casque actif ${g.power.inv > 0}`);
+  // tous ensemble, avec plusieurs vaisseaux, au hasard
+  const NEW = ['spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief'];
+  let s = 4242; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const fill = () => { for (const k of NEW) g.foes.push(g.makeFoe(k, 1)); };
+    g.newGame(1, 3, sh); g.go(); fill(); let cr = 0, last = '';
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') { g.newGame(1, 3, sh); g.go(); fill(); }
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      if (rnd() < 0.004) g.items.push({ type: ['inv', 'chr', 'terr', 'life'][(rnd() * 4) | 0], x: 5 + rnd() * 40, y: 10 + rnd() * 50, vx: 0, vy: 0, age: 0, ttl: 20, done: false });
+      step();
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`ennemis universels avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${g.foes.length} ennemis`);
+  }
 }
 
 // 6) Parties aléatoires
