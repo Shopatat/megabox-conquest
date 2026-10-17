@@ -300,6 +300,7 @@ details li b{color:var(--text);font-weight:600}
 @keyframes ragechip{50%{box-shadow:0 0 12px rgba(255,31,61,.8)}}
 .chip.frag{color:#ff5c6e;border-color:#ff1f3d}.chip.frag b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
 .chip.snail{color:#d9b38c}.chip.snail b{background:#a8784a}
+.chip.oxy{color:#7ff0ff}.chip.oxy b{background:#7ff0ff;box-shadow:0 0 6px #7ff0ff}.chip.oxy.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
 .chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
@@ -1438,6 +1439,7 @@ const ECOS = [
     { out: 2, sala: 1, magma: 2, perf: 1 },
     { name: 'ÉRUPTION', sala: 2, magma: 2, perf: 2, spark: 1 } ] },
   { key: 'ocea', name: 'OCÉANIA', tag: 'Une île, et l\'océan à perte de vue.', sig: 'mine',
+    rule: 'Sous l’eau, ton air baisse (deux fois moins vite sur ton terrain) et tu vas moins vite : remonte sur l’île pour respirer. Bulles d’air : passe dedans, ou enferme-les pour en faire des stations.',
     look: { empty: '#04162a', vignette: 'rgba(40,180,255,0.22)', landGrad: ['#22c9b2', '#2a58d6'], edge: '#dcfff8', landP: '#b8fff2',
       nebulas: [[12, 18, 16, '40,200,255'], [38, 46, 18, '30,120,220'], [30, 10, 10, '120,255,220'], [8, 54, 11, '60,160,255']] },
     levels: [
@@ -1550,8 +1552,8 @@ function setupLevel(L, instant) {
   const eco = S.test ? ECOS[S.testEco || 0] : S.comp.eco;
   applyLook(eco);
   resetGrid();
-  ecoSetup(eco, S.test ? 1 : S.comp.stage);
   S.filled = 0;
+  ecoSetup(eco, S.test ? 1 : S.comp.stage);
   zapT.fill(0); zaps = [];
   trail = []; erased = []; wave = null; particles = []; popups = []; fresh = []; rings = []; bolts = []; reveal = null; invuln = 0;
   P = newPlayer();
@@ -1661,10 +1663,10 @@ function onTrailHit(e, i) {
   if (sk('glu')) stunBy(e, 1);
   if (e.kind === 'spark') { sparkBoard(e, k); return; }
   // Le vaisseau n'est pas figé : s'il regagne son terrain avant que l'onde le rattrape, il survit (conquête annulée)
-  if (!wave) { wave = { lo: k, hi: k, k0: k, kills: true, fast, speed: (fast ? 65 : 30) * G * (sk('filet') ? .75 : 1) }; sfx.shock(); }
+  if (!wave) { wave = { lo: k, hi: k, k0: k, kills: true, fast, speed: (fast ? 65 : 30) * G * (sk('filet') ? .75 : 1) * waterK() }; sfx.shock(); }
   else {
     wave.lo = Math.min(wave.lo, k); wave.hi = Math.max(wave.hi, k);
-    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65 * G * (sk('filet') ? .75 : 1); }
+    if (fast && !wave.fast) { wave.fast = true; wave.speed = 65 * G * (sk('filet') ? .75 : 1) * waterK(); }
   }
   eraseK(k);
   if (e.kind === 'div') divSplit(e);
@@ -1700,7 +1702,7 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (SH().key === 'fre' ? (ab.on > 0 ? FR_SPD : FRE_SPD) : 1)
-  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd();
+  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd() * waterSlow();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow() * (S.bulleT > 0 || (S.presT > 0 && sk('prescience')) ? .5 : 1);
@@ -3302,7 +3304,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -3727,6 +3729,7 @@ function updateCrash(dt) {
     // le bouclier de l'Encaisseur ne se recharge pas en mourant : il faut toujours retracer pour le récupérer
     const guard = P.guard, g2 = P.g2, g2cd = P.g2cd;
     P = newPlayer(rx, ry); P.guard = guard; P.g2 = g2; P.g2cd = g2cd;
+    if (oc) { oc.o2 = OXY_MAX; oc.warn = false; }
     // Prédateur : il repart avec la jauge de sang au moins à moitié
     pred.blood = Math.max(pred.blood, bloodMax() / 2);
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
@@ -4061,6 +4064,8 @@ let hz = null, pools = [], meteors = [], scorch = [], ecoClock = 0, hitSrc = 'ri
 function ecoSetup(eco, st) {
   ambSetup(eco ? eco.key : 'terra');
   lavaG.fill(0); pools = []; meteors = []; scorch = []; ecoClock = 0;
+  oc = null;
+  if (eco && eco.key === 'ocea') oceaSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4214,6 +4219,8 @@ function ecoUpdate(dt) {
   if (pools.length) pools = pools.filter(p => p.live);
   if (ph !== 'play') return;
   ecoClock += dt;
+  if (oc) oxyUpdate(dt);
+  if (S.phase !== 'play') return;
   const fdt = dt * foeSlow();
   if (hz && P && !P.shield) {
     hz.next -= fdt;
@@ -4324,6 +4331,153 @@ function drawMeteors() {
     }
     ctx.fillStyle = T.glow ? '#4a2414' : T.ball; ctx.beginPath(); ctx.arc(q.x, q.y, q.sz * .85, 0, PI2); ctx.fill();
     ctx.strokeStyle = T.glow ? '#ffd27a' : T.shock; ctx.lineWidth = q.sz * .22; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Océania (idée de Fabien) : une île à la surface autour du départ, tout le reste sous l'eau. Réserve d'oxygène
+// (OXY_MAX s) qui baisse sous l'eau : à pleine vitesse dans la zone à conquérir, deux fois moins vite sur le terrain
+// conquis (immergé lui aussi) ; elle remonte vite sur l'île et près des stations d'air. Rien ne baisse avant le premier
+// mouvement, ni sous Casque ou Super Casque (scaphandre). À sec : noyé (crash ; le Blindé y laisse 25 % et reprend 30 %
+// d'air). Sous l'eau, le vaisseau va 20 % moins vite (WATER), l'onde de choc aussi. Poches d'air dans la zone à
+// conquérir : passer dedans redonne OXY_POCKET s ; enfermée (terrain conquis dessus), une poche devient une station
+// d'air qui recharge comme l'île.
+const OXY_MAX = 30, OXY_REFILL = 12, OXY_POCKET = 10, OXY_LOW = 8, ISLE_R = 6.5, STATION_R = 2.2, WATER = .8;
+const OCEA = [{ pockets: 3 }, { pockets: 2 }, { pockets: 2 }];
+const isleG = new Uint8Array(N);
+let oc = null;
+const waterSlow = () => oc && P && !isleG[at(P.x, P.y)] ? 1 / WATER : 1;
+const waterK = () => oc ? WATER : 1;
+function oceaSetup(st) {
+  oc = { o2: OXY_MAX, x: COLS / 2, y: 0, r: ISLE_R, pockets: [], warn: false, beep: 0, refill: 0, n: 0 };
+  isleG.fill(0);
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
+    if (Math.hypot((x + .5) / G - oc.x, (y + .5) / G - oc.y) >= oc.r) continue;
+    const i = at(x, y); isleG[i] = 1;
+    if (grid[i] === 0) { grid[i] = 1; oc.n++; }
+  }
+  S.filled += oc.n;
+  for (let tries = 0; oc.pockets.length < OCEA[Math.min(2, st || 0)].pockets && tries < 300; tries++) {
+    const x = urand(6, COLS - 6), y = urand(16, ROWS - 6);
+    if (oc.pockets.some(p => Math.hypot(p.x - x, p.y - y) < 10)) continue;
+    oc.pockets.push({ x, y, ph: urand(0, PI2), station: false, gone: false });
+  }
+}
+function oxyUpdate(dt) {
+  if (!P) return;
+  const pp = playerPos(), sea = inSeaNow(), air = T.rainbow ? '#bff4ff' : T.shock;
+  for (const p of oc.pockets) {
+    if (p.gone) continue;
+    if (p.station) {
+      if (T.glow && Math.random() < dt * 5) particles.push({ x: p.x + urand(-.3, .3), y: p.y, vx: urand(-.3, .3), vy: urand(-2.5, -1.2), life: 0, max: urand(.6, 1), color: '#bff4ff', size: urand(.15, .3), ng: 1 });
+      continue;
+    }
+    // enfermée : elle devient une station d'air
+    if (cellW(p.x, p.y) === 1) {
+      p.station = true;
+      rings.push({ x: p.x, y: p.y, r: 0, max: STATION_R + 1, age: 0, color: air });
+      popups.push({ x: p.x, y: p.y - 1.6, text: 'STATION D\'AIR', age: 0, color: air });
+      [523, 784, 1047].forEach((f, i) => tone(f, .1, 'triangle', .03, 0, i * .06));
+      continue;
+    }
+    if (sea && Math.hypot(p.x - pp.x, p.y - pp.y) < 1.8) {
+      p.gone = true; oc.o2 = Math.min(OXY_MAX, oc.o2 + OXY_POCKET);
+      burst(p.x, p.y, air, 24, 7);
+      popups.push({ x: p.x, y: p.y - 1.4, text: '+' + OXY_POCKET + ' S D\'AIR', age: 0, color: air });
+      tone(300, .25, 'sine', .04, 500); tone(900, .12, 'sine', .025, 400, .05);
+    }
+  }
+  const surf = !sea && (isleG[at(P.x, P.y)] || oc.pockets.some(p => p.station && Math.hypot(p.x - pp.x, p.y - pp.y) < STATION_R));
+  if (surf) {
+    if (oc.o2 < OXY_MAX) {
+      oc.o2 = Math.min(OXY_MAX, oc.o2 + OXY_REFILL * dt);
+      if ((oc.refill -= dt) <= 0) { oc.refill = .2; tone(500 + oc.o2 * 25, .05, 'sine', .015); }
+      if (T.glow && Math.random() < .5) particles.push({ x: pp.x + urand(-.5, .5), y: pp.y, vx: urand(-.4, .4), vy: urand(-3, -1.5), life: 0, max: .6, color: '#bff4ff', size: .2, ng: 1 });
+    }
+  } else if (!P.shield && !helmet() && !(power.sup > 0)) oc.o2 -= (sea ? 1 : .5) * dt;
+  if (oc.o2 > OXY_LOW + 4) oc.warn = false;
+  if (oc.o2 < OXY_LOW && !surf) {
+    if (!oc.warn) { oc.warn = true; popups.push({ x: pp.x, y: pp.y - 2, text: 'OXYGÈNE !', age: 0, color: T.danger, big: true }); }
+    if ((oc.beep -= dt) <= 0) { oc.beep = oc.o2 < OXY_LOW / 2 ? .35 : .7; tone(880, .07, 'square', .025); }
+  }
+  if (oc.o2 <= 0) drown(pp);
+}
+// à sec : noyé
+function drown(pp) {
+  burst(pp.x, pp.y, T.rainbow ? '#bff4ff' : T.shock, 30, 6);
+  if (T.glow) for (let k = 0; k < 14; k++) particles.push({ x: pp.x + urand(-.4, .4), y: pp.y, vx: urand(-.8, .8), vy: urand(-4, -1.5), life: 0, max: urand(.6, 1.1), color: '#bff4ff', size: urand(.15, .35), ng: 1 });
+  if (SH().key === 'rob') { armorHit('drown'); if (S.phase === 'play') popups.push({ x: pp.x, y: pp.y - 2.4, text: 'ASPHYXIE', age: 0, color: T.danger }); }
+  else { crash('drown'); if (S.phase === 'crash') popups.push({ x: pp.x, y: pp.y - 1.4, text: 'NOYÉ !', age: 0, color: T.danger }); }
+  if (S.phase === 'play' && oc.o2 <= 0) oc.o2 = OXY_MAX * .3;
+}
+function drawOcean(layer, pp) {
+  if (!oc) return;
+  ctx.save();
+  if (layer === 'ground') {
+    const { x, y, r } = oc;
+    if (T.glow) {
+      // tout est sous l'eau, sauf l'île : légère teinte bleue
+      ctx.beginPath(); ctx.rect(0, 0, COLS, ROWS); ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, PI2);
+      ctx.fillStyle = 'rgba(10,70,140,0.13)'; ctx.fill('evenodd');
+      // l'île : sable sec au centre, sable mouillé au bord, écume qui va et vient, un palmier
+      const g = ctx.createRadialGradient(x, y + 1, 0, x, y, r);
+      g.addColorStop(0, '#fff1c4'); g.addColorStop(.7, '#f0d28c'); g.addColorStop(1, '#cfa35a');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r - .05, 0, PI2); ctx.fill();
+      ctx.strokeStyle = 'rgba(150,110,60,0.45)'; ctx.lineWidth = .45; ctx.beginPath(); ctx.arc(x, y, r - .3, 0, PI2); ctx.stroke();
+      const sw = Math.sin(time * 1.6);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = .22; ctx.beginPath(); ctx.arc(x, y, r + .1 + sw * .12, 0, PI2); ctx.stroke();
+      const u = (time * .45) % 1;
+      ctx.strokeStyle = `rgba(220,250,255,${.5 * (1 - u)})`; ctx.lineWidth = .14; ctx.beginPath(); ctx.arc(x, y, r + .3 + u * 1.4, 0, PI2); ctx.stroke();
+      const px = x - 3.4, py = 3.4, s = Math.sin(time * 1.3) * .08;
+      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = .28; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px - .3, py + 1.4); ctx.quadraticCurveTo(px - .5, py + .4, px + .2, py - .6); ctx.stroke();
+      ctx.fillStyle = '#2fbf71';
+      for (let k = 0; k < 5; k++) {
+        const a = -Math.PI / 2 + (k - 2) * .75 + s;
+        ctx.save(); ctx.translate(px + .2, py - .6); ctx.rotate(a);
+        ctx.beginPath(); ctx.ellipse(.75, 0, .8, .22, .25, 0, PI2); ctx.fill(); ctx.restore();
+      }
+      ctx.fillStyle = '#6b3d16'; ctx.beginPath(); ctx.arc(px + .05, py - .45, .16, 0, PI2); ctx.arc(px + .38, py - .4, .16, 0, PI2); ctx.fill();
+    } else {
+      ctx.strokeStyle = T.shock; ctx.lineWidth = .15; ctx.setLineDash([.4, .3]); ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // poches d'air (bulles qui tremblent) et stations (bouche d'air et rayon de recharge)
+    for (const p of oc.pockets) {
+      if (p.gone) continue;
+      if (p.station) {
+        ctx.strokeStyle = T.glow ? 'rgba(191,244,255,0.55)' : T.shock; ctx.lineWidth = .12; ctx.setLineDash([.45, .35]); ctx.lineDashOffset = -time * 1.5;
+        ctx.beginPath(); ctx.arc(p.x, p.y, STATION_R, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = T.glow ? '#bff4ff' : T.shock; ctx.globalAlpha = .6 + .3 * Math.sin(time * 4 + p.ph);
+        ctx.beginPath(); ctx.arc(p.x, p.y, .45, 0, PI2); ctx.fill(); ctx.globalAlpha = 1;
+        continue;
+      }
+      const R = 1.3 + Math.sin(time * 2 + p.ph) * .1;
+      if (T.glow) {
+        const g = ctx.createRadialGradient(p.x - .3, p.y - .3, .1, p.x, p.y, R);
+        g.addColorStop(0, 'rgba(255,255,255,0.35)'); g.addColorStop(.7, 'rgba(160,235,255,0.1)'); g.addColorStop(1, 'rgba(200,245,255,0.5)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.x, p.y, R, R * (1 - Math.sin(time * 2 + p.ph) * .06), 0, 0, PI2); ctx.fill();
+        ctx.strokeStyle = 'rgba(230,250,255,0.85)'; ctx.lineWidth = .08; ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.beginPath(); ctx.ellipse(p.x - R * .4, p.y - R * .45, R * .22, R * .12, -.6, 0, PI2); ctx.fill();
+      } else { ctx.strokeStyle = T.shock; ctx.lineWidth = .12; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, PI2); ctx.stroke(); }
+      ctx.fillStyle = T.glow ? 'rgba(255,255,255,0.85)' : T.shock; ctx.font = '700 .85px "Exo 2", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('O₂', p.x, p.y + .05);
+    }
+  } else if (P && pp && (S.phase === 'play' || S.phase === 'pause')) {
+    const f = Math.max(0, oc.o2 / OXY_MAX);
+    // l'air vient à manquer : l'écran s'assombrit en bleu nuit, de plus en plus
+    if (oc.o2 < OXY_LOW && T.glow) {
+      const k = 1 - oc.o2 / OXY_LOW, g = ctx.createRadialGradient(pp.x, pp.y, 4, pp.x, pp.y, ROWS * .8);
+      g.addColorStop(0, 'rgba(0,10,30,0)'); g.addColorStop(1, `rgba(0,10,30,${(.55 + .1 * Math.sin(time * 6)) * k})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+    }
+    // jauge d'air autour du vaisseau, dès qu'elle n'est plus pleine
+    if (f < .999) {
+      const c = f > .5 ? '#7ff0ff' : f > .25 ? '#ffd23f' : '#ff4d5e';
+      ctx.lineWidth = .18; ctx.lineCap = 'round';
+      ctx.strokeStyle = T.glow ? 'rgba(255,255,255,0.15)' : T.empty; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.55, 0, PI2); ctx.stroke();
+      ctx.globalAlpha = f > .25 || Math.floor(time * 6) % 2 ? 1 : .35;
+      ctx.strokeStyle = T.glow ? c : T.shock; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.55, -Math.PI / 2, -Math.PI / 2 + PI2 * f); ctx.stroke();
+    }
   }
   ctx.restore();
 }
@@ -4612,11 +4766,12 @@ let powersSig = '', bloodBt = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
   const bl = SH().key === 'pred' && S.phase !== 'title';
-  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo;
+  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig; bloodBt = '';
     el.innerHTML = (bl ? `<div class="blood" id="blood" role="meter" aria-label="Sang"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 C12 2 4.5 10.5 4.5 15.2 A7.5 7.5 0 0 0 19.5 15.2 C19.5 10.5 12 2 12 2 Z"/></svg>SANG !<div class="bm"><i id="bfill"></i></div></div>` : '')
+      + (oc ? '<div class="chip oxy" id="coxy"><b></b><span>OXYGÈNE</span><div class="t"><i id="toxy"></i></div></div>' : '')
       + (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
       + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
@@ -4631,6 +4786,8 @@ function powersHud() {
   }
   for (const k of ['hyp', 'chr', 'schr', 'inv', 'spd', 'sup', 'frag']) { const el = $('t' + k); if (el) el.style.width = (power[k] / pm(k) * 100) + '%'; }
   const r = $('trage'); if (r) r.style.width = Math.min(100, ab.on / frT() * 100) + '%';
+  const tx = $('toxy');
+  if (tx && oc) { tx.style.width = (Math.max(0, oc.o2) / OXY_MAX * 100).toFixed(1) + '%'; const c = $('coxy'), low = oc.o2 < OXY_LOW; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
   const tc = $('tcarn'); if (tc) tc.style.width = (pred.ct / predWin() * 100) + '%';
   const bf = $('bfill');
   if (bf) {
@@ -4772,7 +4929,7 @@ function update(dt) {
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred') powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
@@ -4855,6 +5012,7 @@ function render() {
   drawStains();
   drawDrops();
   drawGround();
+  drawOcean('ground');
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -4907,6 +5065,7 @@ function render() {
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawMeteors();
+  drawOcean('sky', pp);
   drawAmb('front');
   drawFx();
 }

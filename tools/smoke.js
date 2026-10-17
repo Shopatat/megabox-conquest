@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -947,6 +947,58 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`ennemis universels avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${g.foes.length} ennemis`);
+  }
+}
+// 5t) Océania : île, oxygène, lenteur sous l'eau, poches d'air et stations
+{
+  const OC = g.ECOS.findIndex(e => e.key === 'ocea');
+  const order = [0, OC, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== OC)];
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  const ocea = (L = 4, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 25; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
+  };
+  const dive = () => { g.setDir('down'); let n = 0; while (!g.P.drawing && n++ < 200) step(); };
+  ocea();
+  console.log(`Océania : île de ${g.oc.n} cases (${(g.S.filled / g.S.interior * 100).toFixed(1)} % au départ), ${g.oc.pockets.length} poches d'air, ${g.oc.o2} s d'air`);
+  // sous l'eau, 20 % moins vite (comparé à Terra Nova)
+  g.newGame(2, 1, 0); g.go(); g.foes.length = 0; g.setDir('down'); step(20); let y0 = g.P.y; step(30); const dry = g.P.y - y0;
+  ocea(); g.setDir('down'); step(40); y0 = g.P.y; step(30); const wet = g.P.y - y0;
+  console.log(`vitesse en 0,5 s : Terra Nova ${dry} cases, sous l'eau ${wet} cases (${(wet / dry * 100).toFixed(0)} %)`);
+  ocea(); dive(); let o = g.oc.o2; step(120); const seaDrop = o - g.oc.o2;
+  ocea(); g.setDir('left'); step(150); o = g.oc.o2; step(120); const landDrop = o - g.oc.o2;
+  g.oc.o2 = 5; g.P.x = g.P.px = g.GC >> 1; g.P.y = g.P.py = 0; g.P.dir = { x: 0, y: 0 }; step(60); const refill = g.oc.o2 - 5;
+  console.log(`air en 2 s : -${seaDrop.toFixed(1)} s dans la zone à conquérir, -${landDrop.toFixed(1)} s sur le terrain conquis ; +${refill.toFixed(1)} s en 1 s sur l'île`);
+  ocea(); dive(); g.power.inv = 30; g.oc.o2 = 10; step(120); const helm = g.oc.o2;
+  ocea(); dive(); const lv = g.S.lives; g.oc.o2 = .3; let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
+  const drowned = g.S.phase; n = 0; while (g.S.phase === 'crash' && n++ < 400) step();
+  console.log(`sous Casque : ${helm.toFixed(1)} s d'air après 2 s (sur 10) ; à sec -> ${drowned}, vies ${lv} -> ${g.S.lives}, reprise ${g.S.phase} avec ${g.oc.o2} s d'air`);
+  ocea(4, shipIdx('rob')); dive(); g.armor.hp = 1; g.oc.o2 = .2; step(30);
+  console.log(`Blindé à sec : ${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %, air ${g.oc.o2.toFixed(1)} s`);
+  // poche d'air sur le trajet du vaisseau, puis poche enfermée devenue station
+  ocea(); const p0 = g.oc.pockets[0]; p0.x = 25.25; p0.y = 12;
+  g.oc.o2 = 5; g.setDir('down'); step(90);
+  console.log(`poche d'air traversée : prise ${p0.gone}, air ${g.oc.o2.toFixed(1)} s (5 avant)`);
+  ocea(); const p1 = g.oc.pockets[0];
+  for (let y = g.GR - 1; y >= 0; y--) for (let x = 0; x < g.GC; x++) if (Math.hypot((x + .5) / G - p1.x, (y + .5) / G - p1.y) < 3) g.grid[g.at(x, y)] = 1;
+  step(2);
+  g.setDir('left'); step(3); g.P.x = g.P.px = Math.floor(p1.x * G); g.P.y = g.P.py = Math.floor(p1.y * G); g.P.dir = { x: 0, y: 0 }; g.P.next = null; g.oc.o2 = 5; step(60);
+  console.log(`poche enfermée : station ${p1.station}, air près d'elle ${g.oc.o2.toFixed(1)} s en 1 s (5 avant)`);
+  let s = 99; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '', low = 99;
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      step(); if (g.oc) low = Math.min(low, g.oc.o2);
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Océania épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, air au plus bas ${low.toFixed(1)} s`);
   }
 }
 // 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros
