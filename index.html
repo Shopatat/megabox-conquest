@@ -1447,6 +1447,7 @@ const ECOS = [
     { jelly: 2, piranha: 1, mine: 1 },
     { name: 'ABYSSES', jelly: 2, piranha: 1, snake: 1, mine: 2 } ] },
   { key: 'nebu', name: 'NÉBULA', tag: 'Un brouillard où rôdent les fantômes.', sig: 'ghost',
+    rule: 'Brouillard : tu ne vois qu’autour de ton vaisseau, ton terrain le chasse. Les éclairs dans les nuages dévoilent un instant ce qui rôde.',
     look: { empty: '#120a1e', vignette: 'rgba(255,110,220,0.2)', landGrad: ['#ff6fd2', '#7a4dff'], edge: '#ffe6fa', landP: '#ffd0f2',
       nebulas: [[12, 18, 18, '255,110,220'], [38, 46, 20, '150,90,255'], [30, 10, 12, '255,170,240'], [8, 54, 13, '190,110,255']] },
     levels: [
@@ -3863,7 +3864,7 @@ function ambUpdate(dt) {
     }
   } else if (k === 'nebu') {
     for (let i = 0; i < a.fog.length; i++) { const f = a.fog[i]; f.x += f.v * dt; if (f.x - f.r > COLS) a.fog[i] = fogMake(false); }
-    if (a.next <= 0) { a.next = urand(2.5, 6); a.fx.push({ x: urand(4, COLS - 4), y: urand(4, ROWS - 4), r: urand(8, 14), age: 0, max: .7 }); }
+    if (a.next <= 0 && !fg) { a.next = urand(2.5, 6); a.fx.push({ x: urand(4, COLS - 4), y: urand(4, ROWS - 4), r: urand(8, 14), age: 0, max: .7 }); }
   } else if (k === 'volt') {
     for (const d of a.list) { d.y += d.v * dt; d.x -= d.v * .22 * dt; if (d.y > ROWS + 1) Object.assign(d, raindrop(false)); }
     for (const c of a.clouds) { c.x += c.v * dt; if (c.x - c.r > COLS) { c.x = -c.r; c.y = urand(-1, 7); } }
@@ -4066,6 +4067,8 @@ function ecoSetup(eco, st) {
   lavaG.fill(0); pools = []; meteors = []; scorch = []; ecoClock = 0;
   oc = null;
   if (eco && eco.key === 'ocea') oceaSetup(st);
+  fg = null;
+  if (eco && eco.key === 'nebu') fogSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4204,6 +4207,7 @@ function ecoUpdate(dt) {
   const ph = S.phase;
   if (ph === 'pause' || ph === 'title') return;
   if (amb && T.space && !REDUCED) ambUpdate(dt);
+  if (fg) fogUpdate(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -4480,6 +4484,79 @@ function drawOcean(layer, pp) {
     }
   }
   ctx.restore();
+}
+
+// Nébula (proposition de Claude, choisie par Fabien) : brouillard sur la zone à conquérir. On ne voit qu'autour du
+// vaisseau (rayon NEBU[étape].r, bord flou de FOG_SOFT cases) ; le terrain conquis chasse le brouillard (le canvas du
+// terrain sert de masque). Les ennemis rôdent dedans, cachés. Les éclairs dans les nuages (toutes les 3 à 6 s, à un
+// endroit tiré au sort) dévoilent un instant ce qui s'y trouve. Restent visibles par-dessus : un pointillé qui montre son
+// propre fil, les bonus et les comètes (lumineux), le vaisseau. Brouillard calculé à demi-résolution (fogCv).
+const NEBU = [{ r: 11 }, { r: 9.5 }, { r: 8 }], FOG_SOFT = 5;
+const fogCv = document.createElement('canvas'), fogCtx = fogCv.getContext('2d');
+let fg = null;
+function fogSetup(st) {
+  fg = { r: NEBU[Math.min(2, st || 0)].r, flashes: [], next: urand(2, 4),
+    clouds: Array.from({ length: 7 }, () => ({ x: urand(0, COLS), y: urand(0, ROWS), r: urand(7, 13), v: urand(.3, .8) * (Math.random() < .5 ? -1 : 1), ph: urand(0, PI2) })) };
+}
+function fogUpdate(dt) {
+  for (const c of fg.clouds) { c.x += c.v * dt; if (c.x < -c.r) c.x = COLS + c.r; else if (c.x > COLS + c.r) c.x = -c.r; }
+  for (const f of fg.flashes) f.age += dt;
+  fg.flashes = fg.flashes.filter(f => f.age < f.max);
+  if (S.phase === 'play' && (fg.next -= dt) <= 0) {
+    fg.next = urand(3, 6);
+    fg.flashes.push({ x: urand(5, COLS - 5), y: urand(8, ROWS - 5), r: urand(9, 14), age: 0, max: .8 });
+    tone(1600, .06, 'sawtooth', .015, -1200); tone(70, .6, 'triangle', .03, -20, .15);
+  }
+}
+// éclat de l'éclair : deux flashs rapprochés puis il s'éteint
+const flashK = f => { const u = f.age / f.max; return (u < .12 || (u > .22 && u < .55) ? 1 : .2) * (1 - u); };
+function drawFog(pp) {
+  if (!fg) return;
+  const w = Math.max(1, Math.ceil(cv.width / 2)), h = Math.max(1, Math.ceil(cv.height / 2)), g = fogCtx;
+  if (fogCv.width !== w || fogCv.height !== h) { fogCv.width = w; fogCv.height = h; }
+  g.globalCompositeOperation = 'source-over'; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
+  g.setTransform(w / COLS, 0, 0, h / ROWS, 0, 0);
+  g.fillStyle = T.glow ? 'rgba(20,9,34,0.96)' : T.empty; g.fillRect(0, 0, COLS, ROWS);
+  // nappes plus claires qui dérivent dans le brouillard
+  if (T.glow) for (const c of fg.clouds) {
+    const y = c.y + Math.sin(time * .25 + c.ph) * 1.5, cg = g.createRadialGradient(c.x, y, 0, c.x, y, c.r);
+    cg.addColorStop(0, 'rgba(165,105,210,0.34)'); cg.addColorStop(1, 'rgba(165,105,210,0)');
+    g.fillStyle = cg; g.fillRect(c.x - c.r, y - c.r, c.r * 2, c.r * 2);
+  }
+  // le terrain conquis, le vaisseau et les éclairs percent le brouillard
+  g.globalCompositeOperation = 'destination-out';
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(board, 0, 0, w, h);
+  g.setTransform(w / COLS, 0, 0, h / ROWS, 0, 0);
+  const hole = (x, y, r, k) => {
+    const R = r + FOG_SOFT, hg = g.createRadialGradient(x, y, 0, x, y, R);
+    hg.addColorStop(0, `rgba(0,0,0,${k})`); hg.addColorStop(r / R, `rgba(0,0,0,${k})`); hg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = hg; g.fillRect(x - R, y - R, R * 2, R * 2);
+  };
+  if (pp) hole(pp.x, pp.y, fg.r, 1);
+  for (const f of fg.flashes) hole(f.x, f.y, f.r, flashK(f));
+  ctx.drawImage(fogCv, 0, 0, COLS, ROWS);
+  if (T.glow && fg.flashes.length) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const f of fg.flashes) {
+      const fl = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+      fl.addColorStop(0, `rgba(255,210,250,${.35 * flashK(f)})`); fl.addColorStop(1, 'rgba(200,120,255,0)');
+      ctx.fillStyle = fl; ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
+    }
+    ctx.restore();
+  }
+  // son propre fil reste visible, en pointillé
+  if (trail.length && P) {
+    ctx.save(); ctx.strokeStyle = T.glow ? 'rgba(255,180,225,0.6)' : T.shock; ctx.lineWidth = .14; ctx.lineCap = 'round';
+    ctx.setLineDash([.3, .3]); ctx.lineDashOffset = -time * 2; ctx.beginPath();
+    let on = false;
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) { on = false; continue; }
+      const x = wx(trail[k]), y = wy(trail[k]);
+      if (on) ctx.lineTo(x, y); else { ctx.moveTo(x, y); on = true; }
+    }
+    if (on && pp) ctx.lineTo(pp.x, pp.y);
+    ctx.stroke(); ctx.restore();
+  }
 }
 
 /* ---------- Bonus ---------- */
@@ -5041,7 +5118,8 @@ function render() {
     glowOn(r.color, 1); ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.stroke(); glowOff();
     ctx.globalAlpha = 1;
   }
-  for (const it of items) drawItem(it);
+  // Nébula : les bonus brillent à travers le brouillard (dessinés après lui)
+  if (!fg) for (const it of items) drawItem(it);
   // Héraut : marque dorée qui se resserre jusqu'à l'apparition
   if (S.herald && S.bonusWait > 0) {
     const h = S.herald, k = Math.max(0, Math.min(1, S.bonusWait / 3)), c = T.rainbow ? '#ffd23f' : T.shock;
@@ -5051,7 +5129,7 @@ function render() {
   }
   const fearAt = SH().key === 'pred' && P && !P.shield && (S.phase === 'play' || S.phase === 'pause') ? playerPos() : null;
   for (const e of foes) {
-    if (e.kind === 'amph') continue;
+    if (e.kind === 'amph' || (fg && e.kind === 'comet')) continue;
     const fr = fearAt && e.kind !== 'hunt' && !absent(e) && !(e.kind === 'ghost' && ghostAlpha(e) < .35) ? Math.max(0, 1 - Math.hypot(e.x - fearAt.x, e.y - fearAt.y) / PRED_FEAR) : 0;
     ctx.globalAlpha = e.stun > 0 ? 0.55 : 1;
     if (fr > 0) { ctx.save(); ctx.translate((Math.random() - .5) * fr * .18, (Math.random() - .5) * fr * .18); }
@@ -5062,6 +5140,7 @@ function render() {
   }
   // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
+  if (fg) { drawFog(pp); for (const it of items) drawItem(it); for (const e of foes) if (e.kind === 'comet') drawFoe(e); }
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawMeteors();
