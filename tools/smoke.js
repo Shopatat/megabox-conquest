@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -1153,6 +1153,56 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`Voltaria épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${bolts} éclairs`);
+  }
+}
+// 5a) Astéria : astéroïdes fixes qui comptent comme du terrain
+{
+  const AS = g.ECOS.findIndex(e => e.key === 'aste');
+  const order = [0, AS, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== AS)];
+  const aste = (L = 4, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 3; b.y = 63; b.vx = b.vy = 0; g.foes.push(b);
+  };
+  const per = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.rocks.length + ' (' + (g.S.filled / g.S.interior * 100).toFixed(1) + ' %)'; });
+  // on part du haut, juste au-dessus d'un astéroïde, et on descend : le fil se referme sur lui
+  aste(); const r = g.rocks[0];
+  g.P.x = g.P.px = Math.floor(r.x * G); g.P.y = g.P.py = G * 2 - 1;
+  const f0 = g.S.filled; g.setDir('down');
+  let n = 0; while (n++ < 300 && (g.P.dir.x || g.P.dir.y || g.P.next)) step();
+  const onRock = !!g.rockG[g.at(g.P.x, g.P.y)];
+  console.log(`Astéria : astéroïdes par étape ${per.join(' / ')} ; fil refermé sur un astéroïde : posé dessus ${onRock}, ${g.S.phase}, en train de tracer ${g.P.drawing}, terrain +${((g.S.filled - f0) / G / G).toFixed(0)} cases`);
+  // et on en repart vers le bas jusqu'au bord
+  g.setDir('down'); n = 0; let drew = false;
+  while (n++ < 400 && g.S.phase === 'play' && (g.P.dir.x || g.P.dir.y || g.P.next)) { step(); drew = drew || g.P.drawing; }
+  console.log(`reparti de l'astéroïde : a tracé ${drew}, arrivé à la ligne ${(g.P.y / G).toFixed(0)}, ${g.S.phase}`);
+  // une boule lancée sur un astéroïde ricoche sans jamais y entrer
+  aste(); const q = g.rocks[0], b = g.foes[0];
+  b.x = q.x - q.R - 3; b.y = q.y; b.vx = 7; b.vy = 0;
+  let inside = 0, minX = 1e9; const vx0 = b.vx;
+  for (let k = 0; k < 120; k++) { step(); if (g.rockG[g.at(Math.floor(b.x * G), Math.floor(b.y * G))]) inside++; minX = Math.min(minX, b.x); }
+  console.log(`boule lancée sur un astéroïde : ${inside} images dedans, vitesse ${vx0} -> ${b.vx.toFixed(1)}`);
+  // annexé : le terrain l'entoure complètement
+  aste(); const a = g.rocks[0], sc = g.S.score;
+  for (let y = 0; y < g.GR; y++) for (let x = 0; x < g.GC; x++) if (Math.hypot((x + .5) / G - a.x, (y + .5) / G - a.y) < a.R * 1.1 + 2) g.grid[g.at(x, y)] = 1;
+  step(30);
+  console.log(`astéroïde entouré : annexé ${a.done}, score +${g.S.score - sc} ; les autres ${g.rocks.slice(1).map(o => o.done).join(', ')}`);
+  let s = 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '', landed = 0, prevD = false;
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.03) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      step();
+      if (g.P && prevD && !g.P.drawing && g.rockG[g.at(g.P.x, g.P.y)]) landed++;
+      prevD = !!(g.P && g.P.drawing);
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Astéria épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${landed} fils refermés sur un astéroïde`);
   }
 }
 // 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros

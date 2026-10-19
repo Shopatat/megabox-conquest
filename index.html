@@ -1612,7 +1612,7 @@ function respawnCell(px, py) {
     if (grid[at(x, y)] !== 1) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     const near = foes.some(e => !e.dead && Math.hypot(e.x - cx, e.y - cy) < (e.kind === 'amph' ? 5 : 3.5));
-    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0);
+    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0) + (rockG[at(x, y)] ? 60 : 0);
     if (d < bd) { bd = d; best = [x, y]; }
   }
   return best || [GC >> 1, 0];
@@ -1749,6 +1749,7 @@ function moveInto(nx, ny) {
     if (ab.on > 0) lightFire(at(nx, ny));
     else if (SH().key === 'fre' && sk('meche')) lightFire(at(nx, ny), 10 * stepTime());
   } else if (P.drawing) {
+    if (rockG[at(nx, ny)]) rockLand(nx, ny);
     if (wave) cancelConquest(); else capture();
     P.drawing = false; P.dir = {x:0,y:0}; P.next = null; P.noFill = false;
   }
@@ -3779,7 +3780,8 @@ function ambSetup(key) {
   else if (key === 'sing') fill(60, orbiter);
 }
 function rockMake() {
-  const r = urand(.7, 3.2), c = document.createElement('canvas'); c.width = c.height = 96;
+  // petits et lointains : on ne doit pas les confondre avec les astéroïdes fixes (le terrain d'Astéria)
+  const r = urand(.5, 1.8), c = document.createElement('canvas'); c.width = c.height = 96;
   const g = c.getContext('2d'); g.setTransform(48 / 1.25, 0, 0, 48 / 1.25, 48, 48);
   const m = 9 + ((Math.random() * 4) | 0);
   g.beginPath();
@@ -3797,8 +3799,8 @@ function rockMake() {
   g.restore();
   g.strokeStyle = 'rgba(255,200,140,0.35)'; g.lineWidth = .05; g.stroke();
   // les gros passent plus vite et plus nets (parallaxe)
-  const near = r / 3.2, dir = Math.random() < .5 ? -1 : 1;
-  return { x: urand(-4, COLS + 4), y: urand(-4, ROWS + 4), r, vx: (.2 + near * .8) * dir, vy: urand(.1, .45) * (.4 + near), a: urand(0, PI2), va: urand(-.35, .35), al: .25 + near * .4, img: c };
+  const near = r / 1.8, dir = Math.random() < .5 ? -1 : 1;
+  return { x: urand(-4, COLS + 4), y: urand(-4, ROWS + 4), r, vx: (.2 + near * .8) * dir, vy: urand(.1, .45) * (.4 + near), a: urand(0, PI2), va: urand(-.35, .35), al: .14 + near * .22, img: c };
 }
 const flake = init => ({ x: urand(0, COLS), y: init ? urand(0, ROWS) : -1, s: urand(.05, .2), ph: urand(0, PI2), sw: urand(.3, 1) });
 const ember = init => ({ x: urand(0, COLS), y: init ? urand(0, ROWS) : ROWS + 1, v: urand(1.5, 4.5), s: urand(.06, .18), ph: urand(0, PI2), c: ['#ffb347', '#ff5a1f', '#ffe08a'][(Math.random() * 3) | 0] });
@@ -4058,6 +4060,136 @@ function drawAmb(layer) {
   ctx.restore();
 }
 
+// Astéria : des astéroïdes fixes dans la zone à conquérir, qui comptent comme du terrain dès le début (comme l'île
+// d'Océania, ils entrent dans le pourcentage). Le fil peut s'y refermer (on saute d'un rocher à l'autre), on peut en
+// repartir, et les ennemis ricochent dessus comme sur le terrain. Un astéroïde que le terrain conquis entoure
+// complètement est annexé (« ANNEXÉ », 300 × niveau). Cases marquées dans rockG (pas de bonus dessus, on n'y reprend pas
+// après un crash si on peut faire autrement).
+const ASTE = [{ n: 4, r: [2, 3] }, { n: 5, r: [2.1, 3.4] }, { n: 6, r: [2.2, 3.7] }];
+const rockG = new Uint8Array(N);
+let rocks = [], rockClock = 0;
+// rayon de l'astéroïde dans la direction t (contour irrégulier : m sommets reliés par des segments)
+function rockRad(r, t) {
+  const f = (((t - r.a) / PI2) % 1 + 1) % 1 * r.f.length, k = Math.floor(f), u = f - k;
+  return r.R * (r.f[k] * (1 - u) + r.f[(k + 1) % r.f.length] * u);
+}
+function asteSetup(st) {
+  const A = ASTE[Math.min(2, st || 0)];
+  for (let tries = 0; rocks.length < A.n && tries < 500; tries++) {
+    const R = urand(A.r[0], A.r[1]), x = urand(B + R + 4, COLS - B - R - 4), y = urand(14 + R, ROWS - B - R - 4);
+    if (rocks.some(q => Math.hypot(q.x - x, q.y - y) < q.R + R + 5) || Math.hypot(x - COLS / 2, y) < R + 12) continue;
+    const m = 10 + ((Math.random() * 4) | 0);
+    rocks.push({ x, y, R, a: urand(0, PI2), f: Array.from({ length: m }, () => urand(.74, 1.06)), cells: [], done: false,
+      gems: Array.from({ length: 2 + ((Math.random() * 3) | 0) }, () => { const t = urand(0, PI2), d = urand(.15, .6) * R; return [x + Math.cos(t) * d, y + Math.sin(t) * d, urand(0, PI2), urand(.14, .26)]; }),
+      craters: Array.from({ length: 3 + Math.round(R) }, () => { const t = urand(0, PI2), d = urand(0, .62) * R; return [x + Math.cos(t) * d, y + Math.sin(t) * d, urand(.18, .32) * R]; }) });
+  }
+  let n = 0;
+  for (const r of rocks) {
+    for (let gy = Math.max(0, gc(r.y - r.R * 1.1)); gy <= Math.min(GR - 1, gc(r.y + r.R * 1.1)); gy++) for (let gx = Math.max(0, gc(r.x - r.R * 1.1)); gx <= Math.min(GC - 1, gc(r.x + r.R * 1.1)); gx++) {
+      const i = at(gx, gy), px = (gx + .5) / G - r.x, py = (gy + .5) / G - r.y;
+      if (grid[i] !== 0 || Math.hypot(px, py) >= rockRad(r, Math.atan2(py, px))) continue;
+      grid[i] = 1; rockG[i] = 1; r.cells.push(i); n++;
+    }
+  }
+  rockClock = 0;
+  S.filled += n;
+}
+function rockPath(g, r, grow = 1) {
+  g.beginPath();
+  for (let k = 0; k < r.f.length; k++) {
+    const t = r.a + k / r.f.length * PI2, d = r.R * r.f[k] * grow + .12;
+    k ? g.lineTo(r.x + Math.cos(t) * d, r.y + Math.sin(t) * d) : g.moveTo(r.x + Math.cos(t) * d, r.y + Math.sin(t) * d);
+  }
+  g.closePath();
+}
+// l'astéroïde, dessiné une fois (refait si l'échelle change) : ombre portée, roche en relief éclairée d'en haut à
+// gauche, cratères, liseré
+function rockSprite(r) {
+  const k = scale, pad = 1.6, w = Math.ceil((r.R * 1.1 + pad) * 2 * k), ox = r.x - r.R * 1.1 - pad, oy = r.y - r.R * 1.1 - pad;
+  const c = document.createElement('canvas'); c.width = c.height = w;
+  const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, -ox * k, -oy * k);
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,0.65)'; g.shadowBlur = .9 * k; g.shadowOffsetX = .35 * k; g.shadowOffsetY = .5 * k;
+  rockPath(g, r); g.fillStyle = '#1b110a'; g.fill();
+  g.restore();
+  const gr = g.createRadialGradient(r.x - r.R * .4, r.y - r.R * .45, r.R * .1, r.x, r.y, r.R * 1.2);
+  gr.addColorStop(0, '#e2b07a'); gr.addColorStop(.5, '#8a5a32'); gr.addColorStop(1, '#24150b');
+  rockPath(g, r); g.fillStyle = gr; g.fill();
+  g.save(); rockPath(g, r); g.clip();
+  // grain de la roche
+  for (let j = 0; j < r.R * 30; j++) {
+    const t = Math.random() * PI2, d = Math.sqrt(Math.random()) * r.R;
+    g.fillStyle = Math.random() < .5 ? 'rgba(255,225,180,0.08)' : 'rgba(20,10,4,0.16)';
+    g.fillRect(r.x + Math.cos(t) * d, r.y + Math.sin(t) * d, .12, .12);
+  }
+  for (const [x, y, cr] of r.craters) {
+    g.fillStyle = 'rgba(25,12,5,0.5)'; g.beginPath(); g.arc(x, y, cr, 0, PI2); g.fill();
+    g.fillStyle = 'rgba(255,215,165,0.22)'; g.beginPath(); g.arc(x + cr * .18, y + cr * .2, cr * .85, 0, PI2); g.arc(x, y, cr * .92, 0, PI2, true); g.fill();
+  }
+  // ombre propre : le côté opposé à la lumière s'assombrit
+  const sh = g.createLinearGradient(r.x - r.R, r.y - r.R, r.x + r.R, r.y + r.R);
+  sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.55, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(10,4,0,0.55)');
+  g.fillStyle = sh; g.fillRect(r.x - r.R * 1.2, r.y - r.R * 1.2, r.R * 2.4, r.R * 2.4);
+  g.restore();
+  rockPath(g, r); g.strokeStyle = 'rgba(255,205,145,0.45)'; g.lineWidth = .1; g.stroke();
+  r.img = c; r.cs = k; r.ox = ox; r.oy = oy; r.w = w / k;
+}
+function asteUpdate(dt) {
+  rockClock += dt;
+  if (S.phase !== 'play' || rockClock < .25) return;
+  rockClock = 0;
+  for (const r of rocks) {
+    if (r.done) continue;
+    // annexé : plus aucune case de l'astéroïde ne touche la zone à conquérir ni le fil
+    const open = r.cells.some(i => { const x = i % GC; return (x > 0 && grid[i - 1] !== 1) || (x < GC - 1 && grid[i + 1] !== 1) || grid[i - GC] !== 1 || grid[i + GC] !== 1; });
+    if (open) continue;
+    r.done = true;
+    const pts = 300 * S.level; S.score += pts;
+    popups.push({ x: r.x, y: r.y - r.R - .6, text: 'ANNEXÉ +' + fmt(pts), age: 0, color: T.rainbow ? '#ffcf8a' : T.ball });
+    rings.push({ x: r.x, y: r.y, r: r.R * .6, max: r.R + 2.5, age: 0, color: T.rainbow ? '#ffcf8a' : T.ball });
+    burst(r.x, r.y, T.rainbow ? '#e2b07a' : T.ball, 14, 4);
+    [392, 523, 659].forEach((f, j) => tone(f, .12, 'triangle', .03, 0, j * .07));
+    hud();
+  }
+}
+// le fil se pose sur un astéroïde : petit nuage de poussière (appelée par moveInto)
+function rockLand(nx, ny) {
+  const x = (nx + .5) / G, y = (ny + .5) / G;
+  burst(x, y, T.rainbow ? '#d9a066' : T.ball, 10, 3);
+  tone(140, .12, 'triangle', .04, -60);
+}
+function drawAste() {
+  if (!rocks.length) return;
+  ctx.save();
+  for (const r of rocks) {
+    if (!T.glow) {
+      rockPath(ctx, r); ctx.strokeStyle = T.shock; ctx.lineWidth = .25; ctx.stroke();
+      for (const [x, y, cr] of r.craters) { ctx.beginPath(); ctx.arc(x, y, cr * .7, 0, PI2); ctx.lineWidth = .15; ctx.stroke(); }
+      continue;
+    }
+    if (r.cs !== scale) rockSprite(r);
+    // halo du terrain : l'astéroïde est à toi, on peut y poser son fil
+    ctx.globalCompositeOperation = 'lighter';
+    rockPath(ctx, r, 1.04); ctx.strokeStyle = `rgba(255,190,120,${.22 + .1 * Math.sin(time * 2 + r.a)})`; ctx.lineWidth = .55; ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(r.img, r.ox, r.oy, r.w, r.w);
+    // cristaux d'ambre qui scintillent dans la roche
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x, y, ph, s] of r.gems) {
+      const p = .5 + .5 * Math.sin(time * 1.7 + ph), gs = s * (1 + p * 2.4);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, gs);
+      g.addColorStop(0, `rgba(255,220,150,${.25 + .45 * p})`); g.addColorStop(1, 'rgba(255,150,60,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - gs, y - gs, gs * 2, gs * 2);
+      ctx.fillStyle = `rgba(255,240,200,${.5 + .5 * p})`;
+      ctx.beginPath(); ctx.moveTo(x, y - s); ctx.lineTo(x + s * .55, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s * .55, y); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // annexé : liseré doré discret
+    if (r.done) { rockPath(ctx, r, 1.03); ctx.strokeStyle = 'rgba(255,207,138,0.35)'; ctx.lineWidth = .12; ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
 // Pyros (demande de Fabien) : des gouffres de lave dans la zone à conquérir et des météores qui tombent d'en haut.
 // Gouffre (pools) : y entrer brûle le vaisseau (crash ; Casque et Super Casque passent au-dessus, le Blindé le traverse
 // en y laissant 20 %, un coup encaissé l'arrête au bord). Dès que du terrain conquis le touche (zone refermée, Territoire,
@@ -4081,6 +4213,8 @@ function ecoSetup(eco, st) {
   if (eco && eco.key === 'glace') iceSetup(st);
   vt = null;
   if (eco && eco.key === 'volt') voltSetup(st);
+  rockG.fill(0); rocks = [];
+  if (eco && eco.key === 'aste') asteSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4222,6 +4356,7 @@ function ecoUpdate(dt) {
   if (fg) fogUpdate(dt);
   if (ic) iceTick(dt);
   if (vt) voltUpdate(dt);
+  if (rocks.length) asteUpdate(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -5124,7 +5259,7 @@ function itemSpot(type = pickType()) {
   const pp = playerPos();
   for (let y = G; y < GR - G; y++) for (let x = G; x < GC - G; x++) {
     const v = grid[at(x, y)];
-    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1) continue;
+    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1 || rockG[at(x, y)]) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     if (Math.hypot(cx - pp.x, cy - pp.y) < 7) continue;
     if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
@@ -5612,6 +5747,7 @@ function render() {
   drawTwinkle();
   drawChrono('clock');
   drawEdgeGlow();
+  drawAste();
   drawStains();
   drawDrops();
   drawGround();
