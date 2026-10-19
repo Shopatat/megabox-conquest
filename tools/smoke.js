@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; } };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -1085,6 +1085,74 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`Glacia épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, gel au plus haut ${hi.toFixed(1)} s`);
+  }
+}
+// 5w) Voltaria : le fil attire la foudre, globes à plasma libres et capturés
+{
+  const VT = g.ECOS.findIndex(e => e.key === 'volt');
+  const order = [0, VT, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== VT)];
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  const volt = (L = 4, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 5; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
+    g.vt.pyl.length = 0;
+  };
+  const pyl = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.vt.pyl.length; });
+  // un long fil vers le bas : la charge monte, la cible se pose, l'éclair coupe le fil
+  volt(); g.setDir('down'); let n = 0, c15 = -1, aim = -1, hit = -1, len = 0, wave = false;
+  while (n++ < 400 && g.S.phase === 'play') {
+    if (n === 45) g.setDir('right'); if (n === 90) g.setDir('down'); if (n === 115) g.setDir('left'); if (n === 160) g.setDir('down');
+    step();
+    const L = g.trail.length / G;
+    if (c15 < 0 && L >= 15) c15 = g.vt.charge;
+    if (aim < 0 && g.vt.tk >= 0) aim = n;
+    if (g.vt.bolts.length) { hit = n; len = L; wave = !!g.wave; break; }
+  }
+  console.log(`Voltaria : globes par étape ${pyl.join(' / ')} ; charge ${c15.toFixed(2)} à 15 cases de fil, cible après ${(aim / 60).toFixed(1)} s, éclair après ${(hit / 60).toFixed(1)} s (fil de ${len.toFixed(0)} cases), onde de choc ${wave}, vaisseau ${g.S.phase}`);
+  n = 0; while (g.S.phase === 'play' && g.P.drawing && n++ < 300) step();
+  console.log(`après l'éclair : ${g.S.phase}, en train de tracer ${g.P.drawing}, vies ${g.S.lives}`);
+  // sous Casque, avec le Furtif : pas de charge
+  volt(); g.power.inv = 30; g.setDir('down'); step(200); const helm = g.vt.charge;
+  volt(4, shipIdx('fur')); g.setDir('down'); step(200); const fur = g.vt.charge;
+  console.log(`charge après 3,3 s de fil : sous Casque ${helm.toFixed(2)}, Furtif ${fur.toFixed(2)}`);
+  // globe à soi : il protège le fil autour de lui ; libre : il attire la foudre
+  const chargeAt = (mine, free) => {
+    volt(); if (mine) g.vt.pyl.push({ x: 25.25, y: 14, mine: true, cd: 99, ph: 0 }); if (free) g.vt.pyl.push({ x: 28, y: 14, mine: false, cd: 99, ph: 0 });
+    g.setDir('down'); step(110); return g.vt.charge;
+  };
+  const c0 = chargeAt(false, false), cm = chargeAt(true, false), cf = chargeAt(false, true);
+  console.log(`charge après 1,8 s : sans globe ${c0.toFixed(2)}, près d'un globe à soi ${cm.toFixed(2)}, près d'un libre ${cf.toFixed(2)}`);
+  volt(); const p = { x: 25, y: 40, mine: false, cd: 1, ph: 0 }; g.vt.pyl.push(p);
+  for (let y = 0; y < g.GR; y++) for (let x = 0; x < g.GC; x++) if (Math.hypot((x + .5) / G - 25, (y + .5) / G - 40) < 3) g.grid[g.at(x, y)] = 1;
+  const e = g.makeFoe('out', 1); e.x = 25; e.y = 36.5; e.vx = e.vy = 0; g.foes.push(e);
+  g.setDir('left'); step(240);
+  console.log(`globe enfermé : à soi ${p.mine}, ennemi à 3,5 cases foudroyé ${!!e.dead || !g.foes.includes(e)}`);
+  // Prédateur : la cible se pose sur lui, il s'en écarte (ou pas)
+  for (const flee of [true, false]) {
+    volt(4, shipIdx('pred')); g.setDir('down'); step(40); n = 0; while (g.vt.warn <= 0 && n++ < 600) { g.P.dir = { x: 0, y: 0 }; step(); }
+    const lv = g.S.lives;
+    if (!flee) { g.P.dir = { x: 0, y: 0 }; g.P.next = null; }
+    else g.setDir('right');
+    n = 0; while (!g.vt.bolts.length && n++ < 300) { if (!flee) { g.P.dir = { x: 0, y: 0 }; } step(); }
+    step(2);
+    console.log(`Prédateur ${flee ? 'qui s\'écarte' : 'immobile'} : éclair ${(n / 60).toFixed(1)} s après la cible, ${g.S.phase}, vies ${lv} -> ${g.S.lives}`);
+  }
+  let s = 55; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '', bolts = 0, prev = 0;
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.03) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      step();
+      if (g.vt) { const b = g.vt.bolts.length; if (b > prev) bolts++; prev = b; }
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Voltaria épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${bolts} éclairs`);
   }
 }
 // 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros

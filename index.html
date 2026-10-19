@@ -301,6 +301,7 @@ details li b{color:var(--text);font-weight:600}
 .chip.frag{color:#ff5c6e;border-color:#ff1f3d}.chip.frag b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
 .chip.snail{color:#d9b38c}.chip.snail b{background:#a8784a}
 .chip.oxy{color:#7ff0ff}.chip.oxy b{background:#7ff0ff;box-shadow:0 0 6px #7ff0ff}.chip.heat{color:#ffb35c}.chip.heat b{background:#ffb35c;box-shadow:0 0 6px #ffb35c}.chip.heat.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
+.chip.storm{color:#ffe27a}.chip.storm b{background:#ffe27a;box-shadow:0 0 6px #ffe27a}.chip.storm.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .3s ease-in-out infinite}
 .chip.oxy.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
 .chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
@@ -1457,6 +1458,7 @@ const ECOS = [
     { ghost: 2, mirage: 1, fly: 1, thief: 1 },
     { name: 'FANTÔMES', ghost: 3, mirage: 1, echo: 1, fly: 1, inn: 1 } ] },
   { key: 'volt', name: 'VOLTARIA', tag: 'L\'orage gronde en permanence.', sig: 'mag',
+    rule: 'Ton fil attire la foudre : plus il est long, plus il se charge et crépite. Une cible annonce l’éclair, qui coupe le fil. Les globes à plasma attirent la foudre ; enferme-les : ils protègent ton fil autour d’eux et foudroient les ennemis proches.',
     look: { empty: '#0a0c1a', vignette: 'rgba(255,230,90,0.14)', landGrad: ['#f5c93a', '#5146ff'], edge: '#fffbe0', landP: '#fff3b0',
       nebulas: [[12, 18, 16, '255,230,90'], [38, 46, 18, '90,110,255'], [30, 10, 10, '255,250,180'], [8, 54, 11, '120,160,255']] },
     levels: [
@@ -3309,7 +3311,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -3736,6 +3738,7 @@ function updateCrash(dt) {
     P = newPlayer(rx, ry); P.guard = guard; P.g2 = g2; P.g2cd = g2cd;
     if (oc) { oc.o2 = OXY_MAX; oc.warn = false; }
     if (ic) { ic.frost = 0; ic.warn = false; }
+    if (vt) { vt.charge = 0; vt.tk = -1; vt.warn = 0; }
     // Prédateur : il repart avec la jauge de sang au moins à moitié
     pred.blood = Math.max(pred.blood, bloodMax() / 2);
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
@@ -4076,6 +4079,8 @@ function ecoSetup(eco, st) {
   if (eco && eco.key === 'nebu') fogSetup(st);
   ic = null;
   if (eco && eco.key === 'glace') iceSetup(st);
+  vt = null;
+  if (eco && eco.key === 'volt') voltSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4216,6 +4221,7 @@ function ecoUpdate(dt) {
   if (amb && T.space && !REDUCED) ambUpdate(dt);
   if (fg) fogUpdate(dt);
   if (ic) iceTick(dt);
+  if (vt) voltUpdate(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -4826,6 +4832,252 @@ function drawFrost(layer, pp) {
   ctx.restore();
 }
 
+// Voltaria (idée de Fabien : que la foudre fasse vraiment des dégâts ; principe proposé par Claude) : la foudre est
+// trop rapide pour s'esquiver, c'est donc la charge qui prévient. Le fil sert de paratonnerre : plus il est long
+// (au-delà de VOLT[étape].safe cases), plus il se charge (vt.charge, de 0 à 1) et crépite ; pleine, une cible se
+// pose sur un point du fil, et BOLT_WARN s plus tard l'éclair tombe dessus : le fil est coupé (onde de choc, comme un ennemi qui le
+// touche) et le vaisseau touché s'il est tout près. On ne meurt pas sur le coup : il faut regagner son terrain avant
+// l'onde. La charge retombe vite dès qu'on est sur son terrain. Globes à plasma (vt.pyl) dans la zone à conquérir :
+// libres, ils attirent la foudre (charge plus rapide et éclair qui tombe près d'eux quand le fil passe à moins de
+// PYL_R) ; enfermés, ils sont à toi : le fil à moins de PROT_R d'eux ne se charge plus, et ils foudroient l'ennemi le
+// plus proche à moins de ZAP_R toutes les ZAP_T s. Rien sous Casque ou Super Casque ; le fil du Furtif n'attire pas
+// la foudre ; sur un fil en feu, l'éclair se perd dans les flammes. Prédateur (pas de fil) : c'est lui qui se charge
+// dans la zone à conquérir, la cible se pose là où il est, il faut s'en écarter.
+const VOLT = [{ safe: 15, k: 40, pyl: 3 }, { safe: 12, k: 32, pyl: 3 }, { safe: 10, k: 26, pyl: 4 }];
+const GLOBE_R = 1.5, PYL_R = 6, PROT_R = 7, ZAP_R = 4.5, ZAP_T = 4, BOLT_AIM = .7, BOLT_WARN = 1.2;
+let vt = null;
+function voltSetup(st) {
+  const cf = VOLT[Math.min(2, st || 0)];
+  vt = { safe: cf.safe, k: cf.k, charge: 0, tk: -1, ti: -1, warn: 0, tx: 0, ty: 0, tick: 0, bolts: [], arcs: [], pyl: [] };
+  for (let tries = 0; vt.pyl.length < cf.pyl && tries < 300; tries++) {
+    const x = urand(7, COLS - 7), y = urand(16, ROWS - 7);
+    if (cellW(x, y) !== 0 || vt.pyl.some(p => Math.hypot(p.x - x, p.y - y) < 13)) continue;
+    vt.pyl.push({ x, y, mine: false, cd: urand(1, ZAP_T), ph: urand(0, PI2) });
+  }
+}
+// cases du fil qui comptent pour la charge (pas effacées, pas sous la protection d'un globe à soi)
+const voltSafe = (x, y) => vt.pyl.some(p => p.mine && Math.hypot(p.x - x, p.y - y) < PROT_R);
+function voltPick() {
+  // près d'un globe libre, la foudre tombe sur le point du fil le plus proche de lui
+  let best = -1, bd = PYL_R;
+  for (const p of vt.pyl) {
+    if (p.mine) continue;
+    for (let k = 0; k < trail.length - 2 * G; k++) {
+      if (erased[k]) continue;
+      const d = Math.hypot(wx(trail[k]) - p.x, wy(trail[k]) - p.y);
+      if (d < bd && !voltSafe(wx(trail[k]), wy(trail[k]))) { bd = d; best = k; }
+    }
+  }
+  if (best >= 0) return best;
+  const ok = [];
+  for (let k = Math.floor(trail.length * .15); k < trail.length - 3 * G; k++) if (!erased[k] && !voltSafe(wx(trail[k]), wy(trail[k]))) ok.push(k);
+  return ok.length ? ok[(Math.random() * ok.length) | 0] : -1;
+}
+function voltUpdate(dt) {
+  for (const b of vt.bolts) b.age += dt;
+  vt.bolts = vt.bolts.filter(b => b.age < b.max);
+  for (const a of vt.arcs) a.age += dt;
+  vt.arcs = vt.arcs.filter(a => a.age < a.max);
+  if (S.phase !== 'play' || !P) return;
+  const pred = SH().key === 'pred', pp = playerPos();
+  // globes : enfermés, ils deviennent les tiens ; les tiens foudroient les ennemis proches
+  for (const p of vt.pyl) {
+    if (!p.mine && cellW(p.x, p.y) === 1) {
+      p.mine = true; p.cd = 1.5;
+      rings.push({ x: p.x, y: p.y, r: 0, max: PROT_R, age: 0, color: T.rainbow ? '#8fe8ff' : T.shock });
+      popups.push({ x: p.x, y: p.y - 2.2, text: 'GLOBE CAPTURÉ', age: 0, color: T.rainbow ? '#8fe8ff' : T.shock });
+      [660, 990, 1320].forEach((f, i) => tone(f, .1, 'square', .025, 0, i * .06));
+    }
+    if (!p.mine || (p.cd -= dt * foeSlow()) > 0) continue;
+    let e = null, bd = ZAP_R;
+    for (const f of foes) {
+      if (f.dead || f.kind === 'amph' || f.kind === 'comet' || absent(f)) continue;
+      const d = Math.hypot(f.x - p.x, f.y - p.y);
+      if (d < bd) { bd = d; e = f; }
+    }
+    if (!e) { p.cd = .3; continue; }
+    p.cd = ZAP_T;
+    vt.arcs.push({ x0: p.x, y0: p.y, x1: e.x, y1: e.y, age: 0, max: .3, seed: Math.random() * 99 });
+    tone(2400, .12, 'sawtooth', .03, -1800); tone(90, .25, 'square', .03, -40);
+    killFoe(e, 'FOUDROYÉ', T.rainbow ? '#ffe27a' : T.shock);
+  }
+  // la cible est posée : l'éclair tombe BOLT_WARN s plus tard (le Chrono le retarde)
+  if (vt.warn > 0) {
+    if ((vt.tick -= dt) <= 0) { vt.tick = .06; tone(2600 + Math.random() * 1500, .03, 'square', .022); }
+    if ((vt.warn -= dt * foeSlow()) <= 0) { voltStrike(pred); vt.charge = 0; vt.tk = -1; vt.warn = 0; }
+    return;
+  }
+  // la charge : le fil (ou le Prédateur dans la zone à conquérir) attire la foudre
+  let rate = 0;
+  const immune = helmet() || power.sup > 0 || P.shield || SH().key === 'fur';
+  if (!immune && pred && inSeaNow() && !voltSafe(pp.x, pp.y)) rate = 8 / vt.k;
+  else if (!immune && P.drawing && !pred) {
+    let n = 0, near = 0;
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) continue;
+      const x = wx(trail[k]), y = wy(trail[k]);
+      if (voltSafe(x, y)) continue;
+      n++;
+      if (!near && vt.pyl.some(p => !p.mine && Math.hypot(p.x - x, p.y - y) < PYL_R)) near = 1;
+    }
+    rate = Math.max(0, n / G - vt.safe) / vt.k + near * .3;
+  }
+  if (rate > 0) vt.charge += rate * dt;
+  else vt.charge = Math.max(0, vt.charge - 1.5 * dt);
+  // crépitement de plus en plus serré
+  if (vt.charge > .25 && (vt.tick -= dt) <= 0) { vt.tick = .45 - .38 * Math.min(1, vt.charge); tone(2600 + Math.random() * 1500, .03, 'square', .01 + .012 * vt.charge); }
+  // pleine : la cible se pose
+  if (vt.charge >= 1) {
+    vt.charge = 1;
+    if (pred) { vt.tk = 0; vt.ti = -1; vt.tx = pp.x; vt.ty = pp.y; }
+    else { const k = voltPick(); if (k >= 0) { vt.tk = k; vt.ti = trail[k]; vt.tx = wx(trail[k]); vt.ty = wy(trail[k]); } }
+    if (vt.tk >= 0) { vt.warn = BOLT_WARN; tone(900, BOLT_WARN, 'sine', .02, 1500); }
+    else vt.charge = 0;
+  }
+}
+// l'éclair tombe : sur un point du fil (il le coupe) ou sur la cible du Prédateur
+function voltStrike(pred) {
+  const x = vt.tx, y = vt.ty, hot = T.rainbow ? '#fff6b0' : T.shock;
+  // éclair ramifié depuis le haut de l'écran (en passant par un globe libre tout proche)
+  const src = vt.pyl.find(p => !p.mine && Math.hypot(p.x - x, p.y - y) < PYL_R);
+  const pts = [[x + urand(-6, 6), -1]];
+  const tx = src ? src.x : x, ty = src ? src.y : y;
+  while (pts[pts.length - 1][1] < ty - 1.5) { const [px, py] = pts[pts.length - 1], k = 1 - (ty - py) / (ty + 1); pts.push([px + (tx - px) * .18 * (1 + k) + urand(-1.1, 1.1), py + urand(1.2, 2.2)]); }
+  pts.push([tx, ty]);
+  if (src) { const m = 4; for (let j = 1; j <= m; j++) pts.push([tx + (x - tx) * j / m + (j < m ? urand(-.5, .5) : 0), ty + (y - ty) * j / m + (j < m ? urand(-.5, .5) : 0)]); }
+  const br = [];
+  for (let k = 0; k < 3; k++) {
+    let [bx, by] = pts[1 + ((Math.random() * Math.max(1, pts.length - 4)) | 0)]; const s = Math.random() < .5 ? -1 : 1, b = [[bx, by]];
+    for (let j = 0; j < 4; j++) { bx += s * urand(.5, 1.4); by += urand(.7, 1.6); b.push([bx, by]); }
+    br.push(b);
+  }
+  vt.bolts.push({ pts, br, x, y, age: 0, max: .4 });
+  burst(x, y, hot, 26, 10); burst(x, y, T.rainbow ? '#ffd23f' : T.shock, 18, 6);
+  rings.push({ x, y, r: 0, max: 3.2, age: 0, color: hot }, { x, y, r: 0, max: 5, age: -.05, color: T.rainbow ? '#ffd23f' : T.shock });
+  shake = Math.max(shake, REDUCED ? 0 : .8); flash = Math.max(flash, .45);
+  if (amb && amb.key === 'volt') amb.flash = 1;
+  tone(2200, .12, 'square', .045, -1800); tone(55, 1.1, 'sawtooth', .08, -20, .03); tone(110, .7, 'triangle', .05, -60, .1);
+  // le point visé est-il toujours sur le fil ? (sinon l'éclair tombe sur le terrain, sans effet)
+  const i = vt.ti, k = i >= 0 ? trailPos[i] : -1;
+  if (!pred && P.drawing && i >= 0 && grid[i] === 2 && k >= 0 && !erased[k]) {
+    if (!onFire(i)) {
+      onTrailHit({ kind: 'bolt', x, y, vx: 0, vy: 0 }, i);
+      for (let k = 0; k < trail.length; k++) if (!erased[k] && Math.hypot(wx(trail[k]) - x, wy(trail[k]) - y) < 1.2 && !onFire(trail[k])) eraseK(k);
+    }
+  }
+  const pp = playerPos();
+  if (S.phase === 'play' && Math.hypot(pp.x - x, pp.y - y) < (pred ? 1.8 : 1.3)) {
+    hitSrc = 'bolt'; hitPlayer(null); hitSrc = 'ring';
+    if (S.phase === 'crash') popups.push({ x: pp.x, y: pp.y - 1.4, text: 'FOUDROYÉ !', age: 0, color: T.danger });
+  }
+}
+// arc électrique en zigzag (graine fixe : il ne tremble que quand on change la graine)
+function zigzag(x0, y0, x1, y1, n, amp, seed) {
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+  ctx.moveTo(x0, y0);
+  for (let j = 1; j < n; j++) { const t = j / n, o = Math.sin(seed * 12.9898 + j * 78.233) * 43758.5453; ctx.lineTo(x0 + dx * t + nx * (o - Math.floor(o) - .5) * amp, y0 + dy * t + ny * (o - Math.floor(o) - .5) * amp); }
+  ctx.lineTo(x1, y1);
+}
+function drawVolt(layer, pp) {
+  if (!vt) return;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const yel = T.rainbow ? '#ffe27a' : T.shock, cyan = T.rainbow ? '#8fe8ff' : T.shock;
+  if (layer === 'ground') {
+    for (const p of vt.pyl) {
+      const c = p.mine ? cyan : yel, R = GLOBE_R;
+      // zone d'attraction (libre) ou de protection (à toi)
+      ctx.globalAlpha = p.mine ? .45 : .3 + .12 * Math.sin(time * 3 + p.ph);
+      ctx.strokeStyle = c; ctx.lineWidth = .1; ctx.setLineDash([.45, .4]); ctx.lineDashOffset = (p.mine ? -1 : 1) * time * 1.2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.mine ? PROT_R : PYL_R, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      // globe à plasma : halo, verre, filaments du noyau jusqu'à la paroi, noyau, reflet
+      if (T.glow) {
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(p.x, p.y, R * .6, p.x, p.y, R + 1.6);
+        g.addColorStop(0, p.mine ? 'rgba(140,230,255,0.35)' : 'rgba(255,226,122,0.32)'); g.addColorStop(1, 'rgba(255,226,122,0)');
+        ctx.fillStyle = g; ctx.fillRect(p.x - R - 1.6, p.y - R - 1.6, (R + 1.6) * 2, (R + 1.6) * 2);
+        ctx.globalCompositeOperation = 'source-over';
+        const gl = ctx.createRadialGradient(p.x - R * .3, p.y - R * .35, R * .1, p.x, p.y, R);
+        gl.addColorStop(0, 'rgba(40,30,80,0.55)'); gl.addColorStop(.8, 'rgba(30,25,70,0.6)'); gl.addColorStop(1, p.mine ? 'rgba(150,220,255,0.45)' : 'rgba(220,200,255,0.4)');
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, PI2); ctx.fill();
+      } else { ctx.fillStyle = T.empty; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, PI2); ctx.fill(); }
+      // filaments : ils ondulent lentement autour du noyau et tremblent sans cesse
+      const sd = Math.floor(time * 24);
+      if (T.glow) ctx.globalCompositeOperation = 'lighter';
+      for (let j = 0; j < 6; j++) {
+        const a = p.ph + j / 6 * PI2 + Math.sin(time * .9 + j * 1.7) * .7, ex = p.x + Math.cos(a) * R * .94, ey = p.y + Math.sin(a) * R * .94;
+        if (T.glow) { ctx.strokeStyle = p.mine ? 'rgba(140,230,255,0.35)' : 'rgba(255,190,110,0.35)'; ctx.lineWidth = .16; ctx.beginPath(); zigzag(p.x, p.y, ex, ey, 5, .32, sd + j * 13 + p.ph); ctx.stroke(); }
+        ctx.strokeStyle = T.glow ? (p.mine ? '#dff7ff' : '#fff1c4') : T.shock; ctx.lineWidth = .045; ctx.beginPath(); zigzag(p.x, p.y, ex, ey, 5, .32, sd + j * 13 + p.ph); ctx.stroke();
+        if (T.glow) { ctx.fillStyle = c; ctx.globalAlpha = .7; ctx.beginPath(); ctx.arc(ex, ey, .13, 0, PI2); ctx.fill(); ctx.globalAlpha = 1; }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      const core = .3 + .04 * Math.sin(time * 8 + p.ph);
+      if (T.glow) { const cg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, core * 1.6); cg.addColorStop(0, '#ffffff'); cg.addColorStop(.5, c); cg.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(p.x, p.y, core * 1.6, 0, PI2); ctx.fill(); }
+      else { ctx.fillStyle = T.shock; ctx.beginPath(); ctx.arc(p.x, p.y, core, 0, PI2); ctx.fill(); }
+      ctx.strokeStyle = T.glow ? 'rgba(235,245,255,0.75)' : T.shock; ctx.lineWidth = .08; ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, PI2); ctx.stroke();
+      if (T.glow) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(p.x - R * .42, p.y - R * .48, R * .28, R * .13, -.7, 0, PI2); ctx.fill(); }
+    }
+  } else if (layer === 'trail') {
+    // le fil se charge : lueur jaune de plus en plus vive, étincelles qui courent dessus
+    const q = Math.min(1, vt.charge);
+    if (q > .15 && P && P.drawing && trail.length > 2) {
+      const pts = []; for (let k = 0; k < trail.length; k++) if (!erased[k]) pts.push(k);
+      if (T.glow) {
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,226,122,${.12 + .35 * q * q + (q > BOLT_AIM ? .1 * Math.sin(time * 30) : 0)})`; ctx.lineWidth = .35 + .3 * q;
+        ctx.beginPath(); let on = false, last = -2;
+        for (const k of pts) { const t2 = trailXY[k], x = t2 ? t2[0] : wx(trail[k]), y = t2 ? t2[1] : wy(trail[k]); if (on && k === last + 1) ctx.lineTo(x, y); else ctx.moveTo(x, y); on = true; last = k; }
+        ctx.stroke(); ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.strokeStyle = T.glow ? '#fffbe0' : T.shock; ctx.lineWidth = .05;
+      const n = Math.ceil(q * q * 10), sd = Math.floor(time * 18);
+      ctx.beginPath();
+      for (let j = 0; j < n && pts.length; j++) {
+        const h = Math.sin((sd + j * 7.31) * 12.9898) * 43758.5453, k = pts[Math.floor((h - Math.floor(h)) * pts.length)], t2 = trailXY[k], x = t2 ? t2[0] : wx(trail[k]), y = t2 ? t2[1] : wy(trail[k]), a = (h * 3.7) % PI2, L = .4 + .5 * q;
+        zigzag(x, y, x + Math.cos(a) * L, y + Math.sin(a) * L, 3, .3, sd + j);
+      }
+      ctx.stroke();
+    }
+  } else {
+    // cible : là où l'éclair va tomber
+    if (vt.warn > 0 && S.phase === 'play') {
+      const q = Math.min(1, 1 - vt.warn / BOLT_WARN);
+      // colonne de lumière qui descend du ciel vers la cible, de plus en plus vive
+      if (T.glow) {
+        const cg = ctx.createLinearGradient(0, 0, 0, vt.ty);
+        cg.addColorStop(0, 'rgba(255,226,122,0)'); cg.addColorStop(1, `rgba(255,240,170,${.1 + .3 * q})`);
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = cg; const w = .5 + .5 * q; ctx.fillRect(vt.tx - w, 0, w * 2, vt.ty);
+        const dg = ctx.createRadialGradient(vt.tx, vt.ty, 0, vt.tx, vt.ty, 2.2);
+        dg.addColorStop(0, `rgba(255,240,170,${.25 + .35 * q})`); dg.addColorStop(1, 'rgba(255,226,122,0)');
+        ctx.fillStyle = dg; ctx.fillRect(vt.tx - 2.2, vt.ty - 2.2, 4.4, 4.4); ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.globalAlpha = .5 + .5 * Math.abs(Math.sin(time * (8 + q * 20)));
+      ctx.strokeStyle = T.glow ? '#fff1a8' : T.danger; ctx.lineWidth = .2;
+      ctx.setLineDash([.45, .3]); ctx.lineDashOffset = time * 4;
+      ctx.beginPath(); ctx.arc(vt.tx, vt.ty, 2 - .7 * q, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath();
+      for (let j = 0; j < 4; j++) { const t = j * Math.PI / 2 + time; ctx.moveTo(vt.tx + Math.cos(t) * (2.3 - .7 * q), vt.ty + Math.sin(t) * (2.3 - .7 * q)); ctx.lineTo(vt.tx + Math.cos(t) * (3.1 - .7 * q), vt.ty + Math.sin(t) * (3.1 - .7 * q)); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    // arcs des globes sur les ennemis
+    for (const a of vt.arcs) {
+      ctx.globalAlpha = 1 - a.age / a.max;
+      if (T.glow) { ctx.strokeStyle = 'rgba(140,230,255,0.5)'; ctx.lineWidth = .4; ctx.beginPath(); zigzag(a.x0, a.y0, a.x1, a.y1, 7, .9, a.seed + Math.floor(a.age * 30)); ctx.stroke(); }
+      ctx.strokeStyle = T.glow ? '#ffffff' : T.shock; ctx.lineWidth = .1; ctx.beginPath(); zigzag(a.x0, a.y0, a.x1, a.y1, 7, .9, a.seed + Math.floor(a.age * 30)); ctx.stroke();
+    }
+    // les éclairs
+    for (const b of vt.bolts) {
+      const k = 1 - b.age / b.max, on = b.age < .08 || (b.age > .14 && b.age < .26);
+      ctx.globalAlpha = on ? k : k * .3;
+      const path = () => { ctx.beginPath(); b.pts.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); for (const br of b.br) br.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); };
+      if (T.glow) { ctx.globalCompositeOperation = 'lighter'; path(); ctx.strokeStyle = 'rgba(255,226,122,0.45)'; ctx.lineWidth = 1; ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; }
+      path(); ctx.strokeStyle = T.glow ? '#ffffff' : T.shock; ctx.lineWidth = .2; ctx.stroke();
+      if (T.glow) { const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 4); g.addColorStop(0, `rgba(255,250,210,${.7 * k})`); g.addColorStop(1, 'rgba(255,226,122,0)'); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(b.x - 4, b.y - 4, 8, 8); ctx.globalCompositeOperation = 'source-over'; }
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 /* ---------- Bonus ---------- */
 // Apparition imprévisible (demande de Fabien : ne pas pouvoir s'y préparer, juste réagir) :
 // sur tous les niveaux, de 0 à 3 bonus (1,5 en moyenne), à des moments tirés au hasard
@@ -5110,13 +5362,14 @@ let powersSig = '', bloodBt = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
   const bl = SH().key === 'pred' && S.phase !== 'title';
-  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc + !!ic;
+  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc + !!ic + !!vt;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig; bloodBt = '';
     el.innerHTML = (bl ? `<div class="blood" id="blood" role="meter" aria-label="Sang"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 C12 2 4.5 10.5 4.5 15.2 A7.5 7.5 0 0 0 19.5 15.2 C19.5 10.5 12 2 12 2 Z"/></svg>SANG !<div class="bm"><i id="bfill"></i></div></div>` : '')
       + (oc ? '<div class="chip oxy" id="coxy"><b></b><span>OXYGÈNE</span><div class="t"><i id="toxy"></i></div></div>' : '')
       + (ic ? '<div class="chip heat" id="cheat"><b></b><span>CHALEUR</span><div class="t"><i id="theat"></i></div></div>' : '')
+      + (vt ? '<div class="chip storm" id="cstorm"><b></b><span>ORAGE</span><div class="t"><i id="tstorm"></i></div></div>' : '')
       + (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
       + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
@@ -5135,6 +5388,8 @@ function powersHud() {
   if (tx && oc) { tx.style.width = (Math.max(0, oc.o2) / OXY_MAX * 100).toFixed(1) + '%'; const c = $('coxy'), low = oc.o2 < OXY_LOW; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
   const th = $('theat');
   if (th && ic) { th.style.width = (Math.max(0, 1 - ic.frost / FROST_MAX) * 100).toFixed(1) + '%'; const c = $('cheat'), low = FROST_MAX - ic.frost < FROST_LOW; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
+  const ts = $('tstorm');
+  if (ts && vt) { ts.style.width = (Math.min(1, vt.charge) * 100).toFixed(1) + '%'; const c = $('cstorm'), low = vt.charge >= BOLT_AIM; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
   const tc = $('tcarn'); if (tc) tc.style.width = (pred.ct / predWin() * 100) + '%';
   const bf = $('bfill');
   if (bf) {
@@ -5276,7 +5531,7 @@ function update(dt) {
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc || ic) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc || ic || vt) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
@@ -5362,6 +5617,7 @@ function render() {
   drawGround();
   drawOcean('ground');
   drawFrost('ground');
+  drawVolt('ground');
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -5371,6 +5627,7 @@ function render() {
 
   const pp = P ? playerPos() : null;
   if (trail.length && P) drawTrail(pp);
+  drawVolt('trail');
   if (rw.play && rw.play.path.length > 1 && (sk('echo') || sk('paradoxe'))) {
     ctx.save(); glowOn('#ffb84d', 1.5); ctx.strokeStyle = T.rainbow ? 'rgba(255,184,77,0.7)' : T.shock; ctx.lineWidth = .35; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.setLineDash([.5, .35]); ctx.lineDashOffset = time * 4; ctx.beginPath(); rw.play.path.forEach((q, k) => k ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.stroke(); ctx.restore(); glowOff();
@@ -5418,6 +5675,7 @@ function render() {
   drawMeteors();
   drawOcean('sky', pp);
   drawFrost('sky', pp);
+  drawVolt('sky', pp);
   drawAmb('front');
   drawFx();
 }
