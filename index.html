@@ -300,7 +300,8 @@ details li b{color:var(--text);font-weight:600}
 @keyframes ragechip{50%{box-shadow:0 0 12px rgba(255,31,61,.8)}}
 .chip.frag{color:#ff5c6e;border-color:#ff1f3d}.chip.frag b{background:#ff1f3d;box-shadow:0 0 8px #ff1f3d}
 .chip.snail{color:#d9b38c}.chip.snail b{background:#a8784a}
-.chip.oxy{color:#7ff0ff}.chip.oxy b{background:#7ff0ff;box-shadow:0 0 6px #7ff0ff}.chip.oxy.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
+.chip.oxy{color:#7ff0ff}.chip.oxy b{background:#7ff0ff;box-shadow:0 0 6px #7ff0ff}.chip.heat{color:#ffb35c}.chip.heat b{background:#ffb35c;box-shadow:0 0 6px #ffb35c}.chip.heat.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
+.chip.oxy.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
 .chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
@@ -1424,6 +1425,7 @@ const ECOS = [
     { out: 2, ricoch: 2, ambush: 1, hunt: 1 },
     { name: 'PLUIE DE MÉTÉORES', ricoch: 2, ambush: 1, hunt: 1, comet: 1, mine: 1, inn: 1 } ] },
   { key: 'glace', name: 'GLACIA', tag: 'Un monde de glace, où tout glisse.', sig: 'scar',
+    rule: 'Hors du camp, le froid gèle ton vaisseau : il ralentit (moitié de sa vitesse à 30 s) et à 60 s il est pris dans la glace. Reviens près du feu pour dégeler. Sur les plaques de glace, tu files tout droit, plus vite, sans tourner ni t’arrêter.',
     look: { empty: '#07132a', vignette: 'rgba(120,220,255,0.2)', landGrad: ['#86e0ff', '#4b6dff'], edge: '#f0fbff', landP: '#e2f7ff',
       nebulas: [[12, 18, 16, '120,220,255'], [38, 46, 18, '90,140,255'], [30, 10, 10, '220,245,255'], [8, 54, 11, '140,190,255']] },
     levels: [
@@ -1694,7 +1696,7 @@ function setDir(d) {
   if (S.phase === 'ready' && d !== 'stop') { go(); }
   if (S.phase !== 'play') return;
   ensureAudio();
-  if (d === 'stop') { if (!P.drawing || chronoOn() || (sk('freins') && ab.on > 0)) { P.dir = {x:0,y:0}; P.next = null; } return; }
+  if (d === 'stop') { if (onIce()) return; if (!P.drawing || chronoOn() || (sk('freins') && ab.on > 0)) { P.dir = {x:0,y:0}; P.next = null; } return; }
   const v = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[d];
   if (!v) return;
   dropShield();
@@ -1703,14 +1705,15 @@ function setDir(d) {
 }
 // Chrono : le vaisseau ralentit aussi (×0,6) pour mieux viser ; Super Chrono : seul le monde ralentit
 const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 : STEP) / (power.chr > 0 && !(power.schr > 0) ? 0.6 : 1) / (SH().key === 'fre' ? (ab.on > 0 ? FR_SPD : FRE_SPD) : 1)
-  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd() * waterSlow();
+  * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd() * waterSlow() * iceSlow();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
 const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow() * (S.bulleT > 0 || (S.presT > 0 && sk('prescience')) ? .5 : 1);
 // Fulgurant : le monde ralentit pendant qu'il dessine son trajet (Temps suspendu, Transe), ou se fige (Instant figé, 3 s au plus)
 const planSlow = () => !plan ? (S.calmT > 0 ? .5 : 1) : sk('fige') && (S.figeT || 0) < 5 ? 0 : sk('transe') ? .3 : sk('suspendu') ? .5 : 1;
 function stepPlayer() {
-  if (P.next) {
+  // Glacia : sur une plaque de glace, le virage demandé attend la sortie
+  if (P.next && !(onIce() && (P.dir.x || P.dir.y))) {
     // pas de demi-tour sur son fil, même à l'arrêt dans la zone à conquérir (chrono, coup encaissé)
     const d = P.dir.x || P.dir.y ? P.dir : P.face;
     const rev = P.drawing && P.next.x === -d.x && P.next.y === -d.y;
@@ -1945,6 +1948,7 @@ function checkGoal() {
 
 /* ---------- Ennemis ---------- */
 function moveSea(e, dt) {
+  if (ic && iceAt(e.x, e.y)) dt *= ICE_FOE;
   const R = e.r || R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
   const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || helmet() || SH().key === 'fur');
@@ -3305,7 +3309,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, wave: .05, fastWave: .08, self: .20 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -3731,6 +3735,7 @@ function updateCrash(dt) {
     const guard = P.guard, g2 = P.g2, g2cd = P.g2cd;
     P = newPlayer(rx, ry); P.guard = guard; P.g2 = g2; P.g2cd = g2cd;
     if (oc) { oc.o2 = OXY_MAX; oc.warn = false; }
+    if (ic) { ic.frost = 0; ic.warn = false; }
     // Prédateur : il repart avec la jauge de sang au moins à moitié
     pred.blood = Math.max(pred.blood, bloodMax() / 2);
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
@@ -4069,6 +4074,8 @@ function ecoSetup(eco, st) {
   if (eco && eco.key === 'ocea') oceaSetup(st);
   fg = null;
   if (eco && eco.key === 'nebu') fogSetup(st);
+  ic = null;
+  if (eco && eco.key === 'glace') iceSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4208,6 +4215,7 @@ function ecoUpdate(dt) {
   if (ph === 'pause' || ph === 'title') return;
   if (amb && T.space && !REDUCED) ambUpdate(dt);
   if (fg) fogUpdate(dt);
+  if (ic) iceTick(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -4224,6 +4232,7 @@ function ecoUpdate(dt) {
   if (ph !== 'play') return;
   ecoClock += dt;
   if (oc) oxyUpdate(dt);
+  if (ic && S.phase === 'play') frostUpdate(dt);
   if (S.phase !== 'play') return;
   const fdt = dt * foeSlow();
   if (hz && P && !P.shield) {
@@ -4559,6 +4568,264 @@ function drawFog(pp) {
   }
 }
 
+// Glacia (idées de Fabien et de Claude) : un camp autour du départ (conquis dès le début) avec un feu de camp. Hors du
+// camp, le froid gèle le vaisseau peu à peu (ic.frost, en secondes : 1 par seconde dans la zone à conquérir, deux fois
+// moins sur le terrain conquis) : il ralentit (moitié de sa vitesse à 30 s), et à FROST_MAX (60 s) il est pris dans la
+// glace (crash ; le Blindé y laisse 25 % et repart à moitié dégelé). Près du feu, il dégèle vite (THAW s par seconde).
+// Rien avant le premier mouvement, ni sous Casque ou Super Casque ; la furie du Frénétique le réchauffe. Plaques de
+// glace dans la zone à conquérir (iceG) : on y file tout droit, plus vite (ICE_SPD), sans pouvoir tourner ni s'arrêter
+// (le virage demandé attend la sortie de la plaque) ; les ennemis y vont plus vite aussi (ICE_FOE).
+const FROST_MAX = 60, FROST_LOW = 15, THAW = 10, CAMP_R = 6.5, ICE_SPD = 1.4, ICE_FOE = 1.35;
+const GLACE = [{ plates: 3, r: [3.5, 5] }, { plates: 4, r: [3.8, 5.8] }, { plates: 5, r: [4, 6.5] }];
+const iceG = new Uint8Array(N), campG = new Uint8Array(N);
+let ic = null;
+const onIce = () => { if (!ic || !P) return false; const i = at(P.x, P.y); return !!iceG[i] && grid[i] !== 1; };
+const iceAt = (x, y) => { const X = gc(x), Y = gc(y); return !!ic && inB(X, Y) && !!iceG[at(X, Y)] && grid[at(X, Y)] === 0; };
+const iceSlow = () => !ic || !P ? 1 : 1 / Math.max(.15, 1 - ic.frost / FROST_MAX) / (onIce() ? ICE_SPD : 1);
+function inPoly(x, y, pts) {
+  let r = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) r = !r;
+  }
+  return r;
+}
+function iceSetup(st) {
+  const cf = GLACE[Math.min(2, st || 0)];
+  ic = { frost: 0, x: COLS / 2, y: 0, r: CAMP_R, fx: COLS / 2, fy: 3.4, plates: [], warn: false, beep: 0, thaw: 0, slide: false, n: 0 };
+  iceG.fill(0); campG.fill(0);
+  for (let y = 0; y < GR; y++) for (let x = 0; x < GC; x++) {
+    if (Math.hypot((x + .5) / G - ic.x, (y + .5) / G - ic.y) >= ic.r) continue;
+    const i = at(x, y); campG[i] = 1;
+    if (grid[i] === 0) { grid[i] = 1; ic.n++; }
+  }
+  S.filled += ic.n;
+  for (let tries = 0; ic.plates.length < cf.plates && tries < 400; tries++) {
+    // une plaque : un polygone irrégulier, un peu étiré, aux angles vifs
+    const r = urand(cf.r[0], cf.r[1]), R = r * 1.3, cx = urand(B + 3 + R, COLS - B - 3 - R), cy = urand(14 + R * .5, ROWS - B - 3 - R);
+    if (cy - R < B + 3 || Math.hypot(cx - ic.x, cy - ic.y) < R + CAMP_R + 6) continue;
+    if (ic.plates.some(p => Math.hypot(p.cx - cx, p.cy - cy) < p.R + R + 3)) continue;
+    const m = 6 + ((Math.random() * 4) | 0), a0 = urand(0, PI2), rot = urand(0, Math.PI), st2 = urand(1, 1.3), pts = [];
+    for (let k = 0; k < m; k++) {
+      const a = a0 + (k + urand(-.3, .3)) / m * PI2, d = r * urand(.7, 1), u = Math.cos(a) * d * st2, v = Math.sin(a) * d / st2;
+      pts.push([cx + u * Math.cos(rot) - v * Math.sin(rot), cy + u * Math.sin(rot) + v * Math.cos(rot)]);
+    }
+    const cells = [];
+    for (let y = Math.max(0, gc(cy - R)); y <= Math.min(GR - 1, gc(cy + R)); y++) for (let x = Math.max(0, gc(cx - R)); x <= Math.min(GC - 1, gc(cx + R)); x++) {
+      const i = at(x, y);
+      if (grid[i] === 0 && !iceG[i] && inPoly((x + .5) / G, (y + .5) / G, pts)) cells.push(i);
+    }
+    if (cells.length < 40) continue;
+    for (const i of cells) iceG[i] = 1;
+    // fissures : quelques lignes brisées qui partent de l'intérieur
+    const cracks = [];
+    for (let k = 0, nc = 2 + ((Math.random() * 3) | 0); k < nc; k++) {
+      let x = cx + urand(-r, r) * .35, y = cy + urand(-r, r) * .35, t = urand(0, PI2); const line = [[x, y]];
+      for (let j = 0, nj = 3 + ((Math.random() * 3) | 0); j < nj; j++) { t += urand(-.7, .7); x += Math.cos(t) * r * .22; y += Math.sin(t) * r * .22; if (!inPoly(x, y, pts)) break; line.push([x, y]); }
+      if (line.length > 1) cracks.push(line);
+    }
+    const glints = Array.from({ length: 3 }, () => { const i = cells[(Math.random() * cells.length) | 0]; return { x: (i % GC + .5) / G, y: (((i / GC) | 0) + .5) / G, ph: urand(0, PI2), sp: urand(.5, 1.1) }; });
+    ic.plates.push({ pts, cx, cy, R, cells, cracks, glints, ph: urand(0, 6) });
+  }
+}
+// partie fixe d'une plaque, dessinée une fois (refaite si l'échelle change) : épaisseur, glace translucide, reflet,
+// fissures, givre, liseré
+function plateSprite(p) {
+  const k = scale, pad = 1, w = Math.ceil((p.R + pad) * 2 * k), ox = p.cx - p.R - pad, oy = p.cy - p.R - pad;
+  const c = document.createElement('canvas'); c.width = c.height = w; const g = c.getContext('2d'); g.setTransform(k, 0, 0, k, -ox * k, -oy * k);
+  const path = (dx = 0, dy = 0) => { g.beginPath(); p.pts.forEach(([x, y], j) => j ? g.lineTo(x + dx, y + dy) : g.moveTo(x + dx, y + dy)); g.closePath(); };
+  path(.16, .3); g.fillStyle = 'rgba(0,12,40,0.5)'; g.fill();
+  path(0, .14); g.fillStyle = 'rgba(70,140,220,0.55)'; g.fill();
+  const lg = g.createLinearGradient(p.cx - p.R, p.cy - p.R, p.cx + p.R, p.cy + p.R);
+  lg.addColorStop(0, 'rgba(235,250,255,0.62)'); lg.addColorStop(.45, 'rgba(150,215,255,0.4)'); lg.addColorStop(1, 'rgba(80,140,235,0.5)');
+  path(); g.fillStyle = lg; g.fill();
+  g.save(); path(); g.clip();
+  const rg = g.createRadialGradient(p.cx - p.R * .45, p.cy - p.R * .5, 0, p.cx - p.R * .45, p.cy - p.R * .5, p.R * .9);
+  rg.addColorStop(0, 'rgba(255,255,255,0.45)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(p.cx - p.R, p.cy - p.R, p.R * 2, p.R * 2);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const line of p.cracks) {
+    g.beginPath(); line.forEach(([x, y], j) => j ? g.lineTo(x + .05, y + .07) : g.moveTo(x + .05, y + .07)); g.strokeStyle = 'rgba(30,70,150,0.4)'; g.lineWidth = .09; g.stroke();
+    g.beginPath(); line.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = .06; g.stroke();
+  }
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let j = 0; j < 26; j++) { const i = p.cells[(Math.random() * p.cells.length) | 0]; g.fillRect((i % GC) / G + Math.random() * .4, ((i / GC) | 0) / G + Math.random() * .4, .07, .07); }
+  g.restore();
+  path(); g.strokeStyle = 'rgba(160,230,255,0.35)'; g.lineWidth = .45; g.stroke();
+  path(); g.strokeStyle = 'rgba(245,253,255,0.95)'; g.lineWidth = .11; g.stroke();
+  p.img = c; p.cs = k; p.ox = ox; p.oy = oy; p.w = w / k;
+}
+// sous le terrain conquis : les plaques de glace (le terrain qui les recouvre les cache)
+function drawIce() {
+  if (!ic || !ic.plates.length) return;
+  ctx.save();
+  for (const p of ic.plates) {
+    if (!T.glow) {
+      ctx.beginPath(); p.pts.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+      ctx.strokeStyle = T.shock; ctx.lineWidth = .14; ctx.stroke();
+      ctx.save(); ctx.clip(); ctx.lineWidth = .07; ctx.beginPath();
+      for (let d = -p.R * 2; d < p.R * 2; d += .9) { ctx.moveTo(p.cx + d - p.R, p.cy - p.R); ctx.lineTo(p.cx + d + p.R, p.cy + p.R); }
+      ctx.stroke(); ctx.restore();
+      continue;
+    }
+    if (p.cs !== scale) plateSprite(p);
+    ctx.drawImage(p.img, p.ox, p.oy, p.w, p.w);
+    // reflet qui glisse en diagonale, et quelques éclats qui scintillent
+    ctx.save(); ctx.beginPath(); p.pts.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    const u = ((time + p.ph) % 5) / 5, s = p.cx - p.R * 1.6 + u * p.R * 3.2;
+    const sg = ctx.createLinearGradient(s - 1.2, p.cy - 1.2, s + 1.2, p.cy + 1.2);
+    sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(.5, 'rgba(255,255,255,0.3)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg; ctx.fillRect(p.cx - p.R - 2, p.cy - p.R - 2, p.R * 2 + 4, p.R * 2 + 4);
+    ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = .06; ctx.lineCap = 'round';
+    for (const q of p.glints) {
+      const a = Math.max(0, Math.sin(time * q.sp * 3 + q.ph)) ** 6, L = .25 + .45 * a;
+      if (a < .05) continue;
+      ctx.globalAlpha = a; ctx.beginPath(); ctx.moveTo(q.x - L, q.y); ctx.lineTo(q.x + L, q.y); ctx.moveTo(q.x, q.y - L); ctx.lineTo(q.x, q.y + L); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+// le feu : étincelles et fumée (aussi hors de la phase de jeu)
+function iceTick(dt) {
+  if (!T.glow || REDUCED) return;
+  if (Math.random() < dt * 9) particles.push({ x: ic.fx + urand(-.3, .3), y: ic.fy - .3, vx: urand(-.6, .6), vy: urand(-3.2, -1.6), life: 0, max: urand(.5, 1), color: Math.random() < .5 ? '#ffd27a' : '#ff8a3d', size: urand(.08, .16), ng: 1 });
+}
+function frostUpdate(dt) {
+  if (!P) return;
+  const pp = playerPos(), sea = inSeaNow(), warm = !sea && !!campG[at(P.x, P.y)];
+  if (warm) {
+    if (ic.frost > 0) {
+      ic.frost = Math.max(0, ic.frost - THAW * dt);
+      if ((ic.thaw -= dt) <= 0) { ic.thaw = .22; tone(300 + (FROST_MAX - ic.frost) * 12, .05, 'triangle', .014); }
+      if (T.glow && Math.random() < .6) particles.push({ x: pp.x + urand(-.5, .5), y: pp.y, vx: urand(-.3, .3), vy: urand(-2.5, -1), life: 0, max: .7, color: Math.random() < .5 ? '#ffffff' : '#cfeeff', size: urand(.15, .3), ng: 1 });
+    }
+  } else if (frenzyOn()) ic.frost = Math.max(0, ic.frost - 3 * dt);
+  else if (!P.shield && !helmet() && !(power.sup > 0)) ic.frost += (sea ? 1 : .5) * dt;
+  // sur la glace : éclats qui giclent derrière le vaisseau, crissement à l'entrée
+  const sl = onIce() && !!(P.dir.x || P.dir.y);
+  if (sl && !ic.slide) tone(2200, .25, 'sine', .014, -1400);
+  ic.slide = sl;
+  if (sl && T.glow && Math.random() < .7) particles.push({ x: pp.x - P.dir.x * .6 + urand(-.2, .2), y: pp.y - P.dir.y * .6 + urand(-.2, .2), vx: -P.dir.x * urand(2, 4) + urand(-1.5, 1.5), vy: -P.dir.y * urand(2, 4) + urand(-1.5, 1.5), life: 0, max: urand(.25, .45), color: Math.random() < .5 ? '#ffffff' : '#bfefff', size: urand(.08, .16), ng: 1 });
+  const left = FROST_MAX - ic.frost;
+  if (left > FROST_LOW + 6) ic.warn = false;
+  if (left < FROST_LOW && !warm) {
+    if (!ic.warn) { ic.warn = true; popups.push({ x: pp.x, y: pp.y - 2, text: 'GEL !', age: 0, color: T.danger, big: true }); }
+    if ((ic.beep -= dt) <= 0) { ic.beep = left < FROST_LOW / 3 ? .3 : .65; tone(2600, .05, 'triangle', .02, -600); tone(1900, .05, 'triangle', .015, -400, .05); }
+  }
+  if (ic.frost >= FROST_MAX) freeze(pp);
+}
+// pris dans la glace
+function freeze(pp) {
+  burst(pp.x, pp.y, T.rainbow ? '#ffffff' : T.shock, 26, 7); burst(pp.x, pp.y, T.rainbow ? '#8fdcff' : T.shock, 22, 4);
+  tone(3000, .3, 'triangle', .03, -2400); tone(1200, .2, 'square', .02, -900, .04);
+  if (SH().key === 'rob') { armorHit('freeze'); if (S.phase === 'play') popups.push({ x: pp.x, y: pp.y - 2.4, text: 'GIVRÉ', age: 0, color: T.danger }); }
+  else { crash('freeze'); if (S.phase === 'crash') popups.push({ x: pp.x, y: pp.y - 1.4, text: 'GELÉ !', age: 0, color: T.danger }); }
+  if (S.phase === 'play' && ic.frost >= FROST_MAX) ic.frost = FROST_MAX * .5;
+}
+function drawFrost(layer, pp) {
+  if (!ic) return;
+  ctx.save();
+  if (layer === 'ground') {
+    const { x, y, r, fx, fy } = ic, fl = Math.sin(time * 13) * .5 + Math.sin(time * 7.3) * .5;
+    if (T.glow) {
+      // le camp : neige tassée, bourrelet au bord, lueur du feu sur la neige
+      const g = ctx.createRadialGradient(x, y + 1, 0, x, y, r);
+      g.addColorStop(0, '#f2f8ff'); g.addColorStop(.7, '#d3e5f6'); g.addColorStop(1, '#a3c3e3');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r - .05, 0, PI2); ctx.fill();
+      ctx.strokeStyle = 'rgba(70,110,170,0.35)'; ctx.lineWidth = .3; ctx.beginPath(); ctx.arc(x, y, r + .05, 0, PI2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = .28; ctx.beginPath(); ctx.arc(x, y, r - .2, 0, PI2); ctx.stroke();
+      const lg = ctx.createRadialGradient(fx, fy, 0, fx, fy, r * 1.05);
+      lg.addColorStop(0, `rgba(255,140,50,${.55 + .08 * fl})`); lg.addColorStop(.45, `rgba(255,150,70,${.22 + .04 * fl})`); lg.addColorStop(1, 'rgba(255,150,70,0)');
+      ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); ctx.fill();
+      ctx.save(); ctx.translate(fx, fy); ctx.scale(1.4, 1.4); ctx.translate(-fx, -fy);
+      // pierres, bûches croisées
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * PI2 + .2, sx = fx + Math.cos(a) * .95, sy = fy + .25 + Math.sin(a) * .55;
+        ctx.fillStyle = k % 2 ? '#6d7684' : '#8a93a1'; ctx.beginPath(); ctx.ellipse(sx, sy, .26, .19, a, 0, PI2); ctx.fill();
+      }
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#5a3418'; ctx.lineWidth = .3;
+      ctx.beginPath(); ctx.moveTo(fx - .75, fy + .5); ctx.lineTo(fx + .7, fy - .05); ctx.moveTo(fx + .75, fy + .5); ctx.lineTo(fx - .7, fy - .05); ctx.stroke();
+      ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = .08; ctx.globalAlpha = .6 + .3 * fl;
+      ctx.beginPath(); ctx.moveTo(fx - .3, fy + .3); ctx.lineTo(fx + .3, fy + .1); ctx.stroke(); ctx.globalAlpha = 1;
+      // flammes : trois langues qui vacillent, cœur clair
+      const tongue = (dx, h, w, c0, c1) => {
+        const sw = Math.sin(time * 9 + dx * 7) * .12, top = fy - h * (.85 + .15 * Math.sin(time * 11 + dx * 5));
+        const fg2 = ctx.createLinearGradient(fx, fy + .3, fx, top);
+        fg2.addColorStop(0, c0); fg2.addColorStop(1, c1);
+        ctx.fillStyle = fg2; ctx.beginPath();
+        ctx.moveTo(fx + dx - w, fy + .3);
+        ctx.quadraticCurveTo(fx + dx - w * 1.1, fy - h * .4, fx + dx + sw, top);
+        ctx.quadraticCurveTo(fx + dx + w * 1.1, fy - h * .4, fx + dx + w, fy + .3);
+        ctx.closePath(); ctx.fill();
+      };
+      tongue(-.32, 1.1, .3, 'rgba(255,90,30,0.95)', 'rgba(255,40,20,0)');
+      tongue(.34, 1.2, .3, 'rgba(255,90,30,0.95)', 'rgba(255,40,20,0)');
+      tongue(0, 1.75, .45, 'rgba(255,170,50,1)', 'rgba(255,80,20,0)');
+      tongue(0, 1, .25, 'rgba(255,250,210,1)', 'rgba(255,210,90,0)');
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = T.shock; ctx.lineWidth = .15; ctx.setLineDash([.4, .3]); ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = T.shock; ctx.globalAlpha = .7 + .3 * fl;
+      ctx.beginPath(); ctx.moveTo(fx - .5, fy + .4); ctx.lineTo(fx, fy - 1.1); ctx.lineTo(fx + .5, fy + .4); ctx.closePath(); ctx.fill();
+    }
+  } else if (P && pp && (S.phase === 'play' || S.phase === 'pause')) {
+    const k = Math.min(1, ic.frost / FROST_MAX), f = 1 - k;
+    // givre sur l'écran, de plus en plus épais
+    if (k > .2 && T.glow) {
+      const q = Math.pow((k - .2) / .8, 1.3), g = ctx.createRadialGradient(COLS / 2, ROWS / 2, ROWS * .3, COLS / 2, ROWS / 2, ROWS * .75);
+      g.addColorStop(0, 'rgba(225,245,255,0)'); g.addColorStop(1, `rgba(225,245,255,${(.5 + (k > .75 ? .08 * Math.sin(time * 6) : 0)) * q})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, COLS, ROWS);
+    }
+    // le vaisseau se couvre de givre, puis se prend dans un bloc de glace
+    if (k > .08) {
+      const a = Math.min(1, (k - .08) * 1.6);
+      ctx.save(); ctx.translate(pp.x, pp.y);
+      ctx.fillStyle = T.glow ? `rgba(215,242,255,${.32 * a})` : `rgba(11,24,56,${.18 * a})`; ctx.beginPath(); ctx.arc(0, 0, .95, 0, PI2); ctx.fill();
+      ctx.rotate(time * .2); ctx.strokeStyle = T.glow ? '#eaf8ff' : T.shock; ctx.lineWidth = .07; ctx.lineCap = 'round'; ctx.globalAlpha = a;
+      const L = .55 + .55 * k; ctx.beginPath();
+      for (let j = 0; j < 6; j++) {
+        const t = j / 6 * PI2, c = Math.cos(t), s = Math.sin(t);
+        ctx.moveTo(c * .7, s * .7); ctx.lineTo(c * (.7 + L), s * (.7 + L));
+        const m = .7 + L * .6, b = .22 * k + .06;
+        ctx.moveTo(c * m, s * m); ctx.lineTo(c * m + Math.cos(t + .8) * b, s * m + Math.sin(t + .8) * b);
+        ctx.moveTo(c * m, s * m); ctx.lineTo(c * m + Math.cos(t - .8) * b, s * m + Math.sin(t - .8) * b);
+      }
+      ctx.stroke();
+      if (k > .6) {
+        const b = Math.min(1, (k - .6) / .4);
+        ctx.rotate(-time * .2); ctx.globalAlpha = 1; ctx.beginPath();
+        for (let j = 0; j < 6; j++) { const t = j / 6 * PI2 + .3, d = 1.25 + (j % 2) * .12; j ? ctx.lineTo(Math.cos(t) * d, Math.sin(t) * d) : ctx.moveTo(Math.cos(t) * d, Math.sin(t) * d); }
+        ctx.closePath(); ctx.fillStyle = T.glow ? `rgba(170,225,255,${.4 * b})` : `rgba(11,24,56,${.2 * b})`; ctx.fill();
+        ctx.strokeStyle = T.glow ? `rgba(255,255,255,${.85 * b})` : T.shock; ctx.lineWidth = .08; ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // jauge de chaleur autour du vaisseau, dès qu'il commence à geler
+    if (k > .01) {
+      const c = f > .5 ? '#ffb35c' : f > .25 ? '#8fdcff' : '#ff4d5e';
+      ctx.lineWidth = .18; ctx.lineCap = 'round';
+      ctx.strokeStyle = T.glow ? 'rgba(255,255,255,0.15)' : T.empty; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.55, 0, PI2); ctx.stroke();
+      ctx.globalAlpha = f > .25 || Math.floor(time * 6) % 2 ? 1 : .35;
+      ctx.strokeStyle = T.glow ? c : T.shock; ctx.beginPath(); ctx.arc(pp.x, pp.y, 1.55, -Math.PI / 2, -Math.PI / 2 + PI2 * f); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    // sur la glace : le virage demandé attend la sortie de la plaque (chevron qui clignote)
+    if (P.next && onIce() && (P.dir.x || P.dir.y)) {
+      const n = P.next, cx = pp.x + n.x * 2.2, cy = pp.y + n.y * 2.2;
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(Math.atan2(n.y, n.x));
+      ctx.globalAlpha = .55 + .45 * Math.abs(Math.sin(time * 8));
+      ctx.strokeStyle = T.glow ? '#eaf8ff' : T.shock; ctx.lineWidth = .16; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-.3, -.45); ctx.lineTo(.15, 0); ctx.lineTo(-.3, .45); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+
 /* ---------- Bonus ---------- */
 // Apparition imprévisible (demande de Fabien : ne pas pouvoir s'y préparer, juste réagir) :
 // sur tous les niveaux, de 0 à 3 bonus (1,5 en moyenne), à des moments tirés au hasard
@@ -4843,12 +5110,13 @@ let powersSig = '', bloodBt = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
   const bl = SH().key === 'pred' && S.phase !== 'title';
-  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc;
+  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc + !!ic;
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig; bloodBt = '';
     el.innerHTML = (bl ? `<div class="blood" id="blood" role="meter" aria-label="Sang"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 C12 2 4.5 10.5 4.5 15.2 A7.5 7.5 0 0 0 19.5 15.2 C19.5 10.5 12 2 12 2 Z"/></svg>SANG !<div class="bm"><i id="bfill"></i></div></div>` : '')
       + (oc ? '<div class="chip oxy" id="coxy"><b></b><span>OXYGÈNE</span><div class="t"><i id="toxy"></i></div></div>' : '')
+      + (ic ? '<div class="chip heat" id="cheat"><b></b><span>CHALEUR</span><div class="t"><i id="theat"></i></div></div>' : '')
       + (pred.combo > 0 ? `<div class="chip rage"><b></b><span>CARNAGE ×${pred.combo}</span><div class="t"><i id="tcarn"></i></div></div>` : '')
       + (power.frag > 0 ? `<div class="chip frag"><b></b><span>FIL FRAGILE</span><div class="t"><i id="tfrag"></i></div></div>` : '')
       + (gam.snail > 0 ? `<div class="chip snail"><b></b><span>ESCARGOT ×${gam.snail}</span></div>` : '')
@@ -4865,6 +5133,8 @@ function powersHud() {
   const r = $('trage'); if (r) r.style.width = Math.min(100, ab.on / frT() * 100) + '%';
   const tx = $('toxy');
   if (tx && oc) { tx.style.width = (Math.max(0, oc.o2) / OXY_MAX * 100).toFixed(1) + '%'; const c = $('coxy'), low = oc.o2 < OXY_LOW; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
+  const th = $('theat');
+  if (th && ic) { th.style.width = (Math.max(0, 1 - ic.frost / FROST_MAX) * 100).toFixed(1) + '%'; const c = $('cheat'), low = FROST_MAX - ic.frost < FROST_LOW; if (c.classList.contains('low') !== low) c.classList.toggle('low', low); }
   const tc = $('tcarn'); if (tc) tc.style.width = (pred.ct / predWin() * 100) + '%';
   const bf = $('bfill');
   if (bf) {
@@ -5006,7 +5276,7 @@ function update(dt) {
     if (S.phase === 'play') updateAbility(dt);
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
-    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc) powersHud();
+    if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc || ic) powersHud();
     if (power.sup > 0) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
@@ -5081,6 +5351,7 @@ function render() {
   ctx.setTransform(scale * zf, 0, 0, sy * zf, ox * scale + (1 - zf) * W / 2, oy * sy + (1 - zf) * H / 2);
   ctx.drawImage(bg, 0, 0, COLS, ROWS);
   drawAmb('back');
+  drawIce();
   if (boardDirty || (boardRev && !reveal)) drawBoard();
   ctx.drawImage(board, 0, 0, COLS, ROWS);
   drawTwinkle();
@@ -5090,6 +5361,7 @@ function render() {
   drawDrops();
   drawGround();
   drawOcean('ground');
+  drawFrost('ground');
 
   if (T.smooth) drawFresh();
   else for (const f of fresh) {
@@ -5145,6 +5417,7 @@ function render() {
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawMeteors();
   drawOcean('sky', pp);
+  drawFrost('sky', pp);
   drawAmb('front');
   drawFx();
 }

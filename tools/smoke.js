@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -1026,6 +1026,65 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`Nébula épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs`);
+  }
+}
+// 5v) Glacia : camp et feu, gel qui ralentit puis fige le vaisseau, plaques de glace
+{
+  const GL = g.ECOS.findIndex(e => e.key === 'glace');
+  const order = [0, GL, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== GL)];
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  const glace = (L = 4, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 5; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
+    g.iceG.fill(0);
+  };
+  const dive = () => { g.setDir('down'); let n = 0; while (!g.P.drawing && n++ < 200) step(); };
+  const plates = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.ic.plates.length + ' (' + g.ic.plates.reduce((a, p) => a + p.cells.length, 0) + ' cases)'; });
+  glace();
+  console.log(`Glacia : camp de ${g.ic.n} cases (${(g.S.filled / g.S.interior * 100).toFixed(1)} % au départ), plaques de glace par étape ${plates.join(' / ')}`);
+  glace(); dive(); let f0 = g.ic.frost; step(120); const seaUp = g.ic.frost - f0;
+  glace(); g.setDir('left'); step(150); f0 = g.ic.frost; step(120); const landUp = g.ic.frost - f0;
+  g.ic.frost = 40; g.P.x = g.P.px = g.GC >> 1; g.P.y = g.P.py = 0; g.P.dir = { x: 0, y: 0 }; step(60); const thaw = 40 - g.ic.frost;
+  console.log(`gel en 2 s : +${seaUp.toFixed(1)} s dans la zone à conquérir, +${landUp.toFixed(1)} s sur le terrain ; -${thaw.toFixed(1)} s en 1 s près du feu`);
+  const run = fr => { glace(); dive(); g.ic.frost = fr; const y0 = g.P.y; step(30); return g.P.y - y0; };
+  const v0 = run(0), v30 = run(30), v50 = run(50);
+  console.log(`vitesse en 0,5 s : ${v0} cases sans gel, ${v30} à 30 s (${(v30 / v0 * 100).toFixed(0)} %), ${v50} à 50 s (${(v50 / v0 * 100).toFixed(0)} %)`);
+  glace(); dive(); g.power.inv = 30; g.ic.frost = 10; step(120); const helm = g.ic.frost;
+  glace(); dive(); const lv = g.S.lives; g.ic.frost = 59.7; let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
+  const froze = g.S.phase; n = 0; while (g.S.phase === 'crash' && n++ < 400) step();
+  console.log(`sous Casque : ${helm.toFixed(1)} s de gel après 2 s (10 avant) ; gelé -> ${froze}, vies ${lv} -> ${g.S.lives}, reprise ${g.S.phase} avec ${g.ic.frost} s de gel`);
+  glace(4, shipIdx('rob')); dive(); g.armor.hp = 1; g.ic.frost = 59.9; step(30);
+  console.log(`Blindé gelé : ${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %, gel ${g.ic.frost.toFixed(1)} s`);
+  glace(4, shipIdx('fre')); dive(); g.ab.on = 8; g.ic.frost = 20; step(60);
+  console.log(`furie du Frénétique : gel ${g.ic.frost.toFixed(1)} s après 1 s (20 avant)`);
+  // une plaque de glace sous le vaisseau : il file tout droit, plus vite, le virage attend la sortie
+  const sheet = () => { const cx = g.GC >> 1; for (let y = 24; y < 70; y++) for (let x = cx - 8; x <= cx + 8; x++) g.iceG[g.at(x, y)] = 1; };
+  glace(); sheet(); dive(); n = 0; while (!(g.iceG[g.at(g.P.x, g.P.y)]) && n++ < 200) step();
+  let y0 = g.P.y; step(30); const vIce = g.P.y - y0;
+  glace(); sheet(); dive(); n = 0; while (!(g.iceG[g.at(g.P.x, g.P.y)]) && n++ < 200) step();
+  g.setDir('left'); step(10); const still = g.P.dir.y === 1 && g.P.dir.x === 0;
+  g.power.chr = 5; g.setDir('stop'); step(2); const nostop = !!(g.P.dir.x || g.P.dir.y); g.power.chr = 0;
+  n = 0; while (g.iceG[g.at(g.P.x, g.P.y)] && n++ < 300) step(); step(2);
+  const turned = g.P.dir.x === -1;
+  console.log(`sur la glace : ${vIce} cases en 0,5 s (${(vIce / v0 * 100).toFixed(0)} %), pas de virage ${still}, pas d'arrêt ${nostop}, virage à la sortie ${turned}`);
+  glace(); g.iceG.fill(0); for (let y = 0; y < g.GR; y++) for (let x = 0; x < 50; x++) g.iceG[g.at(x, y)] = 1;
+  const a = g.makeFoe('out', 1), b = g.makeFoe('out', 1); a.x = 12; b.x = 38; a.y = b.y = 40; a.vx = b.vx = 0; a.vy = b.vy = 5; g.foes.length = 0; g.foes.push(a, b);
+  step(30); console.log(`ennemis : ${(a.y - 40).toFixed(2)} cases sur la glace, ${(b.y - 40).toFixed(2)} à côté en 0,5 s`);
+  let s = 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '', hi = 0;
+    for (let f = 0; f < 2500; f++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.04) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      step(); if (g.ic) hi = Math.max(hi, g.ic.frost);
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Glacia épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, gel au plus haut ${hi.toFixed(1)} s`);
   }
 }
 // 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros
