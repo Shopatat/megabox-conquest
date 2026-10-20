@@ -7523,8 +7523,14 @@ function titleScreen() {
   const tin = $('tin');
   $('tgo').addEventListener('click', () => { ensureAudio(); go(); });
   const lm = $('lm'), lp = $('lp');
-  lm && lm.addEventListener('click', () => { menuLevel = Math.max(1, menuLevel - 1); titleScreen(); });
-  lp && lp.addEventListener('click', () => { menuLevel = Math.min(maxL, menuLevel + 1); titleScreen(); });
+  // mise à jour sur place : reconstruire l'écran relançait l'animation d'entrée à chaque appui
+  const setLevel = v => {
+    menuLevel = Math.max(1, Math.min(maxL, v));
+    $('lv').textContent = pad2(menuLevel); lm.disabled = menuLevel <= 1; lp.disabled = menuLevel >= maxL;
+    S.level = menuLevel; hud();
+  };
+  lm.addEventListener('click', () => setLevel(menuLevel - 1));
+  lp.addEventListener('click', () => setLevel(menuLevel + 1));
   const c = $('cont'); c && c.addEventListener('click', () => { onGo = null; hideTitle(); continueGame(); });
   $('tmode').addEventListener('click', () => { onGo = null; ensureAudio(); hideTitle(); showShips(true); });
   // son et thème : les mêmes boutons que le pied de page, recopiés ici
