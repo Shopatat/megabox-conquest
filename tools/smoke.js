@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow() };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow(), ensureAudio, get mx() { return mx; }, SONGS, songPrep, PATCH, playJingle, musicLive };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -35,9 +35,29 @@ Object.assign(globalThis, {
   localStorage: { _d: {}, getItem(k) { return k in this._d ? this._d[k] : null; }, setItem(k, v) { this._d[k] = String(v); }, removeItem(k) { delete this._d[k]; } },
   addEventListener: (t, f) => { (winListeners[t] = winListeners[t] || []).push(f); }, removeEventListener: noop
 });
+// faux WebAudio : la musique tourne pendant toutes les simulations (on compte les notes jouées)
+const audioStats = { notes: 0 };
+const fparam = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime(v) { if (!(v > 0)) throw new Error('rampe exponentielle vers ' + v); }, setTargetAtTime(v, t, tau) { if (!(tau > 0) || !isFinite(v) || !isFinite(t)) throw new Error('setTargetAtTime ' + v + ' ' + t + ' ' + tau); }, cancelScheduledValues() {} });
+const fnode = () => { const n = { connect: x => x, disconnect: noop, start(t) { if (!isFinite(t)) throw new Error('start ' + t); audioStats.notes++; }, stop: noop, buffer: null, type: '' };
+  for (const k of ['gain', 'frequency', 'detune', 'Q', 'pan', 'delayTime', 'threshold', 'knee', 'ratio', 'attack', 'release']) n[k] = fparam(); return n; };
+globalThis.AudioContext = class { constructor() { this.state = 'running'; this.sampleRate = 8000; this.destination = fnode(); }
+  get currentTime() { return now / 1000; } resume() { return Promise.resolve(); }
+  createBuffer(c, n) { const d = Array.from({ length: c }, () => new Float32Array(n)); return { getChannelData: i => d[i] }; } };
+for (const k of ['Gain', 'Oscillator', 'BiquadFilter', 'Convolver', 'Delay', 'DynamicsCompressor', 'StereoPanner', 'BufferSource']) globalThis.AudioContext.prototype['create' + k] = fnode;
 Object.defineProperty(globalThis, 'performance', { value: { now: () => now }, configurable: true, writable: true });
 new Function(src)();
 const g = globalThis.__g;
+// musique : chaque motif fait 16 doubles croches par mesure, chaque instrument existe, toutes les gammes et notes sont valides
+g.ensureAudio();
+for (const [k, d] of Object.entries(g.SONGS)) {
+  for (const [ins, , pat] of d.tr) {
+    if (!g.PATCH[ins] && !['kick', 'snare', 'clap', 'hat', 'ohat', 'shk', 'rim', 'tom', 'boom', 'cym'].includes(ins)) throw new Error('instrument inconnu ' + k + ' ' + ins);
+    for (const b of pat.replace(/\s/g, '').split('|')) if (b.length !== 16 || /[^.xXo0-9a-k-]/.test(b)) throw new Error('motif ' + k + ' ' + ins + ' : ' + b);
+  }
+  g.songPrep(d);
+  if (d.ch.some(c => c.some(n => !isFinite(n)))) throw new Error('accords ' + k);
+}
+console.log('musique :', Object.keys(g.SONGS).length, 'morceaux, motifs valides');
 // la grille est G fois plus fine que le monde : position du vaisseau dans le monde, en cases d'origine
 const G = g.G || 1, PX = () => (g.P.x + .5) / G, PY = () => (g.P.y + .5) / G;
 const step = (n = 1) => { for (let i = 0; i < n; i++) { now += 16.7; const cb = rafCb; rafCb = null; cb && cb(now); } };
@@ -1374,4 +1394,25 @@ for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 
   for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 11); maxFoes = Math.max(maxFoes, g.foes.length); }
   console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
+// musique : morceau de la planète, couches qui suivent le jeu, Super Casque, jingles
+{
+  const M = g.mx;
+  // une partie qui finit : le jingle de game over s'arrête dès que la partie suivante commence
+  g.S.phase = 'over'; step(5); g.playJingle('over', () => { throw new Error('jingle'); }); step(5);
+  g.newGame(2, 1, 0); step(5);
+  if (M.songs.some(m => m.fixed)) throw new Error('jingle de game over pendant la partie suivante');
+  const k0 = M.key; g.go(); step(5); g.foes.length = 0;
+  g.setDir('down'); step(60);
+  const l1 = M.l1; g.onTrailHit({ kind: 'out' }, g.trail[0]); step(20);
+  const l2 = M.l2; g.setDir('up'); step(120);
+  g.superOn({ x: 25, y: 30 }); step(5); const kSup = M.key; g.power.sup = 0; step(5);
+  g.playJingle('clear', () => { throw new Error('jingle'); }); step(40);
+  const duck = M.songs.find(m => !m.fixed).duck; step(300);
+  const back = M.songs.find(m => !m.fixed).duck;
+  const kPlay = M.key; g.S.phase = 'over'; step(300);
+  console.log('musique : prête', k0, '| en jeu', kPlay, '| on trace', l1.toFixed(2), '| onde', l2.toFixed(2), '| Super Casque', kSup, '| jingle baisse', duck.toFixed(2), 'puis', back.toFixed(2), '| game over', M.songs.length, 'morceau');
+  if (k0 !== 'terra' || kSup !== 'super' || l1 < .8 || l2 < .5 || duck > .5 || back < .9 || M.songs.length) throw new Error('musique');
+}
+console.log('musique : notes jouées pendant les tests', audioStats.notes, '| morceau en cours', g.mx.key);
+if (audioStats.notes < 1000) throw new Error('la musique ne joue pas');
 console.log('OK');

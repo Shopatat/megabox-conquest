@@ -402,7 +402,7 @@ details li b{color:var(--text);font-weight:600}
   <footer class="foot">
     <span class="hint">Flèches ou ZQSD · Espace : stop · P : pause</span>
     <span class="hint-touch">Glisse pour diriger · Tape pour t'arrêter</span>
-    <span class="tools"><button class="mini" id="scr">ÉCRAN : COULEUR</button><button class="mini" id="snd">SON : OUI</button></span>
+    <span class="tools"><button class="mini" id="scr">ÉCRAN : COULEUR</button><button class="mini" id="snd">SON : OUI</button><button class="mini" id="mus">MUSIQUE : OUI</button></span>
   </footer>
 </div>
 
@@ -1049,9 +1049,9 @@ const menuDiff = 2;
 let menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
 /* ---------- Son ---------- */
-let actx = null, muted = store.get('mute', false);
+let actx = null, muted = store.get('mute', false), sfxBus = null;
 function ensureAudio() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } }
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } audioGraph(); }
   if (actx.state === 'suspended') actx.resume().catch(() => {});
 }
 function tone(f, dur, type = 'square', vol = 0.045, slide = 0, delay = 0) {
@@ -1061,7 +1061,7 @@ function tone(f, dur, type = 'square', vol = 0.045, slide = 0, delay = 0) {
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + dur);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  o.connect(g).connect(sfxBus || actx.destination); o.start(t); o.stop(t + dur + 0.02);
 }
 const sfx = {
   start(){ [523,659,784].forEach((f,i)=>tone(f,.09,'square',.04,0,i*.07)); },
@@ -1111,6 +1111,361 @@ const sfx = {
   crunch(c){ tone(55,.28,'square',.08,-25); tone(160+c*30,.14,'sawtooth',.06,-120,.01); for(let i=0;i<3;i++) tone(1100-i*250+c*80,.035,'square',.03,-500,.04+i*.035); if(c>=5) tone(90,.6,'sawtooth',.06,140,.1); },
   lifeUp(){ [523,659,784,1047].forEach((f,i)=>{ tone(f,.12,'triangle',.05,0,i*.08); tone(f*1.5,.12,'triangle',.05,0,.4+i*.08); tone(f*2,.16,'triangle',.05,0,.8+i*.08); }); }
 };
+
+/* ---------- Musique ---------- */
+// Musique composée en code (demande de Fabien : « la vraie musique », composée note par note, un style par planète) :
+// le navigateur joue les morceaux en direct avec des instruments synthétisés (basses, nappes, cloches FM, batterie de
+// bruit filtré), une réverbération et un écho. Aucun fichier. Chaque morceau a trois couches qui suivent le jeu :
+// calme (sur son terrain), action (on trace dans la zone à conquérir) et danger (onde de choc, trou noir qui avale le
+// fil, air, gel ou orage presque à bout, furie, carnage). Chrono : tout ralentit ; rembobinage : bande qui ralentit et
+// descend ; pause et crash : son étouffé. Un morceau pour le titre, un par planète, un pour le Super Casque, et des
+// jingles (niveau conquis, planète conquise, game over, victoire).
+// Les bruitages vont droit à la sortie ; la musique a sa propre entrée (volume, filtre, réverbération, écho).
+let musicOn = store.get('music', true);
+const MUSIC_VOL = .18, DRUM_V = .55;
+// l1, l2 : couches action et danger (0 à 1, lissées) ; hold : le danger reste quelques secondes ; songs : morceaux en cours
+const mx = { songs: [], key: undefined, l1: 0, l2: 0, hold: 0, tempo: 1, pitch: 1, vol: -1, fq: 0, dly: 0 };
+function audioGraph() {
+  const A = actx;
+  sfxBus = A.createGain(); sfxBus.connect(A.destination);
+  mx.out = A.createGain(); mx.out.gain.value = 0; mx.out.connect(A.destination);
+  mx.dry = A.createBiquadFilter(); mx.dry.type = 'lowpass'; mx.dry.frequency.value = 18000; mx.dry.Q.value = .7; mx.dry.connect(mx.out);
+  // réverbération : réponse impulsionnelle tirée au hasard (bruit qui s'éteint en 2,6 s)
+  const sr = A.sampleRate, n = Math.floor(sr * 2.6), ir = A.createBuffer(2, n, sr);
+  for (let c = 0; c < 2; c++) { const a = ir.getChannelData(c); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2); }
+  const cv = A.createConvolver(); cv.buffer = ir;
+  mx.rev = A.createGain(); const rg = A.createGain(); rg.gain.value = .5;
+  mx.rev.connect(cv); cv.connect(rg); rg.connect(mx.dry);
+  // écho calé sur le tempo (trois doubles croches), assourdi à chaque répétition
+  mx.del = A.createGain(); mx.dl = A.createDelay(2); mx.dl.delayTime.value = .4;
+  const fb = A.createGain(), df = A.createBiquadFilter(), dg = A.createGain();
+  fb.gain.value = .38; df.type = 'lowpass'; df.frequency.value = 2400; dg.gain.value = .5;
+  mx.del.connect(mx.dl); mx.dl.connect(df); df.connect(fb); fb.connect(mx.dl); df.connect(dg); dg.connect(mx.dry); dg.connect(mx.rev);
+  mx.noise = A.createBuffer(1, sr, sr);
+  const nz = mx.noise.getChannelData(0); for (let i = 0; i < sr; i++) nz[i] = Math.random() * 2 - 1;
+}
+const musicLive = () => !!(actx && mx.out && musicOn && !muted && actx.state === 'running');
+
+// Instruments. w : formes d'onde, n : oscillateurs désaccordés de det cents, sub : sous-octave ; a, d, s, r : enveloppe ;
+// f : filtre (suit un peu la hauteur de la note), fe : ouverture du filtre à l'attaque, fq : résonance ; fm : [rapport,
+// indice, durée] pour les cloches ; sweep : glissé (demi-tons) vers la note en swt s ; vib : vibrato (cents), vibr :
+// vitesse, vibd : délai ; v : volume ; rev, del : envois vers la réverbération et l'écho
+const PATCH = {
+  bass:  { w: ['sawtooth'], sub: .3, a: .005, d: .22, s: .45, r: .08, f: 260, fe: 5, fq: 7, v: .3 },
+  pbass: { w: ['square'], sub: .35, a: .005, d: .15, s: .5, r: .06, f: 420, fe: 3, fq: 3, v: .2 },
+  sub:   { w: ['sine'], a: .02, d: .4, s: .85, r: .25, v: .2 },
+  acid:  { w: ['sawtooth'], a: .003, d: .16, s: .15, r: .06, f: 380, fe: 9, fq: 14, v: .17, del: .1 },
+  fuzz:  { w: ['sawtooth', 'square'], n: 2, det: 14, sub: .5, a: .004, d: .2, s: .55, r: .07, f: 700, fe: 4, fq: 5, v: .16 },
+  pad:   { w: ['sawtooth'], n: 3, det: 10, a: .7, d: 1.2, s: .8, r: 1.4, f: 950, fe: .5, fq: 1, v: .04, rev: .55 },
+  warm:  { w: ['triangle'], n: 3, det: 8, a: .9, d: 1, s: .9, r: 1.6, f: 1600, fq: .7, v: .05, rev: .6 },
+  choir: { w: ['sawtooth'], n: 3, det: 16, a: 1.1, d: 1, s: .9, r: 1.8, f: 760, fq: 2.5, v: .045, vib: 18, vibr: 4.6, rev: .8 },
+  pluck: { w: ['sawtooth'], n: 2, det: 7, a: .002, d: .2, s: 0, r: .12, f: 500, fe: 9, fq: 4, v: .12, del: .38, rev: .2 },
+  arp:   { w: ['square'], a: .002, d: .1, s: .25, r: .05, f: 2200, fe: 1.5, fq: 2, v: .08, del: .3, rev: .15 },
+  zap:   { w: ['square'], a: .002, d: .09, s: .1, r: .04, f: 3000, fq: 3, v: .07, sweep: 12, swt: .04, del: .25 },
+  drop:  { w: ['sine'], a: .002, d: .25, s: 0, r: .2, v: .17, sweep: -7, swt: .05, del: .55, rev: .4 },
+  bell:  { fm: [3.5, 3, .9], a: .002, d: 1.4, s: 0, r: .6, v: .12, rev: .55, del: .2 },
+  glass: { fm: [7.01, 2, .4], a: .002, d: 1.1, s: 0, r: .5, v: .1, rev: .6, del: .3 },
+  box:   { fm: [5, 1.4, .3], a: .002, d: .7, s: 0, r: .4, v: .11, rev: .65, del: .25 },
+  metal: { fm: [1.41, 6, .25], a: .001, d: .35, s: 0, r: .2, v: .08, rev: .5 },
+  lead:  { w: ['sawtooth', 'square'], n: 2, det: 6, a: .015, d: .3, s: .7, r: .2, f: 1900, fe: 1.4, fq: 2, v: .1, vib: 10, vibr: 5.5, vibd: .25, rev: .3, del: .22 },
+  brass: { w: ['sawtooth'], n: 3, det: 9, a: .06, d: .4, s: .75, r: .25, f: 900, fe: 2, fq: 1.5, v: .085, vib: 6, vibr: 5, vibd: .2, rev: .4 },
+  flute: { w: ['triangle', 'sine'], n: 2, det: 3, a: .06, d: .3, s: .8, r: .3, v: .17, vib: 14, vibr: 5, vibd: .3, rev: .5, del: .3 },
+  theremin: { w: ['sine'], a: .12, d: .3, s: .9, r: .5, v: .15, vib: 35, vibr: 6, vibd: .15, rev: .7, del: .3 },
+  sq:    { w: ['square'], a: .005, d: .12, s: .55, r: .08, f: 2600, fq: 1, v: .075, vib: 8, vibr: 6, vibd: .2, rev: .2, del: .2 }
+};
+const DRUMS = new Set(['kick', 'snare', 'clap', 'hat', 'ohat', 'shk', 'rim', 'tom', 'boom', 'cym']);
+const SCALES = { aeo: [0, 2, 3, 5, 7, 8, 10], dor: [0, 2, 3, 5, 7, 9, 10], phr: [0, 1, 3, 5, 7, 8, 10], lyd: [0, 2, 4, 6, 7, 9, 11], maj: [0, 2, 4, 5, 7, 9, 11], hm: [0, 2, 3, 5, 7, 8, 11] };
+const deg = (sc, i) => sc[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
+const NOTE = c => Math.max(0, '0123456789abcdefghijk'.indexOf(c));
+const mhz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+// Une note jouée à l'instant t (secondes de l'horloge audio)
+function mNote(t, f, dur, p, vel, pan) {
+  const A = actx, amp = A.createGain(), v = p.v * vel, end = t + dur, stop = end + (p.r || .1) * 1.6 + .05;
+  let head = amp;
+  if (p.f) {
+    const flt = A.createBiquadFilter(), base = Math.min(16000, p.f * Math.sqrt(f / 220));
+    flt.type = p.ft || 'lowpass'; flt.Q.value = p.fq || 1;
+    if (p.fe) { flt.frequency.setValueAtTime(Math.min(16000, base * (1 + p.fe)), t); flt.frequency.setTargetAtTime(base, t, (p.d || .2) / 3 + .01); }
+    else flt.frequency.value = base;
+    flt.connect(amp); head = flt;
+  }
+  const srcs = [], tones = [];
+  if (p.fm) {
+    const car = A.createOscillator(), mod = A.createOscillator(), mg = A.createGain();
+    car.frequency.value = f; mod.frequency.value = f * p.fm[0];
+    mg.gain.setValueAtTime(f * p.fm[1], t); mg.gain.setTargetAtTime(f * p.fm[1] * .08, t, p.fm[2] / 3);
+    mod.connect(mg); mg.connect(car.frequency); car.connect(head); srcs.push(car, mod); tones.push(car);
+  } else {
+    const n = p.n || 1;
+    for (let i = 0; i < n; i++) {
+      const o = A.createOscillator(); o.type = p.w[i % p.w.length];
+      if (p.sweep) { o.frequency.setValueAtTime(f * Math.pow(2, p.sweep / 12), t); o.frequency.exponentialRampToValueAtTime(f, t + p.swt); }
+      else o.frequency.value = f;
+      if (n > 1) o.detune.value = (i - (n - 1) / 2) * (p.det || 0);
+      o.connect(head); srcs.push(o); tones.push(o);
+    }
+    if (p.sub) { const o = A.createOscillator(), g = A.createGain(); o.type = 'sine'; o.frequency.value = f / 2; g.gain.value = p.sub; o.connect(g); g.connect(head); srcs.push(o); }
+  }
+  if (p.vib) {
+    const l = A.createOscillator(), lg = A.createGain(); l.frequency.value = p.vibr || 5;
+    lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(p.vib, t + (p.vibd || 0) + .02);
+    l.connect(lg); for (const o of tones) lg.connect(o.detune); srcs.push(l);
+  }
+  const a = p.a || .005;
+  amp.gain.setValueAtTime(0, t); amp.gain.linearRampToValueAtTime(v, t + a);
+  amp.gain.setTargetAtTime(v * (p.s || 0), t + a, (p.d || .2) / 3);
+  amp.gain.setTargetAtTime(0, Math.max(end, t + a), (p.r || .1) / 3);
+  let out = amp;
+  if (pan && A.createStereoPanner) { out = A.createStereoPanner(); out.pan.value = pan; amp.connect(out); }
+  out.connect(mx.dry);
+  if (p.rev) { const g = A.createGain(); g.gain.value = p.rev; out.connect(g); g.connect(mx.rev); }
+  if (p.del) { const g = A.createGain(); g.gain.value = p.del; out.connect(g); g.connect(mx.del); }
+  for (const s of srcs) { s.start(t); s.stop(stop); }
+}
+// Batterie : sinus qui glissent et bruit filtré
+function mDrum(k, t, vel, tune, rev) {
+  const A = actx, out = A.createGain(); out.gain.value = vel; out.connect(mx.dry);
+  if (rev) { const g = A.createGain(); g.gain.value = rev; out.connect(g); g.connect(mx.rev); }
+  const env = (g, at, v, dec) => { g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(v, at + .001); g.gain.setTargetAtTime(0, at + .001, dec / 3); };
+  const osc = (type, f0, f1, sw, v, dec) => {
+    const o = A.createOscillator(), g = A.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + sw);
+    env(g, t, v, dec); o.connect(g); g.connect(out); o.start(t); o.stop(t + dec + .05);
+  };
+  const noise = (ft, ff, q, v, dec, at = t) => {
+    const s = A.createBufferSource(), f = A.createBiquadFilter(), g = A.createGain();
+    s.buffer = mx.noise; f.type = ft; f.frequency.value = ff; f.Q.value = q; env(g, at, v, dec);
+    s.connect(f); f.connect(g); g.connect(out); s.start(at, Math.random() * .4); s.stop(at + dec + .05);
+  };
+  switch (k) {
+    case 'kick': osc('sine', 160, 45, .11, .9, .38); noise('highpass', 3000, .7, .12, .012); break;
+    case 'snare': osc('triangle', 210, 150, .08, .45, .1); noise('bandpass', 1900, .8, .9, .17); break;
+    case 'clap': for (let i = 0; i < 3; i++) noise('bandpass', 1300, 1.3, .9, i < 2 ? .02 : .2, t + i * .011); break;
+    case 'hat': noise('highpass', 7800, .7, .45, .045); break;
+    case 'ohat': noise('highpass', 7200, .7, .3, .3); break;
+    case 'shk': noise('bandpass', 6200, 1.1, .4, .07); break;
+    case 'rim': osc('triangle', 1700, 0, 0, .4, .03); noise('bandpass', 2600, 2, .35, .03); break;
+    case 'tom': osc('sine', tune * 1.7, tune, .16, .8, .45); break;
+    case 'boom': osc('sine', 72, 30, 1.1, .9, 1.9); noise('lowpass', 260, .8, .4, 1.1); break;
+    case 'cym': noise('highpass', 5200, .6, .25, 1.5); break;
+  }
+}
+
+// Les morceaux. root : tonique (note MIDI), sc : gamme, prog : un accord par mesure (degré de la gamme, accord de
+// quatre sons construit dans la gamme), sw : swing. Pistes : [instrument, couche, motif, options]. Couche -1 : calme
+// seulement (s'efface quand on trace), 0 : toujours, 1 : action, 2 : danger. Motif : 16 doubles croches par mesure,
+// mesures séparées par « | » (espaces ignorés), « . » silence, « - » tenue. Batterie : x, X (accent), o (léger),
+// chiffre (hauteur du tom dans tune). Mélodie (s) : degré de la gamme (0-9 puis a-k) ; sinon : note de l'accord
+// (0 à 3, puis 4 à 7 une octave au-dessus) ; c : l'accord entier. o : décalage en demi-tons, v : volume, mask : mesures
+// jouées (« 1 »), pan : stéréo.
+const K4 = 'x...x...x...x...', BB = '....x.......x...', OFF = '..x...x...x...x.', H8 = 'x.x.x.x.x.x.x.x.', H16 = 'xoxoxoxoxoxoxoxo', PAD = 'x---------------';
+const MEL = {
+  title: '4---2-4-7---6-4-|6-------4-2-1---|3---5-3-8---7-5-|4-----------....|9-..9-7-6-7-4---|8---7-6-4---6---|7-5-3-5-7---9---|8-----------....',
+  aste: '7-------9---a---|b-----a-9-------|9---7---5-------|6-----8-6-------|7---b---e-------|d-b-a-9-b-------|c-----b-9---7---|8-------a-------',
+  glace: '9---b---d---b---|a-------8---c---|c---b---9-------|d-----b-a---8---|e---d---b---9---|a---c---e---c---|c-------9-b-c-9-|b---------------',
+  pyros: '7---8-7-4---7---|8-----a-c---a---|b---9-8-7-------|6---8---a---8---|e---d-c-b---7---|c---a---8---a---|b-c-b-9-b---7---|6-------8---6---',
+  ocea: '9-------7---5---|6---8---a-------|9-----b-d---b---|c---------------|e---c---a---9---|8---b---d---b---|9---8---6---4---|5-------7---9---',
+  nebu: 'b-------9---7---|c-----b-9-------|a---9---7---5---|6-----------8---|e-------d---b---|c---e---c---b---|a-------c---a---|d-----------....',
+  volt: '7.7.b.7.9.b.e.b.|d.b.9.b.7...4...|c.c.9.c.e.c.9.7.|d---b---a---8---|7.7.b.7.9.b.e.b.|e.d.b.9.b-------|c---e---c---9---|d---------------',
+  sing: '7-------8-------|9-------8---6---|7---------------|6-------5---6---|b-------c-------|a-------8---a---|b---9---7---b---|d-----------c---',
+  super: '9.b.e.b.9.b.e.b.|d.b.8.b.d.b.e.d.|c.9.7.9.c.9.e.c.|a.c.e.c.a---b---',
+  title0: 'b---9-7-9---b---|c-----b-9---7---|9---b-d-e---d---|d-------a-----..|b---9-7-9---b-e-|c---e---c-b-9---|9-b-9-7-6---4---|6-8-a-d-e-------'
+};
+const SONGS = {
+  // écran titre : synthwave, l'hymne du jeu (il monte tout seul, puis respire)
+  title: { bpm: 104, root: 45, sc: 'aeo', prog: '0 5 2 6', tr: [
+    ['pad', 0, PAD, { c: 1, o: 12 }], ['sub', -1, '0-------0-------'], ['pbass', 1, '0.0.4.0.0.0.4.0.'],
+    ['bell', -1, '0.......2.......|1.......3.......', { o: 24 }], ['arp', 1, '0124012401240124', { o: 12, pan: -.3 }],
+    ['pluck', 2, '..4...2...4..2..', { o: 24, pan: .35 }], ['lead', 1, MEL.title0, { s: 1, o: 12 }], ['lead', 2, MEL.title0, { s: 1, o: 24, v: .45 }],
+    ['kick', 1, K4], ['clap', 1, BB], ['hat', 1, OFF], ['hat', 2, H16, { v: .7 }],
+    ['cym', 2, 'x...............', { mask: '10001000' }], ['tom', 2, '........3.2.1.1.', { mask: '00000001' }]] },
+  // Terra Nova : synthwave néon, le berceau
+  terra: { bpm: 112, root: 50, sc: 'dor', prog: '0 6 3 4', tr: [
+    ['warm', 0, PAD, { c: 1 }], ['sub', -1, '0-------0---0---', { o: -12 }], ['pbass', 1, '0.00.00.0.00.0.4', { o: -12 }],
+    ['bell', -1, '4.......2...0...', { o: 12 }], ['arp', 1, '0124212401242124', { o: 12, pan: -.25 }],
+    ['lead', 1, MEL.title, { s: 1, o: 12 }], ['sq', 2, MEL.title, { s: 1, o: 24, v: .5 }],
+    ['kick', 1, K4], ['snare', 1, BB], ['hat', 1, H8, { v: .8 }], ['ohat', 2, OFF], ['shk', -1, OFF, { v: .6 }],
+    ['cym', 2, 'x...............', { mask: '1000' }]] },
+  // Astéria : rock spatial lourd, séquence analogique et percussions de métal (les astéroïdes qui s'entrechoquent)
+  aste: { bpm: 96, root: 52, sc: 'aeo', prog: '0 0 5 6', tr: [
+    ['pad', 0, PAD, { c: 1, v: .9 }], ['sub', 0, '0-------0-------', { o: -12 }], ['acid', 1, '0.00.0.00.00.0.0', { o: -12 }],
+    ['metal', -1, '..0.....4..2....', { o: 24 }], ['metal', 1, '..0...0...4..2..', { o: 24, pan: .4 }],
+    ['brass', 1, MEL.aste, { s: 1, o: 12 }], ['lead', 2, MEL.aste, { s: 1, o: 24, v: .4 }],
+    ['kick', 1, 'x.....x...x.....'], ['snare', 1, '........x.......'], ['hat', 1, H8], ['rim', 2, '..x..x....x..x.x'],
+    ['boom', 0, 'x...............', { mask: '1000' }], ['tom', 2, '............3.21', { mask: '0001' }]] },
+  // Glacia : cristallin, carillons de verre et flûte, batterie légère comme de la glace qui craque
+  glace: { bpm: 92, root: 53, sc: 'lyd', prog: '0 1 5 4', tr: [
+    ['warm', 0, PAD, { c: 1 }], ['glass', 0, '0.2.1.3.4.3.1.2.', { o: 12, v: .8 }], ['bell', 1, '4..2..1.4..2..3.', { o: 24, pan: -.3 }],
+    ['sub', 0, '0-------------..', { o: -12 }], ['pbass', 1, '0...0.4.0...0...', { o: -12, v: .8 }],
+    ['flute', 1, MEL.glace, { s: 1, o: 12 }], ['glass', 2, MEL.glace, { s: 1, o: 24, v: .6 }],
+    ['kick', 1, 'x.......x.......'], ['rim', 1, BB], ['shk', 1, H16, { v: .8 }], ['snare', 2, BB], ['ohat', 2, OFF, { v: .6 }],
+    ['cym', 0, 'x...............', { mask: '1000', v: .6 }]] },
+  // Pyros : tambours tribaux, basse saturée, gamme phrygienne
+  pyros: { bpm: 126, root: 50, sc: 'phr', prog: '0 1 0 6', tr: [
+    ['pad', 0, PAD, { c: 1, v: .8 }], ['sub', -1, '0-------0-------', { o: -12 }], ['fuzz', 1, '0.00.00.0.00.0.0', { o: -12 }],
+    ['tom', 0, '1..2..1.1..2.1..', { tune: [0, 70, 95, 130], v: .8 }], ['tom', 2, '..3..3.3..3..33.', { tune: [0, 70, 95, 130] }],
+    ['kick', 1, 'x..x..x...x..x..'], ['clap', 1, BB], ['hat', 1, H16, { v: .7 }], ['boom', 1, 'x...............', { mask: '1010' }],
+    ['lead', 1, MEL.pyros, { s: 1, o: 12 }], ['fuzz', 2, MEL.pyros, { s: 1, o: 12, v: .5 }], ['pluck', 2, '0.0.4.0.0.4.0.4.', { o: 12 }]] },
+  // Océania : dub aquatique, gouttes qui résonnent dans l'écho, flûte, contretemps
+  ocea: { bpm: 84, root: 51, sc: 'maj', prog: '3 4 2 5', sw: .12, tr: [
+    ['warm', 0, PAD, { c: 1 }], ['sub', 0, '0-----0-....0-..', { o: -12 }], ['drop', 0, '..2.....4..1....', { o: 24 }],
+    ['pluck', 1, '.0.2.1.4.0.2.1.3', { o: 12, v: .8 }], ['flute', 1, MEL.ocea, { s: 1, o: 12 }], ['bell', 2, MEL.ocea, { s: 1, o: 24, v: .5 }],
+    ['kick', 1, 'x.........x.....'], ['rim', 1, '........x.......'], ['shk', 1, '..x...x...x...xx'], ['snare', 2, '........x.......', { v: .7 }],
+    ['hat', 2, H8, { v: .6 }], ['drop', 2, '0.2.4.2.0.2.4.7.', { o: 24, v: .6 }]] },
+  // Nébula : chœurs fantômes, boîte à musique, thérémine, cœur qui bat
+  nebu: { bpm: 72, root: 47, sc: 'hm', prog: '0 5 3 4', tr: [
+    ['choir', 0, PAD, { c: 1, o: 12 }], ['sub', 0, '0---------------', { o: -12 }], ['box', 0, '0..2..1.4..2..1.', { o: 24 }],
+    ['kick', 0, 'x..x............', { v: .7 }], ['theremin', 1, MEL.nebu, { s: 1, o: 12 }], ['box', 2, MEL.nebu, { s: 1, o: 24, v: .5 }],
+    ['pluck', 1, '0000222211114444', { o: 12, v: .6 }], ['shk', 1, OFF], ['rim', 1, '......x.......x.'], ['snare', 2, '........x.......'],
+    ['tom', 2, '............1.21', { mask: '01', tune: [0, 65, 90] }], ['boom', 2, 'x...............', { mask: '1000' }]] },
+  // Voltaria : électro rapide, arpèges qui crépitent, basse qui pompe
+  volt: { bpm: 134, root: 49, sc: 'aeo', prog: '0 0 5 6', tr: [
+    ['pad', 0, PAD, { c: 1, v: .8 }], ['sub', -1, '0-------0-------', { o: -12 }], ['pbass', 1, '.0.0.0.0.0.0.0.0', { o: -12 }],
+    ['zap', 1, '0124012401240124', { o: 24, v: .8, pan: .3 }], ['arp', -1, '0...2...1...4...', { o: 12 }],
+    ['sq', 1, MEL.volt, { s: 1, o: 12, v: 1.6 }], ['lead', 2, MEL.volt, { s: 1, o: 24, v: .4 }],
+    ['kick', 1, K4], ['clap', 1, BB], ['hat', 1, OFF], ['hat', 2, 'xxxxxxxxxxxxxxxx', { v: .5 }], ['rim', 2, '.x..x..x.x..x..x'],
+    ['cym', 2, 'x...............', { mask: '10' }]] },
+  // Singularité : lent et immense, chœurs, grondements, une horloge qui tique (le temps se dilate)
+  sing: { bpm: 68, root: 41, sc: 'phr', prog: '0 1 0 6', tr: [
+    ['choir', 0, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .7 }], ['sub', 0, '0---------------'],
+    ['boom', 0, 'x...............', { mask: '10' }], ['rim', -1, 'x...x...x...x...', { v: .6 }],
+    ['kick', 1, 'x.......x..x....'], ['snare', 1, '........x.......'], ['hat', 1, H8, { v: .6 }], ['shk', 2, H16],
+    ['brass', 1, MEL.sing, { s: 1, o: 12 }], ['lead', 2, MEL.sing, { s: 1, o: 24, v: .35 }],
+    ['acid', 2, '0000000000000000', { v: .7 }], ['tom', 2, '..........3.2.11', { mask: '0001', tune: [0, 60, 80, 105] }]] },
+  // Super Casque : euphorie à 150
+  super: { bpm: 150, root: 55, sc: 'maj', prog: '0 4 5 3', tr: [
+    ['pad', 0, PAD, { c: 1 }], ['pbass', 0, '0.4.0.4.0.4.0.4.', { o: -12 }], ['arp', 0, '0124212401242124', { o: 12 }],
+    ['sq', 0, MEL.super, { s: 1, o: 12 }], ['lead', 0, MEL.super, { s: 1, o: 24, v: .4 }],
+    ['kick', 0, K4], ['clap', 0, BB], ['hat', 0, OFF], ['hat', 0, H16, { v: .5 }], ['cym', 0, 'x...............', { mask: '1000' }]] },
+  // jingles (once : nombre de mesures)
+  clear: { bpm: 140, root: 48, sc: 'maj', prog: '0 0', once: 2, tr: [
+    ['pad', 0, 'x---------------|x-------........', { c: 1, o: 12 }], ['sq', 0, '7.9.b.e.d.e-----|e-----------....', { s: 1, o: 12 }],
+    ['bell', 0, '7.9.b.e.........|e...............', { s: 1, o: 12 }], ['pbass', 0, '0.0.0.0.0...4...|0---------......', { o: -12 }],
+    ['kick', 0, 'x.......x...x...|x...............'], ['cym', 0, '................|x...............']] },
+  clearBig: { bpm: 140, root: 48, sc: 'maj', prog: '3 4 0 0', once: 4, tr: [
+    ['pad', 0, 'x---------------|x---------------|x---------------|x-------........', { c: 1, o: 12 }],
+    ['sq', 0, 'a.c.e.c.a.c.e.c.|b.d.f.d.b.d.f.d.|e---------------|................', { s: 1, o: 12 }],
+    ['brass', 0, 'a---------------|b---------------|e---------------|................', { s: 1, o: 12 }],
+    ['pbass', 0, '0.0.0.0.0.0.0.0.|0.0.0.0.0.0.0.0.|0---------------|................', { o: -12 }],
+    ['bell', 0, '................|................|e.b.9.7.........|................', { s: 1, o: 12 }],
+    ['kick', 0, 'x...x...x...x...|x...x...x...x...|x...............|................'],
+    ['clap', 0, '....x.......x...|....x.......xxxx|................|................'],
+    ['cym', 0, '................|................|x...............|................']] },
+  over: { bpm: 70, root: 45, sc: 'aeo', prog: '0 3 0', once: 3, tr: [
+    ['pad', 0, PAD, { c: 1, o: 12 }], ['flute', 0, 'b---9---7---4---|5---4---2---1---|0---------------', { s: 1, o: 12 }],
+    ['sub', 0, '0---------------', { o: -12 }], ['bell', 0, '0...............|0...............|0---------------', { o: 24 }]] },
+  victory: { bpm: 120, root: 48, sc: 'maj', prog: '0 5 3 4 0 0', once: 6, tr: [
+    ['pad', 0, PAD, { c: 1, o: 12 }],
+    ['brass', 0, '7---7-9-b---e---|c---b---9---7---|a---c---e---c---|d---b---d---f---|e---------------|................', { s: 1, o: 12 }],
+    ['sq', 0, '7---7-9-b---e---|c---b---9---7---|a---c---e---c---|d---b---d---f---|e---------------|................', { s: 1, o: 24, v: .4 }],
+    ['pbass', 0, '0.0.0.0.0.0.0.0.', { o: -12, mask: '111100' }], ['arp', 0, '0124012401240124', { o: 12, mask: '111100' }],
+    ['kick', 0, K4, { mask: '111100' }], ['snare', 0, BB, { mask: '111100' }], ['hat', 0, OFF, { mask: '111100' }],
+    ['cym', 0, 'x...............', { mask: '100010' }], ['boom', 0, 'x...............', { mask: '000010' }]] }
+};
+// prépare un morceau (une seule fois) : accords en demi-tons, motifs découpés en notes avec leur durée
+function songPrep(d) {
+  if (d.ch) return d;
+  const sc = SCALES[d.sc];
+  d.ch = d.prog.split(' ').map(n => [0, 2, 4, 6].map(j => deg(sc, +n + j)));
+  d.tk = d.tr.map(([ins, l, pat, o = {}]) => ({
+    ins, l, drum: DRUMS.has(ins), o: o.o || 0, v: o.v ?? 1, s: o.s, c: o.c, mask: o.mask, pan: o.pan || 0,
+    tune: o.tune || [0, 80, 110, 150], rev: ins === 'boom' || ins === 'cym' ? .4 : ins === 'snare' || ins === 'clap' ? .15 : 0,
+    bars: pat.replace(/\s/g, '').split('|').map(b => Array.from({ length: 16 }, (_, s) => {
+      const c = b[s]; if (!c || c === '.' || c === '-') return null;
+      let len = 1; while (b[s + len] === '-') len++;
+      return { c, len, vel: c === 'X' ? 1.35 : c === 'o' ? .45 : 1 };
+    }))
+  }));
+  return d;
+}
+const stepDur = m => 60 / (m.def.bpm * (m.fixed ? 1 : mx.tempo)) / 4;
+function playStep(m, t) {
+  const d = m.def, bar = m.step >> 4, s = m.step & 15, sd = stepDur(m), sc = SCALES[d.sc];
+  if (s & 1) t += sd * (d.sw || 0);
+  const ch = d.ch[bar % d.ch.length];
+  for (const k of d.tk) {
+    const g = (m.fixed ? 1 : k.l < 0 ? 1 - mx.l1 : k.l === 0 ? 1 : k.l === 1 ? mx.l1 : mx.l2) * m.vol * m.duck * k.v;
+    if (g < .02) continue;
+    if (k.mask && k.mask[bar % k.mask.length] !== '1') continue;
+    const e = k.bars[bar % k.bars.length][s]; if (!e) continue;
+    const vel = g * e.vel * (.9 + Math.random() * .2);
+    if (k.drum) { mDrum(k.ins, t, vel * DRUM_V, k.tune[+e.c] || k.tune[2], k.rev); continue; }
+    const notes = k.c ? ch : k.s ? [deg(sc, NOTE(e.c))] : [ch[NOTE(e.c) % 4] + 12 * Math.floor(NOTE(e.c) / 4)];
+    for (const n of notes) mNote(t, mhz(d.root + k.o + n) * mx.pitch, e.len * sd, PATCH[k.ins], vel, k.pan);
+  }
+}
+function songStart(key, fixed) {
+  const m = { key, def: songPrep(SONGS[key]), step: 0, next: actx.currentTime + .06, vol: fixed ? 1 : 0, tgt: 1, fade: 1.2, duck: 1, fixed: !!fixed };
+  mx.songs.push(m); return m;
+}
+// jingle : joué une fois par-dessus le morceau en cours (baissé le temps du jingle) ; sinon, le petit bruitage d'avant
+function playJingle(key, fallback) { if (musicLive()) songStart(key, true); else fallback(); }
+// quel morceau doit jouer
+function musicKey() {
+  const ph = S.phase;
+  if (ph === 'title') return 'title';
+  if (ph === 'over') return null;
+  if (power.sup > 0) return 'super';
+  return lookEco ? lookEco.key : 'terra';
+}
+// danger : la couche la plus intense
+function musicDanger() {
+  return !!(wave || grab || ab.on > 0 || pred.heat > .35 || (oc && oc.o2 < OXY_LOW) || (ic && FROST_MAX - ic.frost < FROST_LOW)
+    || (vt && vt.charge >= BOLT_AIM) || (SH().key === 'pred' && pred.blood < bloodMax() * BLOOD_LOW));
+}
+function musicUpdate(dt) {
+  if (!actx || !mx.out) return;
+  const on = musicLive(), ph = S.phase, now = actx.currentTime;
+  const vol = !on ? 0 : ph === 'pause' ? MUSIC_VOL * .55 : MUSIC_VOL;
+  if (vol !== mx.vol) { mx.vol = vol; mx.out.gain.setTargetAtTime(vol, now, .15); }
+  if (!on) { mx.songs = []; mx.key = undefined; return; }
+  const key = musicKey();
+  if (key !== mx.key) {
+    // après la fin de partie, le jingle (game over, victoire) s'arrête dès que la musique reprend
+    if (mx.key === null) for (const m of mx.songs) if (m.fixed) m.done = true;
+    mx.key = key;
+    for (const m of mx.songs) if (!m.fixed) m.tgt = 0;
+    if (key) { const m = mx.songs.find(m => !m.fixed && m.key === key) || songStart(key); m.tgt = 1; m.fade = key === 'super' ? 5 : 1.2; }
+  }
+  // intensité : le titre monte tout seul puis respire ; en jeu, on trace (action), ça chauffe (danger)
+  let a1 = 0, a2 = 0;
+  const live = ph === 'play' || ph === 'crash' || ph === 'rewind';
+  if (key === 'title') {
+    const m = mx.songs.find(m => m.key === 'title'), b = m ? (m.step >> 4) % 32 : 0;
+    a1 = b >= 4 && b < 28 ? 1 : 0; a2 = b >= 12 && b < 28 ? 1 : 0;
+  } else if (live) {
+    if (inSeaNow()) a1 = 1;
+    if (musicDanger()) mx.hold = 3;
+    if (mx.hold > 0) { mx.hold -= dt; a1 = a2 = 1; }
+  } else mx.hold = 0;
+  mx.l1 += (a1 - mx.l1) * Math.min(1, dt * (a1 > mx.l1 ? 3 : .7));
+  mx.l2 += (a2 - mx.l2) * Math.min(1, dt * (a2 > mx.l2 ? 5 : .5));
+  // tempo, hauteur et filtre : chrono (ralenti), rembobinage (bande qui ralentit), furie (un peu plus vite), pause et crash (étouffé)
+  const rew = ph === 'rewind', chr = power.chr > 0 || power.schr > 0;
+  mx.tempo = rew ? .55 : power.schr > 0 ? .7 : power.chr > 0 ? .85 : ab.on > 0 ? 1.06 : 1;
+  mx.pitch = rew ? .89 : 1;
+  const fq = ph === 'pause' ? 650 : ph === 'crash' ? 420 : rew ? 1100 : chr ? 2600 : 18000;
+  if (fq !== mx.fq) { mx.fq = fq; mx.dry.frequency.setTargetAtTime(fq, now, ph === 'crash' ? .08 : .3); }
+  const jing = mx.songs.some(m => m.fixed);
+  for (const m of mx.songs) {
+    m.vol += (m.tgt - m.vol) * Math.min(1, dt * m.fade);
+    if (!m.fixed) m.duck += ((jing ? .12 : 1) - m.duck) * Math.min(1, dt * 4);
+  }
+  mx.songs = mx.songs.filter(m => !(m.done || (m.tgt === 0 && m.vol < .01)));
+  // programmation des notes, 0,2 s d'avance (rattrapage si le jeu a calé ou si l'onglet était masqué)
+  for (const m of mx.songs) {
+    if (m.next < now - .25) m.next = now + .05;
+    while (m.next < now + .2) {
+      if (m.def.once && m.step >= m.def.once * 16) { m.done = true; break; }
+      playStep(m, m.next); m.next += stepDur(m); m.step++;
+    }
+  }
+  const main = mx.songs.find(m => !m.fixed && m.tgt === 1);
+  if (main) { const d = Math.min(1.5, stepDur(main) * 3); if (Math.abs(d - mx.dly) > .005) { mx.dly = d; mx.dl.delayTime.setTargetAtTime(d, now, .2); } }
+}
+// iOS ne lance le son qu'après un geste : le premier contact (n'importe où) réveille l'audio, et la musique du titre part
+for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) window.addEventListener(ev, () => { if (!actx || actx.state !== 'running') ensureAudio(); }, true);
 
 /* ---------- Taille et dessin du terrain ---------- */
 function resize() {
@@ -1950,7 +2305,7 @@ function checkGoal() {
     }
     return;
   }
-  if (S.phase === 'play' && S.filled / S.interior >= DIFFS[S.diff].goal) { S.phase = 'clearing'; clearT = 1.2; sfx.level(); }
+  if (S.phase === 'play' && S.filled / S.interior >= DIFFS[S.diff].goal) { S.phase = 'clearing'; clearT = 1.2; playJingle(S.level % 3 ? 'clear' : 'clearBig', sfx.level); }
 }
 
 /* ---------- Ennemis ---------- */
@@ -5802,7 +6157,7 @@ function update(dt) {
     if (invuln > 0) invuln -= dt;
     if (S.testWipe > 0 && (S.testWipe -= dt) <= 0) testReset(true);
     if (power.inv > 0 || power.spd > 0 || power.sup > 0 || power.hyp > 0 || power.frag > 0 || chronoOn() || frenzyOn() || (P && P.guard > 0) || pred.combo > 0 || SH().key === 'pred' || oc || ic || vt) powersHud();
-    if (power.sup > 0) superMusic(dt);
+    if (power.sup > 0 && !musicLive()) superMusic(dt);
     // traînée du réacteur dans la zone à conquérir (rouge et plus dense pendant la frénésie)
     if (P && P.drawing && (P.dir.x || P.dir.y) && T.glow && Math.random() < (frenzyOn() ? 1 : .6)) {
       const pp = playerPos(), rage = frenzyOn();
@@ -7189,6 +7544,7 @@ function frame(now) {
   let dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
   if (!titleEl.hidden) drawTitle(dt);
   if (slot && S.phase !== 'pause' && S.phase !== 'title') updateSlot(dt);
+  musicUpdate(dt);
   if (slow > 0) { slow -= dt; dt *= 0.3; }
   if (superFlash > 0) superFlash = Math.max(0, superFlash - dt * 1.6);
   if (scale > 0 && cv.width) { update(dt); render(); }
@@ -7381,8 +7737,8 @@ function endScreen(title, sub) {
     ${masteryRow()}
     <button class="btn" id="go">MENU</button>`, titleScreen);
 }
-function gameOver() { S.phase = 'over'; sfx.over(); endScreen('GAME OVER', ''); }
-function victory() { S.phase = 'over'; sfx.level(); endScreen('LES 25 NIVEAUX', 'Tu as conquis les 25 niveaux.'); }
+function gameOver() { S.phase = 'over'; playJingle('over', sfx.over); endScreen('GAME OVER', ''); }
+function victory() { S.phase = 'over'; playJingle('victory', sfx.level); endScreen('LES 25 NIVEAUX', 'Tu as conquis les 25 niveaux.'); }
 
 // Écran titre plein écran (demande de Fabien) : il recouvre tout, HUD compris. Fond animé dans son propre canvas
 // (ciel de nuit, étoiles qui défilent, grille néon en perspective, vaisseaux du jeu qui passent), logo en lettres
@@ -7497,7 +7853,7 @@ function titleScreen() {
       </div>
       ${best ? `<div class="rows"><div><span>Record</span><span>${fmt(best)}</span></div></div>` : ''}
       ${HOWTO}
-      <div class="tfoot"><button class="mini" id="tscr">${$('scr').textContent}</button><button class="mini" id="tsnd">${$('snd').textContent}</button></div>
+      <div class="tfoot"><button class="mini" id="tscr">${$('scr').textContent}</button><button class="mini" id="tsnd">${$('snd').textContent}</button><button class="mini" id="tmus">${$('mus').textContent}</button></div>
     </div>`);
   onGo = () => { hideTitle(); showShips(false); };
   const tin = $('tin');
@@ -7516,6 +7872,7 @@ function titleScreen() {
   // son et thème : les mêmes boutons que le pied de page, recopiés ici
   $('tscr').addEventListener('click', e => { $('scr').click(); e.currentTarget.textContent = $('scr').textContent; });
   $('tsnd').addEventListener('click', e => { $('snd').click(); e.currentTarget.textContent = $('snd').textContent; });
+  $('tmus').addEventListener('click', e => { $('mus').click(); e.currentTarget.textContent = $('mus').textContent; });
   S.diff = menuDiff; S.level = menuLevel; S.score = 0; S.ship = menuShip; S.lives = SH().lives;
   hud(); powersHud(); pwHud();
 }
@@ -7809,6 +8166,10 @@ const snd = $('snd');
 const sndLabel = () => snd.textContent = 'SON : ' + (muted ? 'NON' : 'OUI');
 sndLabel();
 snd.addEventListener('click', () => { muted = !muted; sndLabel(); ensureAudio(); store.set('mute', muted); });
+const mus = $('mus');
+const musLabel = () => mus.textContent = 'MUSIQUE : ' + (musicOn ? 'OUI' : 'NON');
+musLabel();
+mus.addEventListener('click', () => { musicOn = !musicOn; musLabel(); ensureAudio(); store.set('music', musicOn); });
 const scr = $('scr');
 const scrLabel = () => scr.textContent = 'ÉCRAN : ' + T.label;
 scrLabel();
