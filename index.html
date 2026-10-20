@@ -1466,6 +1466,7 @@ const ECOS = [
     { puls: 1, spark: 2, coils: 1, mag: 1 },
     { name: 'TEMPÊTE', puls: 1, spark: 2, coils: 1, capa: 1, mag: 1 } ] },
   { key: 'sing', name: 'SINGULARITÉ', tag: 'Au bord du gouffre, tout tombe vers le centre.', sig: 'hunt',
+    rule: 'Un trou noir géant occupe le centre : il ne se conquiert jamais et engloutit tout ce qui y entre. Dans la zone à conquérir, son attraction tire ton vaisseau et courbe la route des ennemis. À l’épreuve, son horizon grandit à chaque zone conquise.',
     look: { empty: '#05040a', vignette: 'rgba(200,160,80,0.14)', landGrad: ['#caa24b', '#3b2a60'], edge: '#fff1cc', landP: '#ffe7a8',
       nebulas: [[12, 18, 16, '200,160,80'], [38, 46, 18, '110,70,180'], [30, 10, 10, '255,220,140'], [8, 54, 11, '80,60,160']] },
     levels: [
@@ -1612,7 +1613,7 @@ function respawnCell(px, py) {
     if (grid[at(x, y)] !== 1) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     const near = foes.some(e => !e.dead && Math.hypot(e.x - cx, e.y - cy) < (e.kind === 'amph' ? 5 : 3.5));
-    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0) + (rockG[at(x, y)] ? 60 : 0);
+    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0) + (rockG[at(x, y)] ? 60 : 0) + (holeG[at(x, y)] ? 1e4 : 0);
     if (d < bd) { bd = d; best = [x, y]; }
   }
   return best || [GC >> 1, 0];
@@ -1737,6 +1738,8 @@ function moveInto(nx, ny) {
     if (SH().key === 'rob' && S.phase === 'play') { dissolveTrail(); pickItems(); if (!(armor.cd > 0)) armorHit('self'); return; }
     crash('self'); return;
   }
+  // Singularité : le trou noir du centre engloutit (jamais franchissable : crash, ou arrêt net sous Casque)
+  if (holeG[at(nx, ny)] && S.phase === 'play' && singEat(nx, ny)) return;
   // Pyros : gouffre de lave (crash, ou bord infranchissable si le coup est encaissé ; sous Casque, on passe au-dessus)
   if (c === 0 && lavaG[at(nx, ny)] && !(helmet() || power.sup > 0) && S.phase === 'play' && lavaBurn(nx, ny)) return;
   const ox = P.x, oy = P.y;
@@ -1813,7 +1816,7 @@ function updatePull(dt) {
 }
 // Déplace le vaisseau d'une case vers le trou (jamais sur son propre fil)
 // sgn = -1 : le vaisseau est repoussé (aimant bleu)
-function suckStep(e, s, sgn = 1) {
+function suckStep(e, s, sgn = 1, quiet = false) {
   const pp = playerPos(), dx = (e.x - pp.x) * sgn, dy = (e.y - pp.y) * sgn;
   const sx = Math.sign(dx), sy = Math.sign(dy);
   const opts = Math.abs(dx) > Math.abs(dy) ? [[sx, 0], [0, sy]] : [[0, sy], [sx, 0]];
@@ -1823,7 +1826,7 @@ function suckStep(e, s, sgn = 1) {
     if (!inB(nx, ny) || grid[at(nx, ny)] === 2) continue;
     P.vox -= ax / G; P.voy -= ay / G; P.px += ax; P.py += ay;
     moveInto(nx, ny);
-    tone(120 + s * 200, .06, 'sine', .03, -40);
+    if (!quiet) tone(120 + s * 200, .06, 'sine', .03, -40);
     break;
   }
 }
@@ -1906,6 +1909,7 @@ function capture() {
   if (S.depouille) { for (const [x, y] of S.depouille) claimNear(x, y, Math.round(S.interior * .02)); S.depouille = null; }
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
+  if (sg) singGrow();
   checkGoal();
 }
 // conquiert les n cases à conquérir les plus proches de (x, y) (monde), avec la vague de révélation
@@ -1952,6 +1956,7 @@ function checkGoal() {
 /* ---------- Ennemis ---------- */
 function moveSea(e, dt) {
   if (ic && iceAt(e.x, e.y)) dt *= ICE_FOE;
+  if (sg) singBend(e, dt);
   const R = e.r || R_SEA, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   // super casque : le fil devient un mur ; casque : les ennemis le traversent sans effet
   const wall = power.sup > 0, pierce = !wall && (e.kind === 'perf' || helmet() || SH().key === 'fur');
@@ -2315,7 +2320,7 @@ function lootBack(e) {
 const absent = e => (e.kind === 'mine' && e.st === 'gone') || (e.kind === 'echo' && !e.on) || (e.kind === 'comet' && e.st !== 'fly');
 const foeColor = e => ({ out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, puls: T.puls, hunt: T.hunt, div: T.div, ghost: T.ghost,
   spark: T.spark, snake: T.snake, mine: T.mine, comet: T.comet, mag: e.pol > 0 ? T.magA : T.magR, echo: T.echo, scar: T.scar, thief: T.thiefWing })[e.kind];
-const isLand = (x, y) => inB(x, y) && grid[at(x, y)] === 1;
+const isLand = (x, y) => inB(x, y) && grid[at(x, y)] === 1 && !holeG[at(x, y)];
 function moveLand(e, dt) {
   const R = R_LAND, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
   for (let s = 0; s < steps; s++) {
@@ -2348,11 +2353,11 @@ function moveAmph(e, dt) {
 // Un ennemi coincé dans le mauvais milieu (ex. : perforateur sur le fil au moment de la capture, ennemi sous Casque) est déplacé sur la case libre la plus proche ; s'il n'y en a plus, il disparaît
 function unstick(e) {
   if (e.kind === 'amph' || e.kind === 'comet' || e.kind === 'echo' || e.kind === 'scar' || e.ride != null) return;
-  const c = cellW(e.x, e.y), sea = isSea(e);
-  if (sea ? c !== 1 : c === 1) return;
+  const c = cellW(e.x, e.y), sea = isSea(e), inHole = !!sg && !!holeG[at(gc(e.x), gc(e.y))];
+  if (sea ? c !== 1 : (c === 1 && !inHole)) return;
   const want = sea ? 0 : 1;
   let best = -1, bd = 1e9;
-  for (let i = 0; i < N; i++) if (grid[i] === want) {
+  for (let i = 0; i < N; i++) if (grid[i] === want && !(!sea && holeG[i])) {
     const d = Math.hypot(wx(i) - e.x, wy(i) - e.y);
     if (d < bd) { bd = d; best = i; }
   }
@@ -3009,6 +3014,7 @@ function unsnap(sn) {
   Object.assign(power, sn.power); Object.assign(ab, sn.ab);
   S.filled = sn.filled; S.score = sn.score; S.lives = sn.lives; invuln = sn.invuln;
   reveal = null; spawned = [];
+  if (sg) for (const i of sg.cells) grid[i] = 1;
   if (redraw) drawBoard();
 }
 function recordRewind(dt) {
@@ -3312,7 +3318,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20, hole: .30 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -4190,6 +4196,131 @@ function drawAste() {
   ctx.restore();
 }
 
+// Singularité : un trou noir géant au centre du terrain. Ses cases sont du terrain conquis dès le début mais ne comptent
+// jamais dans le pourcentage (holeG) : les ennemis rebondissent dessus, le fil ne s'y referme pas, et le vaisseau qui y
+// entre est englouti (« ENGLOUTI ! », crash ; sous Casque il s'arrête net). Dans la zone à conquérir, son attraction tire
+// le vaisseau (en 1/d², `grav` cases/s à 6 cases du centre, sans effet sous Casque ni sur le terrain conquis) et courbe la
+// route des ennemis de mer (leur vitesse ne change pas, leur direction tourne vers le centre : arcs et orbites). À l'épreuve,
+// l'horizon grandit de `grow` case à chaque zone conquise (jusqu'à `max` de plus) et dévore ce qui l'entoure.
+const SING = [{ R: 2.4, grav: 1.4, bend: 2 }, { R: 2.8, grav: 2.4, bend: 3.5 }, { R: 3, grav: 3.6, bend: 5, grow: .35, max: 2.4 }];
+const SING_RANGE = 16;
+const holeG = new Uint8Array(N);
+let sg = null;
+function singMark(R) {
+  let n = 0;
+  for (let gy = Math.max(0, gc(sg.y - R - 1)); gy <= Math.min(GR - 1, gc(sg.y + R + 1)); gy++) for (let gx = Math.max(0, gc(sg.x - R - 1)); gx <= Math.min(GC - 1, gc(sg.x + R + 1)); gx++) {
+    const i = at(gx, gy);
+    if (holeG[i] || grid[i] === 2 || Math.hypot((gx + .5) / G - sg.x, (gy + .5) / G - sg.y) >= R) continue;
+    if (grid[i] === 1) S.filled--;
+    grid[i] = 1; holeG[i] = 1; sg.cells.push(i); n++;
+    if (sg.R) paintCellIdx(i);
+  }
+  return n;
+}
+function singSetup(st) {
+  const C = SING[Math.min(2, st || 0)];
+  sg = { x: COLS / 2, y: ROWS / 2, R: 0, R0: C.R, vR: C.R, grav: C.grav, bend: C.bend, grow: C.grow || 0, max: C.max || 0, cells: [],
+    dust: Array.from({ length: 56 }, () => ({ r: urand(1.2, 3.6) * C.R, a: urand(0, PI2), s: urand(.6, 1.1) })), say: 0 };
+  singMark(C.R); sg.R = C.R;
+}
+// le vaisseau touche le trou noir : renvoie toujours true (case infranchissable)
+function singEat(nx, ny) {
+  const x = (nx + .5) / G, y = (ny + .5) / G;
+  P.dir = { x: 0, y: 0 }; P.next = null;
+  if (helmet() || power.sup > 0) return true;
+  burst(x, y, T.rainbow ? '#ffb347' : T.ball, 16, 6);
+  hitSrc = 'hole'; hitPlayer(null); hitSrc = 'ring';
+  if (S.phase !== 'play') popups.push({ x, y: y - 1.4, text: 'ENGLOUTI !', age: 0, color: T.danger });
+  dash = null;
+  return true;
+}
+// attraction du vaisseau (appelée par update, comme l'aspiration du trou noir)
+function singPull(dt) {
+  if (!P) return;
+  const pp = playerPos(), d = Math.hypot(sg.x - pp.x, sg.y - pp.y);
+  if (P.shield || helmet() || power.sup > 0 || grab || dash || !inSeaNow() || d > SING_RANGE) { P.gAcc = 0; return; }
+  const v = sg.grav * Math.pow(6 / Math.max(d, 3), 2);
+  P.gAcc = (P.gAcc || 0) + dt * v * G;
+  while (P.gAcc >= 1 && S.phase === 'play') { P.gAcc -= 1; suckStep(sg, Math.min(1, v / 12), 1, true); }
+}
+// les ennemis de mer tournent vers le centre sans changer de vitesse
+function singBend(e, dt) {
+  if (e.ride != null || (e.kind === 'hunt' && (e.st === 'aim' || e.st === 'dash')) || Math.hypot(e.vx, e.vy) < .05) return;
+  const dx = sg.x - e.x, dy = sg.y - e.y, d = Math.hypot(dx, dy);
+  if (d < 1) return;
+  const da = Math.atan2(e.vx * dy - e.vy * dx, e.vx * dx + e.vy * dy);
+  const a = Math.sign(da) * Math.min(Math.abs(da), sg.bend / Math.max(d, 4) * dt), c = Math.cos(a), s = Math.sin(a);
+  const vx = e.vx * c - e.vy * s; e.vy = e.vx * s + e.vy * c; e.vx = vx;
+}
+// épreuve : l'horizon grandit à chaque zone conquise
+function singGrow() {
+  if (!sg.grow || sg.R >= sg.R0 + sg.max) return;
+  sg.R = Math.min(sg.R0 + sg.max, sg.R + sg.grow);
+  singMark(sg.R);
+  shake = Math.max(shake, REDUCED ? 0 : .35);
+  rings.push({ x: sg.x, y: sg.y, r: sg.R, max: sg.R + 6, age: 0, color: T.rainbow ? '#ffb347' : T.ball });
+  tone(60, .6, 'sawtooth', .05, -20); tone(110, .5, 'triangle', .03, -50, .05);
+  const k = Math.floor((sg.R - sg.R0) * 2);
+  if (k > sg.say) { sg.say = k; popups.push({ x: sg.x, y: sg.y - sg.R - 2, text: 'L’HORIZON GRANDIT', age: 0, color: T.danger }); }
+  // le vaisseau pris dans l'horizon qui s'étend est englouti
+  if (P && S.phase === 'play' && holeG[at(P.x, P.y)]) { hitSrc = 'hole'; hitPlayer(null); hitSrc = 'ring'; if (S.phase === 'crash') popups.push({ x: sg.x, y: sg.y - sg.R - 1, text: 'ENGLOUTI !', age: 0, color: T.danger }); }
+}
+function sgUpdate(dt) {
+  sg.vR += (sg.R - sg.vR) * Math.min(1, dt * 3);
+  const R = sg.R;
+  for (const d of sg.dust) {
+    const k = d.r / R;
+    d.a += (2.6 / Math.pow(k, 1.3)) * d.s * dt; d.r -= (.35 + 1.6 / k) * d.s * dt;
+    if (d.r < R * 1.08) { d.r = urand(2.8, 3.8) * R; d.a = urand(0, PI2); }
+  }
+}
+// trou noir géant : halo, demi-disque d'accrétion derrière, horizon noir, anneau de photons, demi-disque devant
+function drawSing() {
+  if (!sg) return;
+  const R = sg.vR + .1;
+  ctx.save(); ctx.translate(sg.x, sg.y);
+  if (!T.glow) {
+    ctx.fillStyle = T.shock; ctx.beginPath(); ctx.arc(0, 0, R, 0, PI2); ctx.fill();
+    ctx.strokeStyle = T.shock; ctx.lineWidth = .14; ctx.setLineDash([.6, .5]);
+    for (let r = 1; r <= 3; r++) { ctx.beginPath(); ctx.arc(0, 0, R + r * .9, 0, PI2); ctx.stroke(); }
+    ctx.restore(); return;
+  }
+  const disc = front => {
+    ctx.save(); ctx.rotate(-.35); ctx.scale(1, .3);
+    for (let r = 0; r < 8; r++) {
+      const rr = R * (1.22 + r * .3), t = r / 7;
+      ctx.strokeStyle = `rgba(255,${Math.round(235 - 120 * t)},${Math.round(190 - 150 * t)},${(.62 - t * .4).toFixed(3)})`;
+      ctx.lineWidth = .55 - t * .2; ctx.setLineDash([1.2 + r * .5, .5 + r * .25]); ctx.lineDashOffset = -time * (11 - r);
+      ctx.beginPath(); ctx.arc(0, 0, rr, front ? 0 : Math.PI, front ? Math.PI : PI2); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.restore();
+  };
+  ctx.globalCompositeOperation = 'lighter';
+  const halo = ctx.createRadialGradient(0, 0, R * .9, 0, 0, R * 4.4);
+  halo.addColorStop(0, 'rgba(255,170,70,0.34)'); halo.addColorStop(.35, 'rgba(200,100,60,0.12)'); halo.addColorStop(1, 'rgba(120,60,160,0)');
+  ctx.fillStyle = halo; ctx.fillRect(-R * 4.4, -R * 4.4, R * 8.8, R * 8.8);
+  disc(false);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, R, 0, PI2); ctx.fill();
+  ctx.globalCompositeOperation = 'lighter';
+  // lumière courbée au-dessus du trou et anneau de photons
+  ctx.strokeStyle = 'rgba(255,190,110,0.5)'; ctx.lineWidth = .3; ctx.beginPath(); ctx.arc(0, 0, R * 1.14, -Math.PI * .93, -Math.PI * .07); ctx.stroke();
+  ctx.strokeStyle = `rgba(255,236,200,${.7 + .2 * Math.sin(time * 2)})`; ctx.lineWidth = .16; ctx.beginPath(); ctx.arc(0, 0, R + .02, 0, PI2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,150,60,0.28)'; ctx.lineWidth = .55; ctx.beginPath(); ctx.arc(0, 0, R + .2, 0, PI2); ctx.stroke();
+  disc(true);
+  // poussière qui tombe en spirale dans le disque
+  ctx.save(); ctx.rotate(-.35);
+  for (const d of sg.dust) {
+    const s = Math.sin(d.a);
+    if (s < 0 && d.r < R * 1.1) continue;
+    const k = 1 - Math.min(1, (d.r / sg.R - 1) / 3);
+    ctx.fillStyle = `rgba(255,${Math.round(230 - 90 * (1 - k))},${Math.round(170 - 110 * (1 - k))},${(.25 + .6 * k).toFixed(2)})`;
+    ctx.fillRect(Math.cos(d.a) * d.r - .06, s * d.r * .3 - .06, .12, .12);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
 // Pyros (demande de Fabien) : des gouffres de lave dans la zone à conquérir et des météores qui tombent d'en haut.
 // Gouffre (pools) : y entrer brûle le vaisseau (crash ; Casque et Super Casque passent au-dessus, le Blindé le traverse
 // en y laissant 20 %, un coup encaissé l'arrête au bord). Dès que du terrain conquis le touche (zone refermée, Territoire,
@@ -4215,6 +4346,8 @@ function ecoSetup(eco, st) {
   if (eco && eco.key === 'volt') voltSetup(st);
   rockG.fill(0); rocks = [];
   if (eco && eco.key === 'aste') asteSetup(st);
+  holeG.fill(0); sg = null;
+  if (eco && eco.key === 'sing') singSetup(st);
   hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
   if (hz) makePools(hz.pools);
 }
@@ -4357,6 +4490,7 @@ function ecoUpdate(dt) {
   if (ic) iceTick(dt);
   if (vt) voltUpdate(dt);
   if (rocks.length) asteUpdate(dt);
+  if (sg) sgUpdate(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -5259,7 +5393,7 @@ function itemSpot(type = pickType()) {
   const pp = playerPos();
   for (let y = G; y < GR - G; y++) for (let x = G; x < GC - G; x++) {
     const v = grid[at(x, y)];
-    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1 || rockG[at(x, y)]) continue;
+    if (medium === 'sea' ? v !== 0 || lavaG[at(x, y)] : v !== 1 || rockG[at(x, y)] || holeG[at(x, y)]) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     if (Math.hypot(cx - pp.x, cy - pp.y) < 7) continue;
     if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
@@ -5658,6 +5792,7 @@ function update(dt) {
     S.figeT = plan ? (S.figeT || 0) + dt : 0;
     const fdt = dt * foeSlow();
     if (S.phase === 'play') updatePull(fdt);
+    if (sg && S.phase === 'play') singPull(fdt);
     if (S.phase === 'play') updateMag(fdt);
     if (S.phase === 'play') updateWave(fdt);
     if (S.phase === 'play') updateFoes(fdt);
@@ -5748,6 +5883,7 @@ function render() {
   drawChrono('clock');
   drawEdgeGlow();
   drawAste();
+  drawSing();
   drawStains();
   drawDrops();
   drawGround();

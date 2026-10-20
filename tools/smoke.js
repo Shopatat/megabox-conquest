@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; } };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow() };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -1203,6 +1203,74 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       last = g.S.phase;
     }
     console.log(`Astéria épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, ${landed} fils refermés sur un astéroïde`);
+  }
+}
+// 5b) Singularité : trou noir géant au centre (case infranchissable hors du pourcentage), attraction, route des ennemis courbée, horizon qui grandit
+{
+  const SI = g.ECOS.findIndex(e => e.key === 'sing');
+  const order = [0, SI, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== SI)];
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  const sing = (L = 5, ship = 0) => {
+    g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
+    g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 3; b.y = 63; b.vx = b.vy = 0; g.foes.push(b);
+  };
+  const info = [4, 5, 6].map(L => { sing(L); return `rayon ${g.sg.R} (${g.sg.cells.length} cases, ${(g.S.filled / g.S.interior * 100).toFixed(1)} % comptés)`; });
+  console.log(`Singularité : découverte ${info[0]}, plus dur ${info[1]}, épreuve ${info[2]} ; niveau 6 = ${g.S.comp.eco.name}`);
+  const flag = (n, ok) => { console.log(`${n} : ${ok ? 'ok' : 'ÉCHEC'}`); if (!ok) { console.log('ÉCHEC Singularité'); process.exit(1); } };
+  sing(5); const sg = g.sg;
+  flag('trou noir : cases conquises, hors du pourcentage', sg.cells.length > 0 && sg.cells.every(i => g.grid[i] === 1 && g.holeG[i]) && g.S.filled === 0);
+  // le vaisseau qui entre dans le trou noir est englouti
+  const above = () => { g.P.x = g.P.px = Math.floor(sg.x * G); g.P.y = g.P.py = Math.floor((sg.y - sg.R - 2) * G); };
+  above(); g.dropShield(); g.P.shield = false; g.P.drawing = true; g.setDir('down');
+  let n = 0; while (n++ < 400 && g.S.phase === 'play') step();
+  flag('vaisseau dans le trou noir : crash', g.S.phase === 'crash');
+  // sous Casque il s'arrête net
+  sing(5); above(); g.P.shield = false; g.power.inv = 10; g.setDir('down');
+  n = 0; while (n++ < 400 && (g.P.dir.x || g.P.dir.y || g.P.next)) step();
+  flag('Casque : arrêt net au bord', g.S.phase === 'play' && !g.holeG[g.at(g.P.x, g.P.y)] && Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y) < sg.R + 1);
+  // attraction : un Prédateur (vole dans la zone à conquérir sans fil) arrêté à 9 cases du centre
+  sing(5, shipIdx('pred')); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg.x + 9) * G); g.P.y = g.P.py = Math.floor(sg.y * G);
+  const d0 = Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y);
+  for (let k = 0; k < 150; k++) step();
+  const d1 = Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y);
+  flag(`attraction du vaisseau (${d0.toFixed(1)} -> ${d1.toFixed(1)} cases)`, d1 < d0 - 1);
+  // sur son terrain, rien ne le tire
+  sing(5); g.P.shield = false; const x0 = g.P.x, y0 = g.P.y;
+  for (let k = 0; k < 60; k++) step();
+  flag('terrain conquis : pas d\'attraction', g.P.x === x0 && g.P.y === y0);
+  // un ennemi lancé de biais voit sa route se courber vers le centre sans changer de vitesse
+  sing(6); const e = g.foes[0]; e.x = sg.x + 10; e.y = sg.y - 6; e.vx = 0; e.vy = 7; e.kind = 'out';
+  const sp0 = Math.hypot(e.vx, e.vy); g.P.shield = true;
+  for (let k = 0; k < 40; k++) step();
+  const toC = Math.atan2(sg.y - e.y, sg.x - e.x), hd = Math.atan2(e.vy, e.vx);
+  flag(`ennemi courbé : cap ${(hd * 57.3).toFixed(0)}°, vitesse ${sp0} -> ${Math.hypot(e.vx, e.vy).toFixed(2)}`, Math.abs(Math.hypot(e.vx, e.vy) - sp0) < .3 && e.vx < -.5);
+  // l'ennemi rebondit sur l'horizon sans jamais y entrer
+  sing(5); const f = g.foes[0]; f.x = sg.x + sg.R + 4; f.y = sg.y; f.vx = -7; f.vy = 0; g.P.shield = true;
+  let inside = 0; for (let k = 0; k < 200; k++) { step(); if (g.holeG[g.at(Math.floor(f.x * G), Math.floor(f.y * G))]) inside++; }
+  flag(`boule sur l'horizon : ${inside} images dedans`, inside === 0);
+  // épreuve : l'horizon grandit, sans toucher au pourcentage compté, et reste franchissable le 85 %
+  sing(6); const R0 = g.sg.R, c0 = g.sg.cells.length; g.P.x = g.P.px = 0; g.P.y = g.P.py = 0;
+  for (let k = 0; k < 20; k++) g.sg_grow();
+  flag(`horizon qui grandit : ${R0} -> ${g.sg.R.toFixed(2)}, ${c0} -> ${g.sg.cells.length} cases, 85 % possible ${((g.S.interior - g.sg.cells.length) / g.S.interior * 100).toFixed(1)} %`, g.sg.R > R0 + 2 && g.sg.cells.length > c0 && (g.S.interior - g.sg.cells.length) / g.S.interior > .9);
+  // l'horizon qui s'étend englobe le vaisseau posé près de lui
+  sing(6); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg_x() + g.sg.R + .1) * G); g.P.y = g.P.py = Math.floor(g.sg.y * G); g.grid[g.at(g.P.x, g.P.y)] = 1;
+  g.sg_grow(); flag('horizon qui engloutit le vaisseau voisin', g.S.phase === 'crash' || g.holeG[g.at(g.P.x, g.P.y)] === 0);
+  function sg_x() { return g.sg.x; }
+  let s = 99; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let sh = 0; sh < g.SHIPS.length; sh++) {
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    start(); let cr = 0, last = '';
+    for (let fr = 0; fr < 2500; fr++) {
+      if (g.S.phase === 'ready') g.setDir('down');
+      if (g.S.phase === 'over') start();
+      if (rnd() < 0.01 || (g.S.phase === 'crash' && rnd() < 0.05)) g.usePower();
+      if (rnd() < 0.03) g.setDir(DIRS[(rnd() * 4) | 0]);
+      if (rnd() < 0.005) g.setDir('stop');
+      step();
+      if (g.S.phase === 'crash' && last !== 'crash') cr++;
+      last = g.S.phase;
+    }
+    console.log(`Singularité épreuve avec ${g.SHIPS[sh].name} : 2500 frames ok, ${cr} crashs, horizon ${g.sg.R.toFixed(1)}`);
   }
 }
 // 5s) Planètes : ambiance de chacune, gouffres de lave et météores de Pyros
