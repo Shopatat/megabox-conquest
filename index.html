@@ -64,6 +64,10 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .pw:active{transform:scale(.9)}
 /* Frénétique, furie prête : braise au centre, flamme dorée, mur de flammes animé autour (canvas #furycv, drawFury) */
 .pw{position:relative}
+/* Rembobineur : six sphères autour du sablier (canvas #orbcv, drawOrbs), l'anneau du bouton s'efface */
+#orbcv{position:absolute;left:-10px;top:-10px;width:66px;height:66px;pointer-events:none;z-index:2}
+.pw.orbs{background:rgba(255,255,255,.06)}
+.pw.orbs.cd .in{color:#6d7299}
 #furycv{position:absolute;left:-13px;top:-26px;width:72px;height:76px;pointer-events:none;z-index:2}
 .pw.fury{--c:#ff8a2a;animation:none;box-shadow:0 0 0 2px rgba(255,170,60,.35),0 0 24px rgba(255,90,20,.8)}
 .pw.fury .in{position:relative;z-index:1;background:radial-gradient(circle at 50% 62%,#7a1a06 0,#3a0a08 55%,#170608 100%);color:#ffd27a}
@@ -371,7 +375,7 @@ details li b{color:var(--text);font-weight:600}
         <span class="lives" id="lives" aria-label="Vies"></span>
       </div>
       <canvas class="slotcv" id="slotcv" hidden aria-hidden="true"></canvas>
-      <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span><canvas id="furycv" width="144" height="152" aria-hidden="true" hidden></canvas></button>
+      <button class="pw" id="pw" hidden aria-label="Pouvoir du vaisseau"><span class="in" id="pwi"></span><canvas id="furycv" width="144" height="152" aria-hidden="true" hidden></canvas><canvas id="orbcv" width="198" height="198" aria-hidden="true" hidden></canvas></button>
       <button class="pbtn" id="pz" aria-label="Pause"><i></i><i></i></button>
     </div>
     <div class="meterRow">
@@ -465,11 +469,12 @@ const SUPER = { sup: 'inv', sterr: 'terr', sspd: 'spd', slife: 'life', schr: 'ch
 // Vaisseaux au choix (idée de Fabien). body() trace et remplit la coque (unités de case, nez vers +x) ;
 // tail / fw : départ et demi-largeur de la flamme ; pit : cockpit [x, rayon x, rayon y]
 // Les pouvoirs se rechargent en traçant dans la zone à conquérir (demande de Fabien), pas avec le temps :
-// GUARD_CELLS pour le bouclier de l'Encaisseur, RW_CELLS pour le rembobinage
-// Rembobineur : jauge de RW_SPAN secondes de retour en arrière ; une photo par image (RW_SNAP), rejouées au ralenti
+// GUARD_CELLS pour le bouclier de l'Encaisseur
+// Rembobineur : jauge de RW_SPAN secondes de retour en arrière, en RW_ORBS sphères qui se remplissent en conquérant
+// (une sphère pour RW_FILL du terrain) ; une photo par image (RW_SNAP), rejouées au ralenti
 // (RW_STEP par photo, soit le quart de la vitesse : 3 s se rembobinent en 12 s) pour bien voir et s'arrêter pile où on
 // veut ; au crash, RW_WIN s pour décider
-const GUARD_CELLS = 80, guardCells = () => sk('rechecl') ? 50 : sk('rechrap') ? 65 : GUARD_CELLS, RW_CELLS = 120, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
+const GUARD_CELLS = 80, guardCells = () => sk('rechecl') ? 50 : sk('rechrap') ? 65 : GUARD_CELLS, RW_ORBS = 6, RW_FILL = .12, RW_SPAN = 3, RW_SNAP = 1 / 60, RW_STEP = 4 / 60, RW_WIN = 3;
 // ouverture des mandibules du Prédateur (0 à 1) imposée par le jeu ; null : elles mâchonnent toutes seules
 var jaw = null;
 // regard du Prédateur (angle dans le monde vers la proie la plus proche) ; null : il regarde droit devant
@@ -550,8 +555,8 @@ const SHIPS = [
       g.fillStyle = f;
     } },
   // Rembobineur (idée de Fabien, façon Prince of Persia) : remonte le temps de 3 s, se recharge en traçant
-  { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 2, maxLives: 2, bonus: 1, spd: 3, bon: 3, power: 'RETOUR 3 S',
-    desc: 'Sablier : remonte le temps au ralenti (jusqu\'à 3 s), rappuie pour t\'arrêter pile où tu veux. Au crash, tu as 3 s pour rembobiner. 2 vies au maximum, recharge en traçant.',
+  { key: 'rew', name: 'REMBOBINEUR', tag: 'Maître du temps', lives: 2, maxLives: 2, bonus: 1, spd: 3, bon: 3, power: '6 SPHÈRES',
+    desc: 'Sablier : remonte le temps au ralenti (6 sphères de 0,5 s), rappuie pour t\'arrêter pile où tu veux ; une sphère entamée est perdue. Au crash, tu as 3 s pour rembobiner. 2 vies au maximum, les sphères se remplissent en conquérant.',
     hullA: '#ffe2a0', hullB: '#c4782a', glow: '#ffb84d', pit: '#7cf5ff', land: '#ffd9a0', tail: -.44, fw: .13, pitXY: [.16, .15, .09],
     body(g) {
       g.beginPath(); g.moveTo(.76, 0); g.lineTo(.1, -.3); g.lineTo(-.44, -.3); g.lineTo(-.3, 0); g.lineTo(-.44, .3); g.lineTo(.1, .3); g.closePath(); g.fill();
@@ -812,18 +817,18 @@ const SKILLS = {
       ['infiltre', 'Infiltré', 'Points ×3 tant que tu n\'as pas été touché dans le niveau.']]]],
   rew: [
     ['SABLIER', 'la jauge', [
-      ['grand', 'Grand sablier', 'Jauge de 4 s au lieu de 3.'],
-      ['sablefin', 'Sable fin', 'Recharge en 90 cases au lieu de 120.'],
-      ['geant', 'Sablier géant', 'Jauge de 5 s.'],
-      ['remontee', 'Remontée', 'Chaque zone de plus de 10 % refermée rend 0,5 s de jauge.'],
-      ['titan', 'Sablier titanesque', 'Jauge de 7 s.'],
-      ['boucle', 'Boucle', 'Deux fois par niveau, un rembobinage complet gratuit, qui ne vide pas la jauge.']]],
+      ['grand', 'Grand sablier', 'Sphères de 0,7 s au lieu de 0,5.'],
+      ['sablefin', 'Sable fin', 'Une sphère pour 9 % du terrain conquis au lieu de 12 %.'],
+      ['geant', 'Sablier géant', 'Sphères de 0,85 s.'],
+      ['remontee', 'Remontée', 'Chaque zone de plus de 10 % refermée remplit une demi-sphère de plus.'],
+      ['titan', 'Sablier titanesque', 'Sphères de 1,2 s.'],
+      ['boucle', 'Boucle', 'Deux fois par niveau, un rembobinage complet gratuit, qui ne vide aucune sphère.']]],
     ['PARADOXE', 'changer le passé', [
       ['hesit', 'Hésitation', '4 s pour décider au crash, au lieu de 3.'],
-      ['lecon', 'Leçon', 'Rembobiner après un crash rend 1 s de jauge.'],
+      ['lecon', 'Leçon', 'Rembobiner après un crash rend une sphère.'],
       ['echo', 'Écho', 'En rembobinant, ton fantôme laisse un sillage qui assomme les ennemis 2 s.'],
       ['dejavu', 'Déjà-vu', 'Après un rembobinage, 2 s pendant lesquelles rien ne peut te toucher.'],
-      ['secondechance', 'Seconde chance', 'Rembobiner après un crash ne coûte pas de jauge.'],
+      ['secondechance', 'Seconde chance', 'Rembobiner après un crash ne coûte aucune sphère.'],
       ['paradoxe', 'Paradoxe', 'Les ennemis que ton fantôme traverse en rembobinant sont effacés, pour 500 × niveau chacun.']]],
     ['MAÎTRISE', 'le bon moment', [
       ['ralenti', 'Ralenti fin', 'Rembobinage encore plus lent, pour s\'arrêter pile.'],
@@ -1936,7 +1941,7 @@ function setupLevel(L, instant) {
   // Encaisseur : Prêt à tout (bouclier plein à chaque niveau), Double bouclier (deuxième charge)
   if (SH().key === 'enc' && sk('pret')) P.guard = 0;
   P.g2 = sk('double'); P.g2cd = 0; S.noWave = 0;
-  rw.hist = []; rw.t = 0; rw.play = null; S.freezeT = 0; S.presT = 0; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
+  rw.hist = []; rw.t = 0; rw.play = null; rw.hw = 0; rw.pop = rw.crack = null; S.freezeT = 0; S.presT = 0; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(chipsMax(), gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
   if (SH().key === 'gam' && sk('depart')) gam.chips = Math.min(chipsMax(), gam.chips + 1);
@@ -2257,7 +2262,7 @@ function capture() {
   if (sk('embuscade')) { const pp = playerPos(); if (!foes.some(e => !e.dead && Math.hypot(e.x - pp.x, e.y - pp.y) < 10)) { mult *= 1.5; popups.push({ x: pp.x, y: pp.y - 2.4, text: 'EMBUSCADE ×1,5', age: -.2, color: T.rainbow ? '#46ffc8' : T.ball }); } }
   awardCells(n, playerPos(), n >= S.interior * 0.15, mult);
   furyGain(n, n >= S.interior * 0.15);
-  if (sk('remontee') && n >= S.interior * .1) { rw.charge = Math.min(rwSpan(), rw.charge + .5); pwHud(); }
+  if (sk('remontee') && n >= S.interior * .1) { rw.charge = Math.min(rwSpan(), rw.charge + rwOrb() / 2); pwHud(); }
   if (SH().key === 'rob' && sk('recup') && n >= S.interior * .1) { armor.hp = Math.min(armorMax(), armor.hp + .03); pwHud(); }
   sfx.capture(n);
   // Piégeur, Dépouille : 2 % de terrain de plus par ennemi piégé, autour du point où il a refermé
@@ -2287,6 +2292,8 @@ function startReveal(list) {
 function awardCells(n, at0, big, mult = 1) {
   S.filled += n;
   gainXp(n / (G * G));
+  // Rembobineur : les sphères se remplissent avec le terrain conquis au-delà du plus haut déjà atteint
+  if (S.filled > rw.hw) { rwGain(S.filled - Math.max(rw.hw, S.filled - n)); rw.hw = S.filled; }
   if (sk('tribut')) { const k = Math.floor(S.filled / S.interior * 10); if (k > (S.tribut || 0)) { const p = (k - (S.tribut || 0)) * 1000 * S.level; S.tribut = k; S.score += p; popups.push({ x: COLS / 2, y: ROWS / 2 + 3, text: 'TRIBUT +' + fmt(p), age: -.3, color: T.rainbow ? '#ffd23f' : T.ball }); } }
   // 10 points × niveau par case d'origine (une case d'origine = G × G cases de la grille)
   let pts = Math.round(n * 10 * S.level / (G * G));
@@ -3331,7 +3338,6 @@ function seaStep() {
     pwHud();
   }
   if (k === 'fur' && camo.cd > 0 && !(camo.on > 0)) { camo.cd = Math.max(0, camo.cd - 1 / G); if (!camo.cd) sfx.ready(); pwHud(); }
-  if (k === 'rew' && rw.charge < rwSpan()) { rw.charge = Math.min(rwSpan(), rw.charge + RW_SPAN / rwCells() / G); if (rw.charge === rwSpan()) sfx.ready(); pwHud(); }
 }
 // Furtif : de temps en temps, camouflage optique (le vaisseau devient presque invisible, le chasseur ne le voit plus)
 const camo = { on: 0, next: 5, cd: 0 };
@@ -3346,14 +3352,41 @@ function updateCamo(dt) {
 // Rembobineur (façon Prince of Persia) : on garde une photo de la partie toutes les RW_SNAP s sur les RW_SPAN dernières
 // secondes. Le pouvoir les rejoue à l'envers (effet VHS) tant qu'on ne rappuie pas, et chaque photo rejouée consomme
 // RW_SNAP s de la jauge (rw.charge, en secondes). Au crash, le jeu laisse RW_WIN s pour décider de rembobiner.
-const rw = { charge: RW_SPAN, hist: [], t: 0, play: null };
-const rwSpan = () => SH().key !== 'rew' ? RW_SPAN : sk('titan') ? 7 : sk('geant') ? 5 : sk('grand') ? 4 : RW_SPAN, rwCells = () => sk('sablefin') ? 90 : RW_CELLS;
+// Sphères (demande de Fabien) : la jauge est faite de RW_ORBS sphères de rwOrb() s chacune. Un rembobinage demande au
+// moins une sphère pleine et consomme toujours des sphères entières : arrêté au bout de 0,4 s, la sphère entamée est
+// perdue (pas de rembobinage gratuit en boucle). La sphère en cours de remplissage (partielle) n'est jamais entamée.
+// hw : terrain conquis le plus haut atteint dans le niveau (reconquérir après un rembobinage ne recharge rien)
+const rw = { charge: RW_SPAN, hist: [], t: 0, play: null, hw: 0, pop: null, crack: null };
+const rwSpan = () => SH().key !== 'rew' ? RW_SPAN : sk('titan') ? 7.2 : sk('geant') ? 5.1 : sk('grand') ? 4.2 : RW_SPAN, rwFill = () => sk('sablefin') ? .09 : RW_FILL;
+const rwOrb = () => rwSpan() / RW_ORBS, rwFull = () => Math.floor(rw.charge / rwOrb() + 1e-6);
+// recharge : n cases de la grille conquises
+function rwGain(n) {
+  if (SH().key !== 'rew' || rw.charge >= rwSpan() - 1e-9 || !S.interior) return;
+  const f0 = rwFull();
+  rw.charge = Math.min(rwSpan(), rw.charge + n / (S.interior * rwFill()) * rwOrb());
+  if (rw.charge > rwSpan() - 1e-6) rw.charge = rwSpan();
+  const f1 = rwFull();
+  if (f1 > f0) { rw.pop = { i: f1 - 1, t: 0 }; if (f1 >= RW_ORBS) sfx.ready(); else if (!muted) { tone(1568, .12, 'sine', .05); tone(2349, .18, 'sine', .035, 0, .06); } }
+  pwHud();
+}
+// niveau de chaque sphère (0 à 1) et position du rembobinage sur le cadran (u, en sphères) ; pendant un rembobinage,
+// la sphère partielle reste telle quelle et les pleines se vident l'une après l'autre
+function rwLevels() {
+  const o = rwOrb(), r = rw.play, out = [];
+  let u = -1;
+  if (r && !r.free) {
+    const F = Math.floor(r.start / o + 1e-6), p = r.start / o - F, d = (r.start - rw.charge) / o;
+    u = F - d;
+    for (let i = 0; i < RW_ORBS; i++) out.push(i < F ? Math.max(0, Math.min(1, F - d - i)) : i === F ? p : 0);
+  } else for (let i = 0; i < RW_ORBS; i++) out.push(Math.max(0, Math.min(1, rw.charge / o - i)));
+  return { lv: out, u };
+}
 const rwStep = () => sk('ralenti') ? 5 / 60 : RW_STEP, rwWin = () => sk('hesit') ? 4 : RW_WIN;
 // Boucle : une fois par niveau, un rembobinage complet gratuit
 const boucleReady = () => sk('boucle') && ((S.used && S.used.boucle) || 0) < 2;
 // Flashback : une fois par niveau, un crash sans jauge se rembobine quand même (1 s)
 const flashReady = () => sk('flashback') && !(S.used && S.used.flash) && S.phase === 'crash';
-const canRewind = () => SH().key === 'rew' && (rw.charge >= RW_SNAP - 1e-6 || boucleReady() || flashReady()) && rw.hist.length > 0;
+const canRewind = () => SH().key === 'rew' && (rwFull() >= 1 || boucleReady() || flashReady()) && rw.hist.length > 0;
 function snap() {
   const gi = grab ? foes.indexOf(grab.e) : -1;
   return { grid: grid.slice(), trail: trail.slice(), erased: erased.slice(), P: structuredClone(P), foes: structuredClone(foes),
@@ -3385,10 +3418,12 @@ function rewind() {
   if (!canRewind()) return;
   if (S.phase !== 'play' && !(S.phase === 'crash' && S.crashT < rwWin())) return;
   // free : rembobinage offert par Boucle ; fromCrash : pour Leçon ; path : le chemin du fantôme (Écho, Paradoxe)
-  const fromCrash = S.phase === 'crash', noCharge = rw.charge < RW_SNAP - 1e-6;
+  const fromCrash = S.phase === 'crash', noCharge = rwFull() < 1;
   // Seconde chance : après un crash, c'est gratuit ; Flashback : 1 s offerte quand la jauge est vide
   const flash = noCharge && !boucleReady() && flashReady();
   rw.play = { t: rwStep(), n: 0, stop: false, free: boucleReady() || (fromCrash && sk('secondechance')) || flash, limit: flash ? 60 : 1e9, fromCrash, path: [] };
+  // sphères : on part de la charge actuelle, la sphère partielle (floor) ne se vide pas
+  rw.play.start = rw.charge; rw.play.floor = rw.charge - rwFull() * rwOrb();
   if (flash) { S.used.flash = 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'FLASHBACK', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
   else if (rw.play.free && boucleReady() && !(fromCrash && sk('secondechance'))) { S.used.boucle = (S.used.boucle || 0) + 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'BOUCLE', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
   S.phase = 'rewind'; S.exploded = false; cv.style.filter = ''; plan = null; dash = null;
@@ -3400,7 +3435,7 @@ function updateRewind(dt) {
   // au moins une photo est rejouée, même si on rappuie tout de suite
   while (r.t >= rwStep() && (!r.stop || r.n === 0)) {
     r.t -= rwStep();
-    if (!rw.hist.length || (!r.free && rw.charge < RW_SNAP - 1e-6) || r.n >= r.limit) { r.stop = true; break; }
+    if (!rw.hist.length || (!r.free && rw.charge - r.floor < RW_SNAP - 1e-6) || r.n >= r.limit) { r.stop = true; break; }
     unsnap(rw.hist.pop()); if (!r.free) rw.charge = Math.max(0, rw.charge - RW_SNAP); r.n++;
     if (r.n % 2 === 0) r.path.push(playerPos());
     // positions de départ pour glisser vers la photo suivante (plus ancienne) entre deux pas
@@ -3418,12 +3453,20 @@ function updateRewind(dt) {
     });
   }
   hud(); pwHud();
-  if (r.stop) { rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); rewindEnd(r); }
+  if (r.stop) {
+    // on paie en sphères entières, au moins une ; la sphère entamée se fissure
+    if (!r.free) {
+      const o = rwOrb(), used = r.start - rw.charge, k = Math.max(1, Math.ceil(used / o - 1e-3));
+      rw.charge = Math.max(0, r.start - k * o);
+      const F = Math.floor(r.start / o + 1e-6);
+      if (used < k * o - 1e-3) { rw.crack = { i: F - k, t: 0 }; if (!muted) { tone(2800, .05, 'triangle', .04); tone(1900, .09, 'square', .015, 0, .03); } }
+    }
+    rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); rewindEnd(r); }
 }
 // fin du rembobinage : Leçon (une seconde de jauge rendue après un crash), Écho / Paradoxe (le sillage du fantôme assomme ou
 // efface les ennemis qu'il a traversés), Arrêt sur image (2 s figées pour viser), Prescience (2 s de trajectoires prévues)
 function rewindEnd(r) {
-  if (r.fromCrash && sk('lecon')) rw.charge = Math.min(rwSpan(), rw.charge + 1);
+  if (r.fromCrash && sk('lecon')) rw.charge = Math.min(rwSpan(), rw.charge + rwOrb());
   if ((sk('echo') || sk('paradoxe')) && r.path.length) {
     for (const e of foes) {
       if (e.dead || e.kind === 'amph' || !r.path.some(p => Math.hypot(p.x - e.x, p.y - e.y) < 1.6)) continue;
@@ -6066,9 +6109,10 @@ function pwHud() {
     else if (pred.cd > 0) { cls = 'cd'; p = 1 - pred.cd / predCd(); inner = FANG; label = 'Bond en recharge'; }
     else { cls = 'ready'; p = 1; inner = FANG; label = 'Bondir'; }
   } else if (k === 'rew') {
-    if (rw.play) { cls = 'on'; p = rw.charge / rwSpan(); inner = REWI; label = 'Arrêter le rembobinage'; }
-    else if (rw.charge >= RW_SNAP - 1e-6 || boucleReady()) { cls = 'ready'; p = boucleReady() ? 1 : rw.charge / rwSpan(); inner = REWI; label = 'Remonter le temps'; }
-    else { cls = 'cd'; p = rw.charge / rwSpan(); inner = REWI; label = 'Rembobinage en recharge : trace dans la zone à conquérir'; }
+    const nf = rwFull();
+    if (rw.play) { cls = 'orbs on'; p = 0; inner = REWI; label = 'Arrêter le rembobinage'; }
+    else if (nf >= 1 || boucleReady()) { cls = 'orbs ready'; p = 0; inner = REWI; label = `Remonter le temps (${nf} sphère${nf > 1 ? 's' : ''})`; }
+    else { cls = 'orbs cd'; p = 0; inner = REWI; label = 'Sphères vides : conquiers du terrain pour les remplir'; }
   } else {
     const g = P ? P.guard : 0;
     if (g > 0) { cls = 'hurt'; p = 1 - g / guardCells(); inner = SHIELDI; label = 'Bouclier en recharge : trace dans la zone à conquérir'; }
@@ -6080,6 +6124,92 @@ function pwHud() {
   pwSig = sig;
   b.className = 'pw ' + cls; $('pwi').innerHTML = inner; b.setAttribute('aria-label', label);
   furyCv.hidden = !/fury/.test(cls);
+  orbCv.hidden = !/orbs/.test(cls);
+}
+// Rembobineur : six sphères d'énergie posées autour du sablier comme les heures d'un cadran (12 h, 2 h… 10 h). Elles se
+// remplissent dans le sens des aiguilles d'une montre (liquide cuivré, puis sphère cyan allumée) et se vident à
+// l'envers pendant le rembobinage, avec une lueur qui recule le long du cadran ; une sphère entamée se fissure.
+var orbCv = $('orbcv'), orbG = orbCv.getContext('2d');
+function drawOrbs(dt) {
+  const g = orbG, K = 3, W = 66, c = W / 2, R = 23.5, r0 = 5.6, t = REDUCED ? 0 : time, mono = !T.rainbow;
+  g.setTransform(K, 0, 0, K, 0, 0); g.clearRect(0, 0, W, W);
+  if (rw.pop) { rw.pop.t += dt; if (rw.pop.t > .7) rw.pop = null; }
+  if (rw.crack) { rw.crack.t += dt; if (rw.crack.t > .9) rw.crack = null; }
+  const { lv, u } = rwLevels(), play = rw.play, free = !!(play && play.free), gold = !play && boucleReady() && rwFull() < 1;
+  // pendant le rembobinage : une lueur recule sur le cadran, de la sphère qui se vide vers 12 h
+  if (play) {
+    const pu = free ? RW_ORBS * (1 - ((t * .4) % 1)) : u;
+    const a1 = -Math.PI / 2 + Math.max(0, pu - 1) * Math.PI / 3;
+    g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    g.strokeStyle = mono ? 'rgba(160,210,255,.5)' : 'rgba(255,190,110,.55)'; g.lineWidth = 1.4;
+    if (pu > 1) { g.beginPath(); g.arc(c, c, R, -Math.PI / 2, a1); g.stroke(); }
+    const hx = c + Math.cos(a1) * R, hy = c + Math.sin(a1) * R, hg = g.createRadialGradient(hx, hy, 0, hx, hy, 7);
+    hg.addColorStop(0, mono ? 'rgba(220,240,255,.9)' : 'rgba(255,240,200,.95)'); hg.addColorStop(1, 'rgba(255,160,60,0)');
+    g.fillStyle = hg; g.fillRect(hx - 7, hy - 7, 14, 14);
+    g.globalCompositeOperation = 'source-over';
+  }
+  for (let i = 0; i < RW_ORBS; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 3, x = c + Math.cos(a) * R, y = c + Math.sin(a) * R;
+    const v = lv[i], full = v >= 1 - 1e-6, lit = full || free || gold;
+    const popK = rw.pop && rw.pop.i === i ? 1 - rw.pop.t / .7 : 0, crk = rw.crack && rw.crack.i === i ? rw.crack.t / .9 : -1;
+    const r = r0 * (1 + .3 * Math.sin(popK * Math.PI));
+    // halo d'une sphère pleine
+    if (lit) {
+      g.globalCompositeOperation = 'lighter';
+      const hg = g.createRadialGradient(x, y, r * .4, x, y, r * 2.1), pulse = .75 + .25 * Math.sin(t * 2.4 + i * .9);
+      const col = gold || free ? '255,200,90' : mono ? '170,215,255' : '90,225,255';
+      hg.addColorStop(0, 'rgba(' + col + ',' + (.45 * pulse).toFixed(3) + ')'); hg.addColorStop(1, 'rgba(' + col + ',0)');
+      g.fillStyle = hg; g.fillRect(x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4);
+      g.globalCompositeOperation = 'source-over';
+    }
+    // verre vide
+    const bg = g.createRadialGradient(x - r * .3, y - r * .35, r * .1, x, y, r);
+    bg.addColorStop(0, '#2c2f58'); bg.addColorStop(1, '#0d0f24');
+    g.fillStyle = bg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    if (lit) {
+      const fg = g.createRadialGradient(x - r * .3, y - r * .35, r * .1, x, y, r);
+      if (gold || free) { fg.addColorStop(0, '#fff6d8'); fg.addColorStop(.45, '#ffc861'); fg.addColorStop(1, '#a8571a'); }
+      else if (mono) { fg.addColorStop(0, '#f2f8ff'); fg.addColorStop(.45, '#9fcfff'); fg.addColorStop(1, '#2b4f8a'); }
+      else { fg.addColorStop(0, '#f0ffff'); fg.addColorStop(.45, '#5ce1ff'); fg.addColorStop(1, '#1b4fa8'); }
+      g.fillStyle = fg; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      // reflet d'énergie qui tourne dedans
+      g.save(); g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.clip();
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,.25)';
+      const sa = t * 1.6 + i;
+      g.beginPath(); g.ellipse(x + Math.cos(sa) * r * .35, y + Math.sin(sa) * r * .35, r * .5, r * .22, sa, 0, Math.PI * 2); g.fill();
+      g.restore();
+    } else if (v > 0) {
+      // liquide : cuivré pendant le remplissage (avec une petite vague), sable doré qui s'écoule pendant le rembobinage
+      g.save(); g.beginPath(); g.arc(x, y, r - .4, 0, Math.PI * 2); g.clip();
+      const top = y + r - v * r * 2, wv = play ? 0 : .7;
+      g.beginPath(); g.moveTo(x - r, y + r);
+      for (let k = 0; k <= 8; k++) g.lineTo(x - r + k * r / 4, top + Math.sin(t * 4 + k * 1.3 + i) * wv);
+      g.lineTo(x + r, y + r); g.closePath();
+      const lg = g.createLinearGradient(0, top, 0, y + r);
+      if (play) { lg.addColorStop(0, '#fff0b8'); lg.addColorStop(1, '#d9902e'); }
+      else if (mono) { lg.addColorStop(0, '#b9dcff'); lg.addColorStop(1, '#3a62a0'); }
+      else { lg.addColorStop(0, '#ffc98a'); lg.addColorStop(1, '#b8561f'); }
+      g.fillStyle = lg; g.fill(); g.restore();
+    }
+    // éclat d'une sphère qui vient de se remplir
+    if (popK > 0) {
+      g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(200,250,255,' + popK.toFixed(3) + ')'; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(x, y, r + (1 - popK) * 7, 0, Math.PI * 2); g.stroke(); g.globalCompositeOperation = 'source-over';
+    }
+    // sphère entamée : elle se fissure et s'éteint
+    if (crk >= 0) {
+      g.globalAlpha = 1 - crk; g.fillStyle = mono ? '#9fcfff' : '#5ce1ff';
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#fff'; g.lineWidth = .7; g.beginPath();
+      g.moveTo(x - r * .7, y - r * .5); g.lineTo(x - r * .1, y - r * .05); g.lineTo(x - r * .3, y + r * .4); g.lineTo(x + r * .2, y + r * .75);
+      g.moveTo(x - r * .1, y - r * .05); g.lineTo(x + r * .5, y - r * .3); g.lineTo(x + r * .75, y + r * .1);
+      g.stroke(); g.globalAlpha = 1;
+    }
+    // liseré et reflet du verre
+    g.strokeStyle = full ? 'rgba(255,255,255,.75)' : 'rgba(200,205,255,.35)'; g.lineWidth = .8;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(x - r * .35, y - r * .45, r * .3, r * .16, -.6, 0, Math.PI * 2); g.fill();
+  }
 }
 // Mur de flammes autour du bouton quand la furie est prête : des langues de feu tout autour du cercle, couchées
 // vers le haut comme une vraie flamme, en deux couches (rouge derrière, or devant), et des braises qui montent
@@ -6385,6 +6515,16 @@ function drawFx() {
       ctx.save(); ctx.translate(hx + 1, hy); ctx.rotate(Math.min(1, (S.crashT % 1) * 3) * Math.PI);
       ctx.beginPath(); ctx.moveTo(-.7, -1); ctx.lineTo(.7, -1); ctx.lineTo(-.7, 1); ctx.lineTo(.7, 1); ctx.closePath(); ctx.fill();
       ctx.restore();
+      // les sphères qui restent, en petit autour du vaisseau (même cadran que le bouton)
+      const pp = playerPos(), nf = rwFull(), ap = Math.min(1, (S.crashT - .48) * 3);
+      if (ap > 0) for (let i = 0; i < RW_ORBS; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 3, x = pp.x + Math.cos(a) * 2.6 * ap, y = pp.y + Math.sin(a) * 2.6 * ap, on = i < nf;
+        ctx.globalAlpha = ap * (on ? 1 : .45);
+        if (on) glowOn(T.rainbow ? '#5ce1ff' : T.shock, 1.2);
+        ctx.fillStyle = on ? (T.rainbow ? '#8eeaff' : T.shock) : T.textShadow;
+        ctx.beginPath(); ctx.arc(x, y, .5, 0, Math.PI * 2); ctx.fill();
+        if (on) glowOff();
+      }
       ctx.globalAlpha = 1;
     }
     ctx.globalAlpha = 1;
@@ -7551,6 +7691,7 @@ function frame(now) {
   if (shipPick) drawPreview();
   if (!slotCv.hidden) drawSlot();
   if (!furyCv.hidden && S.phase !== 'title') drawFury(dt);
+  if (!orbCv.hidden && S.phase !== 'title') drawOrbs(dt);
   if (foePics.length) drawFoePics(dt);
   requestAnimationFrame(frame);
 }
@@ -7629,7 +7770,7 @@ function newcomers() {
     if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour miser : retouche la machine dans la seconde pour miser 2 ou 3 jetons. 1 jeton : 30 % de chances de gagner, 2 : 60 %, 3 : 90 %. Perdre ne donne rien… ou parfois un coup dur !</p>';
     if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
-    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux (tu économises la jauge). Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). La jauge se recharge en traçant dans la zone à conquérir, pas entre les niveaux.</p>`;
+    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux. Chaque retour vide des sphères entières (0,5 s chacune) : une sphère entamée est perdue. Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). Les 6 sphères se remplissent en conquérant du terrain (une pour 12 %), pas entre les niveaux.</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new">${k === 'amph' ? '' : `<canvas class="foecv" data-k="${k}" aria-hidden="true"></canvas>`}<b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;

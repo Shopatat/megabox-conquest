@@ -592,7 +592,9 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
 {
   const R = SHIPI('rew');
   const span = list => { withSk(R, list); return g.rwSpan(); };
-  const refill = list => { withSk(R, list); g.rw.charge = 0; let n = 0; while (g.rw.charge < 3 - 1e-6 && n < 1000 * G) { g.seaStep(); n++; } return Math.round(n / G); };
+  // sphères : pourcentage du terrain à conquérir pour les remplir toutes (par pas de 1 %), puis terrain reconquis après un retour
+  const refill = list => { withSk(R, list); g.rw.charge = 0; const I = g.S_.interior; let n = 0; while (g.rw.charge < 3 - 1e-6 && n < 200) { g.awardCells(Math.round(I * .01), { x: 25, y: 30 }, false); n++; } return n; };
+  const regain = () => { withSk(R, []); g.rw.charge = 0; const I = g.S_.interior, k = Math.round(I * .2); g.awardCells(k, { x: 25, y: 30 }, false); const c1 = g.rw.charge; g.S_.filled -= k; g.awardCells(k, { x: 25, y: 30 }, false); return +(g.rw.charge - c1).toFixed(3); };
   // rembobinage d'une seconde : durée réelle (ralenti), jauge consommée
   const play = (list, setup) => { withSk(R, list); g.P.shield = false; g.setDir('down'); step(90); if (setup) setup(); const c0 = g.rw.charge; g.rewind(); let n = 0; while (g.rw.play && n < 60 * 30) { step(1); n++; if (n === 120) g.rewind(); } return { frames: n, used: +(c0 - g.rw.charge).toFixed(2) }; };
   const a = play([]), b = play(['ralenti']), loop = play(['boucle'], () => { g.rw.charge = 0; });
@@ -603,7 +605,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   withSk(R, ['arret']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const y0 = g.P.y; step(60); const frozen = g.P.y === y0; step(90); const thawed = g.P.y !== y0;
   withSk(R, ['prescience']); g.P.shield = false; g.setDir('down'); step(60); g.rewind(); step(2); g.rewind(); for (let i = 0; i < 600 && g.rw.play; i++) step(1); const pres = g.S.presT > 0;
   withSk(R, ['prudence']); const pr = g.maxLives();
-  console.log(`rembobineur : jauge ${span([])} s, grand ${span(['grand'])}, géant ${span(['grand', 'geant'])} ; recharge complète ${refill([])} cases, sable fin ${refill(['sablefin'])} ; rembobinage arrêté après 2 s : ${a.used} s remontées, ralenti fin ${b.used} s ; boucle, jauge vide, rembobine quand même ${loop.used === 0 && loop.frames > 1} ; hésitation ${win} s`);
+  console.log(`rembobineur : jauge ${span([])} s, grand ${span(['grand'])}, géant ${span(['grand', 'geant'])} ; 6 sphères pleines après ${refill([])} % conquis, sable fin ${refill(['sablefin'])} % ; terrain reconquis après un retour, gain ${regain()} ; rembobinage arrêté après 2 s : ${a.used} s remontées, ralenti fin ${b.used} s ; boucle, jauge vide, rembobine quand même ${loop.used === 0 && loop.frames > 1} ; hésitation ${win} s`);
   console.log(`rembobineur : leçon +${lecon} s de jauge ; arrêt sur image, figé ${frozen}, puis repart ${thawed} ; prescience ${pres} ; prudence ${pr} vies max ; écho ${ghost2(['echo'])}, paradoxe ${ghost2(['paradoxe'])}, sans ${ghost2([])}`);
 }
 // Piégeur (et Coup bas du Furtif) : zones de plus en plus grandes refermées sur une boule
