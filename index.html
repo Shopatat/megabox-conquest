@@ -825,10 +825,10 @@ const SKILLS = {
       ['boucle', 'Boucle', 'Deux fois par niveau, un rembobinage complet gratuit, qui ne vide aucune sphère.']]],
     ['PARADOXE', 'changer le passé', [
       ['hesit', 'Hésitation', '4 s pour décider au crash, au lieu de 3.'],
-      ['lecon', 'Leçon', 'Rembobiner après un crash rend une sphère.'],
+      ['lecon', 'Leçon', 'Après un rembobinage qui suit un crash, l\'ennemi qui t\'a tué est marqué 3 s : il clignote, sa trajectoire s\'affiche et il va moitié moins vite.'],
       ['echo', 'Écho', 'En rembobinant, ton fantôme laisse un sillage qui assomme les ennemis 2 s.'],
       ['dejavu', 'Déjà-vu', 'Après un rembobinage, 2 s pendant lesquelles rien ne peut te toucher.'],
-      ['secondechance', 'Seconde chance', 'Rembobiner après un crash ne coûte aucune sphère.'],
+      ['tempsmort', 'Temps mort', 'Appui long sur le sablier (ou R) : 3 sphères pour ralentir fort les ennemis 5 s. Plus long avec les 6 sphères (ou Maj + R) : le temps s\'arrête 5 s.'],
       ['paradoxe', 'Paradoxe', 'Les ennemis que ton fantôme traverse en rembobinant sont effacés, pour 500 × niveau chacun.']]],
     ['MAÎTRISE', 'le bon moment', [
       ['ralenti', 'Ralenti fin', 'Rembobinage encore plus lent, pour s\'arrêter pile.'],
@@ -937,7 +937,8 @@ const mLevel = k => MASTERY.filter(v => (mxp[k] || 0) >= v).length;
 const skAll = test => store.get(test ? 'sktest' : 'sk', {});
 // arbre d'un vaisseau, remis en ordre (ordre des branches, une seule ultime, pas plus de points que la maîtrise)
 function skBuild(k, test) {
-  const list = skAll(test)[k] || [], out = [];
+  // Seconde chance (rembobinage gratuit après un crash, abusable) a été remplacée par Temps mort
+  const list = (skAll(test)[k] || []).map(id => id === 'secondechance' ? 'tempsmort' : id), out = [];
   let ult = false, pts = 0;
   for (const br of SKILLS[k] || []) for (let r = 0; r <= ULT_R; r++) {
     const id = br[2][r][0], u = r === ULT_R, cost = u ? ULT_COST : 1;
@@ -1448,7 +1449,7 @@ function musicUpdate(dt) {
   mx.l2 += (a2 - mx.l2) * Math.min(1, dt * (a2 > mx.l2 ? 5 : .5));
   // tempo, hauteur et filtre : chrono (ralenti), rembobinage (bande qui ralentit), furie (un peu plus vite), pause et crash (étouffé)
   const rew = ph === 'rewind', chr = power.chr > 0 || power.schr > 0;
-  mx.tempo = rew ? .55 : power.schr > 0 ? .7 : power.chr > 0 ? .85 : ab.on > 0 ? 1.06 : 1;
+  mx.tempo = rew ? .55 : tm.t > 0 ? (tm.stop ? .5 : .72) : power.schr > 0 ? .7 : power.chr > 0 ? .85 : ab.on > 0 ? 1.06 : 1;
   mx.pitch = rew ? .89 : 1;
   const fq = ph === 'pause' ? 650 : ph === 'crash' ? 420 : rew ? 1100 : chr ? 2600 : 18000;
   if (fq !== mx.fq) { mx.fq = fq; mx.dry.frequency.setTargetAtTime(fq, now, ph === 'crash' ? .08 : .3); }
@@ -1941,7 +1942,7 @@ function setupLevel(L, instant) {
   // Encaisseur : Prêt à tout (bouclier plein à chaque niveau), Double bouclier (deuxième charge)
   if (SH().key === 'enc' && sk('pret')) P.guard = 0;
   P.g2 = sk('double'); P.g2cd = 0; S.noWave = 0;
-  rw.hist = []; rw.t = 0; rw.play = null; rw.hw = 0; rw.pop = rw.crack = null; S.freezeT = 0; S.presT = 0; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
+  rw.hist = []; rw.t = 0; rw.play = null; rw.hw = 0; rw.pop = rw.crack = null; tm.t = 0; tm.k = 0; pwHold = null; S.killer = null; S.freezeT = 0; S.presT = 0; camo.on = 0; camo.next = 4 + Math.random() * 5; S.touched = false;
   if (slot && (slot.st === 'bet' || slot.st === 'spin') && !slot.free) gam.chips = Math.min(chipsMax(), gam.chips + slot.bet);
   slot = null; gam.free = 0; gam.snail = 0;
   if (SH().key === 'gam' && sk('depart')) gam.chips = Math.min(chipsMax(), gam.chips + 1);
@@ -2071,7 +2072,7 @@ const stepTime = () => (power.hyp > 0 ? STEP / 4 : power.spd > 0 ? STEP / 1.75 :
   * (SH().key === 'rob' && sk('moteur') ? 1.11 : SH().slow || 1) / (sk('turbo') && P && !P.drawing ? 1.3 : 1) * (armor.jolt > 0 ? 1.3 : 1) / (gam.snail > 0 ? .7 : 1) / predSpd() * waterSlow() * iceSlow();
 const chronoOn = () => power.chr > 0 || power.schr > 0;
 // facteur de temps des ennemis (et de ce qu'ils provoquent : onde de choc, aspiration)
-const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * planSlow() * (S.bulleT > 0 || (S.presT > 0 && sk('prescience')) ? .5 : 1);
+const foeSlow = () => (power.schr > 0 ? 0.15 : power.chr > 0 ? 0.45 : 1) * (tm.t > 0 ? (tm.stop ? 0 : TM_SLOW) : 1) * planSlow() * (S.bulleT > 0 || (S.presT > 0 && sk('prescience')) ? .5 : 1);
 // Fulgurant : le monde ralentit pendant qu'il dessine son trajet (Temps suspendu, Transe), ou se fige (Instant figé, 3 s au plus)
 const planSlow = () => !plan ? (S.calmT > 0 ? .5 : 1) : sk('fige') && (S.figeT || 0) < 5 ? 0 : sk('transe') ? .3 : sk('suspendu') ? .5 : 1;
 function stepPlayer() {
@@ -2795,6 +2796,7 @@ function foeDist(e, pp) {
 // Le vaisseau est touché (par un ennemi, ou par l'anneau d'un pulsar si e est nul)
 function hitPlayer(e) {
   if (S.phase !== 'play' || S.safe > 0) return;
+  S.lastHit = e ? { e, t: time } : null;
   if (power.sup > 0) { if (e) smash(e); return; }
   // Prédateur : pendant un bond (ou sous Casque), il dévore ce qu'il touche ; le trou noir et le spectre invisible ne se mangent pas
   if (SH().key === 'pred' && e && (jawsOpen() || helmet()) && devour(e)) return;
@@ -3061,6 +3063,10 @@ function updateAbility(dt) {
   if (plan && sk('cyclone') && P) { const pp = playerPos(); for (const e of foes) { const dx = e.x - pp.x, dy = e.y - pp.y, d = Math.hypot(dx, dy); if (e.dead || e.kind === 'amph' || d > 3 || d < .01) continue; const v = Math.max(4, Math.hypot(e.vx, e.vy)); e.vx = dx / d * v; e.vy = dy / d * v; } }
   if (S.presT > 0) S.presT -= dt;
   if (S.bulleT > 0) S.bulleT -= dt;
+  for (const e of foes) if (e.lecon > 0) e.lecon -= dt;
+  // Temps mort : il s'écoule en temps réel ; la teinte (tm.k) suit en douceur
+  if (tm.t > 0) { tm.t -= dt; if (tm.t <= 0) { tm.t = 0; sfx.chronoEnd(); pwHud(); } }
+  tm.k += ((tm.t > 0 ? 1 : 0) - tm.k) * Math.min(1, dt * (tm.t > 0 ? 8 : 3));
   if (sk('reflexe') && P && P.drawing && !((S.refCd -= dt) > 0)) {
     const pp = playerPos();
     if (foes.some(e => !e.dead && !absent(e) && !(e.stun > 0) && Math.hypot(e.x - pp.x, e.y - pp.y) < (e.kind === 'amph' ? R_AMPH + .25 : e.r ? e.r + .45 : .9) + .9)) { slow = Math.max(slow, .5); S.refCd = 2; }
@@ -3369,6 +3375,34 @@ function rwGain(n) {
   if (f1 > f0) { rw.pop = { i: f1 - 1, t: 0 }; if (f1 >= RW_ORBS) sfx.ready(); else if (!muted) { tone(1568, .12, 'sine', .05); tone(2349, .18, 'sine', .035, 0, .06); } }
   pwHud();
 }
+// Temps mort (compétence du Rembobineur, idée de Fabien) : appui long sur le sablier. 3 sphères : ennemis (et ondes,
+// aspiration, dangers des planètes) à TM_SLOW pendant TM_T s ; en tenant plus longtemps avec les 6 sphères : le temps
+// s'arrête (tout est figé, un contact tue quand même). L'image passe en noir et blanc, sauf le vaisseau et son fil.
+const TM_T = 5, TM_SLOW = .35, TM_HOLD = .4, TM_HOLD2 = 1.2;
+const tm = { t: 0, stop: false, k: 0 };
+let pwHold = null, pwLong = false;
+const tmCan = n => SH().key === 'rew' && sk('tempsmort') && S.phase === 'play' && !rw.play && !(tm.t > 0) && rwFull() >= n;
+function tmStart(stop) {
+  const n = stop ? RW_ORBS : 3;
+  if (!tmCan(n)) return false;
+  const F = rwFull(), list = [];
+  for (let i = F - n; i < F; i++) list.push(i);
+  rw.charge = Math.max(0, rw.charge - n * rwOrb()); rw.crack = { list, t: 0 };
+  tm.t = TM_T; tm.stop = stop; slow = Math.max(slow, .25); flash = Math.max(flash, .25);
+  const pp = playerPos();
+  rings.push({ x: pp.x, y: pp.y, r: 0, max: stop ? 30 : 16, age: 0, color: T.rainbow ? '#e8e8e8' : T.shock });
+  popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: stop ? 'LE TEMPS S\'ARRÊTE' : 'TEMPS MORT', age: 0, color: T.rainbow ? '#f2f2f2' : T.ball, big: true });
+  if (!muted) { tone(stop ? 520 : 700, .5, 'sawtooth', .04, stop ? -460 : -500); tone(stop ? 130 : 180, .7, 'sine', .07, -60); }
+  pwHud();
+  return true;
+}
+// appui long sur le bouton : à TM_HOLD s le ralenti est prêt (il part au lâcher, ou tout de suite s'il n'y a pas 6
+// sphères) ; à TM_HOLD2 s avec les 6 sphères, le temps s'arrête
+function pwHoldTick() {
+  const h = (performance.now() - pwHold.t) / 1000;
+  if (h >= TM_HOLD && !tmCan(RW_ORBS)) { pwHold = null; pwLong = true; tmStart(false); }
+  else if (h >= TM_HOLD2) { pwHold = null; pwLong = true; tmStart(true); }
+}
 // niveau de chaque sphère (0 à 1) et position du rembobinage sur le cadran (u, en sphères) ; pendant un rembobinage,
 // la sphère partielle reste telle quelle et les pleines se vident l'une après l'autre
 function rwLevels() {
@@ -3421,11 +3455,11 @@ function rewind() {
   const fromCrash = S.phase === 'crash', noCharge = rwFull() < 1;
   // Seconde chance : après un crash, c'est gratuit ; Flashback : 1 s offerte quand la jauge est vide
   const flash = noCharge && !boucleReady() && flashReady();
-  rw.play = { t: rwStep(), n: 0, stop: false, free: boucleReady() || (fromCrash && sk('secondechance')) || flash, limit: flash ? 60 : 1e9, fromCrash, path: [] };
+  rw.play = { t: rwStep(), n: 0, stop: false, free: boucleReady() || flash, limit: flash ? 60 : 1e9, fromCrash, path: [] };
   // sphères : on part de la charge actuelle, la sphère partielle (floor) ne se vide pas
   rw.play.start = rw.charge; rw.play.floor = rw.charge - rwFull() * rwOrb();
   if (flash) { S.used.flash = 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'FLASHBACK', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
-  else if (rw.play.free && boucleReady() && !(fromCrash && sk('secondechance'))) { S.used.boucle = (S.used.boucle || 0) + 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'BOUCLE', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
+  else if (rw.play.free && boucleReady()) { S.used.boucle = (S.used.boucle || 0) + 1; popups.push({ x: COLS / 2, y: ROWS / 2 - 6, text: 'BOUCLE', age: 0, color: T.rainbow ? '#ffb84d' : T.ball, big: true }); }
   S.phase = 'rewind'; S.exploded = false; cv.style.filter = ''; plan = null; dash = null;
   sfx.rewind(); pwHud();
 }
@@ -3459,14 +3493,19 @@ function updateRewind(dt) {
       const o = rwOrb(), used = r.start - rw.charge, k = Math.max(1, Math.ceil(used / o - 1e-3));
       rw.charge = Math.max(0, r.start - k * o);
       const F = Math.floor(r.start / o + 1e-6);
-      if (used < k * o - 1e-3) { rw.crack = { i: F - k, t: 0 }; if (!muted) { tone(2800, .05, 'triangle', .04); tone(1900, .09, 'square', .015, 0, .03); } }
+      if (used < k * o - 1e-3) { rw.crack = { list: [F - k], t: 0 }; if (!muted) { tone(2800, .05, 'triangle', .04); tone(1900, .09, 'square', .015, 0, .03); } }
     }
     rw.play = null; rw.t = 0; S.phase = 'play'; flash = .35; powersHud(); pwHud(); sfx.chronoEnd(); rewindEnd(r); }
 }
 // fin du rembobinage : Leçon (une seconde de jauge rendue après un crash), Écho / Paradoxe (le sillage du fantôme assomme ou
 // efface les ennemis qu'il a traversés), Arrêt sur image (2 s figées pour viser), Prescience (2 s de trajectoires prévues)
 function rewindEnd(r) {
-  if (r.fromCrash && sk('lecon')) rw.charge = Math.min(rwSpan(), rw.charge + rwOrb());
+  if (r.fromCrash && sk('lecon') && S.killer) {
+    // la même place dans la liste, sinon le plus proche du même type (la liste a pu changer pendant le retour)
+    let e = foes[S.killer.i];
+    if (!e || e.dead || e.kind !== S.killer.kind) e = foes.filter(f => !f.dead && f.kind === S.killer.kind).sort((a, b) => Math.hypot(a.x - S.killer.x, a.y - S.killer.y) - Math.hypot(b.x - S.killer.x, b.y - S.killer.y))[0];
+    if (e) { e.lecon = 3; e.slowT = Math.max(e.slowT || 0, 3); popups.push({ x: e.x, y: e.y - 1.8, text: 'LEÇON', age: 0, color: T.rainbow ? '#ff7a7a' : T.danger }); }
+  }
   if ((sk('echo') || sk('paradoxe')) && r.path.length) {
     for (const e of foes) {
       if (e.dead || e.kind === 'amph' || !r.path.some(p => Math.hypot(p.x - e.x, p.y - e.y) < 1.6)) continue;
@@ -3618,14 +3657,14 @@ function chainBolt() {
   sfx.zap();
 }
 // Trajectoires prévues des ennemis de la zone à conquérir (1,5 s), rebonds sur le terrain et le fil compris
-function drawPremon() {
+function drawPremon(only) {
   ctx.save(); ctx.lineWidth = .1; ctx.setLineDash([.25, .25]); ctx.lineDashOffset = -time * 2;
-  for (const e of foes) {
+  for (const e of only || foes) {
     if (e.dead || !isSea(e) || e.kind === 'puls' || e.kind === 'mine' || e.ride != null || (e.stun > 0)) continue;
     const R = e.r || R_SEA, h = .05;
     let x = e.x, y = e.y, vx = e.vx, vy = e.vy;
     const wall = c => c !== 0 && !(e.kind === 'perf' && c === 2);
-    ctx.strokeStyle = T.rainbow ? 'rgba(191,239,255,0.55)' : T.shock; ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.strokeStyle = only ? (T.rainbow ? 'rgba(255,110,110,0.75)' : T.danger) : T.rainbow ? 'rgba(191,239,255,0.55)' : T.shock; ctx.beginPath(); ctx.moveTo(x, y);
     for (let k = 0; k < 30; k++) {
       const nx = x + vx * h; if (wall(cellW(nx + Math.sign(vx) * R, y))) vx = -vx; else x = nx;
       const ny = y + vy * h; if (wall(cellW(x, ny + Math.sign(vy) * R))) vy = -vy; else y = ny;
@@ -4112,6 +4151,10 @@ function crash(cause) {
   if (skillSave(cause)) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
+  // Leçon : l'ennemi responsable (sa place dans foes, retrouvée après le rembobinage)
+  const ke = S.lastHit && time - S.lastHit.t < .1 ? S.lastHit.e : null;
+  S.killer = ke && foes.includes(ke) ? { i: foes.indexOf(ke), kind: ke.kind, x: ke.x, y: ke.y } : null;
+  tm.t = 0; tm.k = 0;
   power.spd = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
   plan = null; dash = null;
   pred.bite = 0; pred.tail = 0; pred.cd = 0; pred.combo = 0; pred.ct = 0; pred.again = false;
@@ -6148,10 +6191,19 @@ function drawOrbs(dt) {
     g.fillStyle = hg; g.fillRect(hx - 7, hy - 7, 14, 14);
     g.globalCompositeOperation = 'source-over';
   }
+  // Temps mort : appui long qui charge (cuivre jusqu'au ralenti, puis blanc jusqu'à l'arrêt du temps), puis temps restant
+  if (pwHold || tm.t > 0) {
+    const h = pwHold ? (performance.now() - pwHold.t) / 1000 : 0, two = pwHold && h > TM_HOLD;
+    const p = pwHold ? (two ? (h - TM_HOLD) / (TM_HOLD2 - TM_HOLD) : h / TM_HOLD) : tm.t / TM_T;
+    g.lineCap = 'round'; g.lineWidth = 2.2;
+    g.strokeStyle = tm.t > 0 ? 'rgba(235,235,235,.85)' : two ? '#ffffff' : '#ffb86a';
+    g.beginPath(); g.arc(c, c, 17.5, -Math.PI / 2, -Math.PI / 2 + Math.min(1, p) * Math.PI * 2); g.stroke();
+  }
+  const doomed = pwHold ? ((performance.now() - pwHold.t) / 1000 > TM_HOLD ? RW_ORBS : 3) : 0, nf = rwFull();
   for (let i = 0; i < RW_ORBS; i++) {
     const a = -Math.PI / 2 + i * Math.PI / 3, x = c + Math.cos(a) * R, y = c + Math.sin(a) * R;
     const v = lv[i], full = v >= 1 - 1e-6, lit = full || free || gold;
-    const popK = rw.pop && rw.pop.i === i ? 1 - rw.pop.t / .7 : 0, crk = rw.crack && rw.crack.i === i ? rw.crack.t / .9 : -1;
+    const popK = rw.pop && rw.pop.i === i ? 1 - rw.pop.t / .7 : 0, crk = rw.crack && rw.crack.list.includes(i) ? rw.crack.t / .9 : -1;
     const r = r0 * (1 + .3 * Math.sin(popK * Math.PI));
     // halo d'une sphère pleine
     if (lit) {
@@ -6205,8 +6257,9 @@ function drawOrbs(dt) {
       g.moveTo(x - r * .1, y - r * .05); g.lineTo(x + r * .5, y - r * .3); g.lineTo(x + r * .75, y + r * .1);
       g.stroke(); g.globalAlpha = 1;
     }
-    // liseré et reflet du verre
-    g.strokeStyle = full ? 'rgba(255,255,255,.75)' : 'rgba(200,205,255,.35)'; g.lineWidth = .8;
+    // liseré et reflet du verre (les sphères que l'appui long va consommer battent en blanc)
+    const dm = doomed && i >= nf - doomed && i < nf;
+    g.strokeStyle = dm ? `rgba(255,255,255,${(.6 + .4 * Math.sin(t * 18)).toFixed(3)})` : full ? 'rgba(255,255,255,.75)' : 'rgba(200,205,255,.35)'; g.lineWidth = dm ? 1.4 : .8;
     g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
     g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(x - r * .35, y - r * .45, r * .3, r * .16, -.6, 0, Math.PI * 2); g.fill();
   }
@@ -6392,6 +6445,14 @@ function render() {
   if (fires.length) drawFires();
   if (zaps.length) { ctx.save(); glowOn('#9fe8ff', 1.2); ctx.fillStyle = T.rainbow ? '#bfefff' : T.shock; for (const z of zaps) { if (Math.random() < .5) continue; ctx.globalAlpha = Math.min(1, (z.end - fireClock) * 1.5) * .8; ctx.fillRect(z.x - .12 + (Math.random() - .5) * .3, z.y - .12 + (Math.random() - .5) * .3, .24, .24); } ctx.restore(); glowOff(); }
   if (P && ((plan && sk('premon')) || S.presT > 0)) drawPremon();
+  // Leçon : l'ennemi qui t'a tué clignote en rouge et sa trajectoire s'affiche
+  { const marked = foes.filter(e => e.lecon > 0 && !e.dead);
+    if (marked.length) {
+      drawPremon(marked.filter(e => isSea(e)));
+      ctx.save(); glowOn('#ff4d5e', 1.4); ctx.lineWidth = .14; ctx.setLineDash([]);
+      for (const e of marked) { ctx.globalAlpha = Math.min(1, e.lecon) * (Math.floor(time * 6) % 2 ? 1 : .35); ctx.strokeStyle = T.rainbow ? '#ff4d5e' : T.danger; ctx.beginPath(); ctx.arc(e.x, e.y, (e.r || R_SEA) + .7, 0, Math.PI * 2); ctx.stroke(); }
+      glowOff(); ctx.restore();
+    } }
   if (plan && P) drawPlan();
   for (const r of rings) {
     if (r.fill) {
@@ -6427,6 +6488,13 @@ function render() {
   // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
   if (fg) { drawFog(pp); for (const it of items) drawItem(it); for (const e of foes) if (e.kind === 'comet') drawFoe(e); }
+  // Temps mort : tout passe en noir et blanc (presque, pour le ralenti) sauf le fil, redessiné en couleur, et le vaisseau
+  if (tm.k > .01) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = tm.k * (tm.stop ? 1 : .8); ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.restore();
+    if (trail.length && P) drawTrail(pp);
+  }
   if (P && S.phase !== 'crash') drawShield();
   if (P && pp && (S.phase === 'play' || S.phase === 'ready' || S.phase === 'pause' || S.phase === 'clearing' || S.phase === 'rewind' || (S.phase === 'crash' && !S.exploded))) drawPlayer(pp);
   drawMeteors();
@@ -7691,6 +7759,7 @@ function frame(now) {
   if (shipPick) drawPreview();
   if (!slotCv.hidden) drawSlot();
   if (!furyCv.hidden && S.phase !== 'title') drawFury(dt);
+  if (pwHold) pwHoldTick();
   if (!orbCv.hidden && S.phase !== 'title') drawOrbs(dt);
   if (foePics.length) drawFoePics(dt);
   requestAnimationFrame(frame);
@@ -7770,7 +7839,7 @@ function newcomers() {
     if (SH().key === 'gam') html += '<p class="keys">Flambeur : pas d’objets mais des jetons de casino (5 au plus, gardés d’un niveau à l’autre). Touche le jeton en haut à droite (ou F) pour miser : retouche la machine dans la seconde pour miser 2 ou 3 jetons. 1 jeton : 30 % de chances de gagner, 2 : 60 %, 3 : 90 %. Perdre ne donne rien… ou parfois un coup dur !</p>';
     if (SH().key === 'mon') html += '<p class="keys">Monarque : rien que des super bonus, dès maintenant ! Mais ils disparaissent vite : fonce dessus.</p>';
     if (SH().key === 'trap') html += `<p class="keys">Piège : referme une petite zone (12 % du terrain au plus) sur des ennemis pour les éliminer pour de bon.</p>`;
-    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux. Chaque retour vide des sphères entières (0,5 s chacune) : une sphère entamée est perdue. Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). Les 6 sphères se remplissent en conquérant du terrain (une pour 12 %), pas entre les niveaux.</p>`;
+    if (SH().key === 'rew') html += `<p class="keys">Rembobinage : touche le sablier en haut à droite (ou F au clavier) : le temps remonte au ralenti, rappuie pour t'arrêter pile où tu veux. Chaque retour vide des sphères entières (0,5 s chacune) : une sphère entamée est perdue. Au crash, tu as 3 s pour rembobiner (bouton ou toucher l'écran). Les 6 sphères se remplissent en conquérant du terrain (une pour 12 %), pas entre les niveaux.${sk('tempsmort') ? ' Temps mort : appui long sur le sablier (ou R), 3 sphères pour ralentir les ennemis 5 s ; tiens plus longtemps avec les 6 (ou Maj + R) pour arrêter le temps.' : ''}</p>`;
     if (SH().key === 'enc') html += `<p class="keys">Ton bouclier encaisse un coup et t'arrête net : relance-toi aussitôt. Il revient après 80 cases tracées dans la zone à conquérir ; touché avant, tu perds une vie.</p>`;
   }
   for (const k of FOES) if (now[k] > 0 && !seen[k]) html += `<p class="new">${k === 'amph' ? '' : `<canvas class="foecv" data-k="${k}" aria-hidden="true"></canvas>`}<b>NOUVEAU · ${INTRO[k][0]}</b><br>${INTRO[k][1]}</p>`;
@@ -8267,6 +8336,7 @@ addEventListener('keydown', e => {
   if (k === 'Shift' && !e.repeat) { if (planStart()) { e.preventDefault(); return; } }
   if (k === 'p' || k === 'Escape') { e.preventDefault(); togglePause(); return; }
   if (k === 'f' || k === 'e') { e.preventDefault(); usePower(); return; }
+  if (k === 'r' && SH().key === 'rew' && sk('tempsmort')) { e.preventDefault(); if (!e.repeat) tmStart(e.shiftKey); return; }
   if (KEYS[k]) { e.preventDefault(); setDir(KEYS[k]); }
 });
 let touch = null;
@@ -8301,7 +8371,15 @@ ov.addEventListener('pointerup', e => {
   else if (S.phase === 'ready') { ensureAudio(); go(); }
 });
 $('pz').addEventListener('click', togglePause);
-$('pw').addEventListener('click', e => { ensureAudio(); usePower(); e.currentTarget.blur(); });
+$('pw').addEventListener('click', e => { ensureAudio(); e.currentTarget.blur(); if (pwLong) { pwLong = false; return; } usePower(); });
+// Rembobineur, Temps mort : appui long sur le sablier
+$('pw').addEventListener('pointerdown', () => { pwLong = false; pwHold = tmCan(3) ? { t: performance.now() } : null; });
+$('pw').addEventListener('pointerup', () => {
+  if (!pwHold) return;
+  const h = (performance.now() - pwHold.t) / 1000; pwHold = null;
+  if (h >= TM_HOLD) { pwLong = true; tmStart(false); }
+});
+for (const ev of ['pointerleave', 'pointercancel']) $('pw').addEventListener(ev, () => { pwHold = null; });
 slotCv.addEventListener('click', () => { ensureAudio(); usePower(); });
 const snd = $('snd');
 const sndLabel = () => snd.textContent = 'SON : ' + (muted ? 'NON' : 'OUI');
