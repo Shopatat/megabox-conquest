@@ -7407,11 +7407,11 @@ function drawTitle(dt) {
   const c = titleCv, dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
   if (!W || !H) return;
   if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-  const g = titleCtx, hz = H * .66;
+  const g = titleCtx;
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
   // ciel de nuit et halos
   const sky = g.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#0b0724'); sky.addColorStop(.6, '#1c0f44'); sky.addColorStop(.66, '#2a0f4a'); sky.addColorStop(1, '#06030f');
+  sky.addColorStop(0, '#0b0724'); sky.addColorStop(.6, '#1c0f44'); sky.addColorStop(1, '#06030f');
   g.fillStyle = sky; g.fillRect(0, 0, W, H);
   for (const [x, y, r, col] of [[.12, .16, .75, '140,107,255,.38'], [.92, .4, .6, '255,92,138,.24'], [.5, .66, .55, '67,224,255,.2']]) {
     const hg = g.createRadialGradient(x * W, y * H, 0, x * W, y * H, r * W);
@@ -7422,30 +7422,10 @@ function drawTitle(dt) {
   for (const s of TSTARS) {
     s.y += dt * s.z * .045;
     if (s.y > 1) { s.y -= 1; s.x = Math.random(); }
-    if (s.y * H > hz) continue;
     g.globalAlpha = (.2 + .8 * s.z) * (.65 + .35 * Math.sin(time * 3 + s.x * 50));
     const sz = dpr * (.3 + s.z * .85); g.beginPath(); g.arc(s.x * W, s.y * H, sz, 0, Math.PI * 2); g.fill();
   }
   g.globalAlpha = 1;
-  // grille néon en perspective, qui avance vers nous
-  g.save(); g.beginPath(); g.rect(0, hz, W, H - hz); g.clip();
-  const floor = g.createLinearGradient(0, hz, 0, H); floor.addColorStop(0, 'rgba(255,92,138,0.16)'); floor.addColorStop(1, 'rgba(8,4,20,0)');
-  g.fillStyle = floor; g.fillRect(0, hz, W, H - hz);
-  g.lineWidth = dpr * 1.2;
-  for (let k = -14; k <= 14; k++) {
-    g.strokeStyle = `rgba(255,92,180,${.5 - Math.abs(k) * .022})`;
-    g.beginPath(); g.moveTo(W / 2 + k * W * .035, hz); g.lineTo(W / 2 + k * W * .3, H); g.stroke();
-  }
-  for (let i = 0; i < 14; i++) {
-    const t = ((i + time * .7) % 14) / 14, y = hz + (H - hz) * Math.pow(t, 2.3);
-    g.strokeStyle = `rgba(140,107,255,${Math.min(1, t * 1.6) * .75})`;
-    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
-  }
-  g.restore();
-  // horizon lumineux
-  const hl = g.createLinearGradient(0, hz - 3 * dpr, 0, hz + 3 * dpr);
-  hl.addColorStop(0, 'rgba(255,154,77,0)'); hl.addColorStop(.5, 'rgba(255,190,120,0.95)'); hl.addColorStop(1, 'rgba(255,154,77,0)');
-  g.fillStyle = hl; g.fillRect(0, hz - 3 * dpr, W, 6 * dpr);
   // les vaisseaux du jeu qui passent, du plus lointain au plus proche
   tshipT -= dt;
   if (tshipT <= 0) {
