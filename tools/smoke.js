@@ -1568,11 +1568,14 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   }
   // Lucioles : chaque lumiere pique, meme si le centre de l'essaim est plus loin
   {
-    const e = lone('fly', e => { e.x = PX() + 1.4; e.y = PY(); e.vx = e.vy = 0; });
-    step(2);
-    const nl = e.lights.length, dc = Math.hypot(e.x - PX(), e.y - PY());
-    let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
-    console.log(`lucioles : ${nl} lumières ; centre à ${dc.toFixed(1)} cases, phase ${g.S.phase}`);
+    // le centre de l'essaim reste loin du vaisseau : c'est la LUMIÈRE qui doit piquer, et elle seule.
+    // Le rayon des lumières respire (×0,8 à ×1,1) : on le règle pour qu'une lumière balaie le vaisseau.
+    const DC = 2.5;
+    const e = lone('fly', e => { e.x = PX() + DC; e.y = PY(); e.vx = e.vy = 0; });
+    const nl = e.lights.length;
+    e.lights = [{ a: Math.PI, rr: DC / .95, ph: 0 }];
+    let n = 0; while (g.S.phase === 'play' && n++ < 150) step();
+    console.log(`lucioles : ${nl} lumières ; une lumière qui balaie le vaisseau pique (phase ${g.S.phase}) alors que le centre est à ${DC} cases`);
     if (nl < 4) throw new Error('l\'essaim de lucioles est vide');
     if (g.S.phase !== 'crash') throw new Error('une luciole ne pique pas');
   }

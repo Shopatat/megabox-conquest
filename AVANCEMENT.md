@@ -1,36 +1,47 @@
-# AVANCEMENT — grosse révision (session du 29 octobre 2026)
+# AVANCEMENT — grosse révision (session des 29-30 octobre 2026)
 
 ## Objectif de la session
-Demande de Fabien, en une grosse session « ultracode » :
-1. Un **boss thématique, classe et difficile** après la 3e étape de chaque planète → **un niveau en plus par planète** (8 planètes × 4 niveaux = 32 niveaux au lieu de 25).
-2. **Chasse aux bugs** générale.
-3. **Optimisation** du jeu.
-4. **Mise en place des ennemis et objets** déjà validés précédemment (hypothèse retenue : la piste **roguelike à graine est exclue**).
-5. **Compétences / arbres de maîtrise** : revoir l'utilité et l'échelonnage, muscler ce qui est timide, dégager l'anecdotique et le redondant.
-6. **Musique dynamique plus atmosphérique**, moins entêtante.
-7. **Bruitages plus doux et agréables**.
+Demande de Fabien, en une grosse session « ultracode » : un boss par planète, chasse aux bugs, optimisation,
+mise en place des ennemis et objets validés, révision des compétences, musique plus atmosphérique, bruitages
+plus doux. Hypothèse retenue et annoncée : « j'exclue juste la graine » = la piste roguelike à graine est exclue.
+
+## Fait, testé et commité
+1. **12 corrections de bugs** (`ff4de80`), toutes vérifiées dans le code avant correction. La plus grave :
+   l'onde de choc qui rattrape la tête du fil sous Casque n'était jamais soldée — elle restait active, rasait
+   chaque nouvelle case tracée et tuait d'un coup à la fin du pouvoir. Aussi : `isUlt` cherchait l'ultime dans
+   tous les arbres (les identifiants partagés coûtaient 3 points au lieu d'1, d'où des points négatifs et plus
+   aucune compétence plaçable), la sauvegarde de `setupLevel` perdait `S.usedGame`, Fil fragile tuait sur la
+   foudre et les météores, et trois défauts de CSS.
+2. **Les 8 boss et le passage à 32 niveaux** (`d19a2c0`). 8 planètes × 4 niveaux. Moteur complet : trois noyaux
+   à enfermer, phases, attaques obligatoirement annoncées (plancher de 0,45 s imposé par le moteur),
+   `bossTier()` pour la montée en difficulté, `bossReclaim` pour qu'on ne gagne pas à l'usure, HUD des noyaux,
+   rembobinage, crash et reprise, migration des sauvegardes. Les 8 boss ont chacun une mécanique de combat
+   différente (voir CLAUDE.md, section « Les boss »).
+3. **Audio** (`8b4c50c`). `tone()` refondue (filtre par voix, enveloppe douce, désaccord, réverbération courte,
+   limiteur) sans toucher aux 60 appels de `sfx`, plus 11 bruitages réécrits. Musique recomposée : grilles de
+   8 accords, mélodies qui respirent (8 mesures jouées / 8 mesures tues), plus de doublage criard à l'octave,
+   batteries clairsemées, 5 instruments d'atmosphère, réverbération de 3,6 s. 18 % de notes en moins.
+4. **Les 14 ennemis de planète** (`1953606`, `98390d6`). Plus aucune doublure : `STANDIN` est vide et le test
+   vérifie qu'aucune planète ne cite un ennemi inexistant.
+
+## Reste à faire (pas commencé)
+- **Chasse aux bugs : seulement 3 zones sur 25 ont été auditées.** Le gros fan-out d'agents a été coupé par la
+  limite de session. Les 22 zones restantes (conquête, boucle de jeu, bonus, écrans, pouvoirs des vaisseaux, et
+  les 5 audits transverses : grille fine, sauvegarde, crash, vaisseaux × planètes, maîtrise) n'ont pas été
+  passées. C'est la première chose à reprendre.
+- **Optimisation** : rien n'a été fait. L'audit de perfs n'a pas tourné.
+- **Compétences / arbres de maîtrise** : rien n'a été fait. L'audit de pertinence des 198 compétences n'a pas
+  tourné. Attention : le correctif de `skCost` a changé le coût réel des identifiants partagés, donc des arbres
+  sauvegardés peuvent maintenant avoir des points libres en plus.
+- **Équilibrage** : les 8 boss et les 14 ennemis n'ont jamais été joués par un humain, seulement par le test de
+  fumée. Voir « Pistes pour la suite » dans CLAUDE.md.
 
 ## Budget
-- Plan Pro. Au départ : fenêtre 5 h à **2 %**, hebdo **66 %** (reset le 2 novembre).
-- Le frein est l'hebdo : ~29 points utilisables avant le filet de sécurité à 95 %.
-- Règle : remesurer `get_usage` avant chaque étape, ne jamais lancer une étape qui risque de ne pas finir.
-
-## Plan découpé (une étape = autonome, test de fumée + commit à la fin)
-| # | Étape | État |
-|---|---|---|
-| 1 | Audit multi-agents : bugs (chasseur + sceptique par zone), perfs, pertinence des 198 compétences | en cours |
-| 2 | Corrections des bugs confirmés | à faire |
-| 3 | Structure 32 niveaux (8 × 3 étapes + 1 boss) | à faire |
-| 4 | Les 8 boss thématiques | à faire |
-| 5 | Les 16 ennemis de planètes + universels proposés | à faire |
-| 6 | Refonte des compétences | à faire |
-| 7 | Audio : musique atmosphérique + bruitages plus doux | à faire |
-| 8 | Optimisation, finitions, CLAUDE.md, push | à faire |
-
-## Décisions prises
-- « J'exclue juste la graine » → la piste roguelike / runs à graine est laissée de côté.
-- Ordre des étapes : la demande phare (les boss) passe avant les ennemis, pour que le jeu soit livré cohérent même si le quota s'épuise.
-- Un seul fichier `index.html` → les agents **conçoivent et auditent en parallèle**, l'intégration est faite en série pour éviter les conflits.
+Plan Pro. Hebdo : 66 % au départ, 86 % à la fin de l'étape 4 (reset le 2 novembre). Le gros fan-out d'agents de
+l'étape 1 a coûté 14 points pour 2 M de tokens (chaque agent paie le CLAUDE.md de 114 Ko à l'entrée) ; le travail
+en direct a coûté 1 point par étape pour un résultat bien plus grand. **Leçon : sur ce projet, travailler en
+direct, et réserver les agents aux audits en lecture seule où leur parallélisme paie vraiment.**
 
 ## Prochaine action
-Dépouiller l'audit, trier les bugs confirmés, corriger.
+Reprendre l'audit de bugs sur les 22 zones restantes, en petits lots (5 agents à la fois), puis l'optimisation,
+puis les compétences.
