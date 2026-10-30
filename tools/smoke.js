@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, tmStart, get tm() { return tm; }, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow(), get bs() { return bs; }, BOSSES, bossCheckCores, bossTier, ecoRank, MAX_LEVEL, STAGES, ensureAudio, get mx() { return mx; }, SONGS, songPrep, PATCH, playJingle, musicLive };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, tmStart, get tm() { return tm; }, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow(), get bs() { return bs; }, BOSSES, STANDIN, INTRO, absent, seaSeeds, wx, wy, bossCheckCores, bossTier, ecoRank, MAX_LEVEL, STAGES, ensureAudio, get mx() { return mx; }, SONGS, songPrep, PATCH, playJingle, musicLive };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -1388,6 +1388,103 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   }
 }
 
+// 5y) Les ennemis propres aux planetes (premiere fournee) : ricocheur, embusque, meduse, piranhas, salamandre, magma
+{
+  const lone = (kind, setup) => { g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40); const e = g.makeFoe(kind, 1); setup(e); g.foes.push(e); return e; };
+  const sp = e => Math.hypot(e.vx, e.vy);
+
+  // Ricocheur : chaque rebond l'accelere, et il ralentit s'il ne touche rien
+  {
+    const e = lone('ricoch', e => { e.x = 25; e.y = 40; e.vx = 7; e.vy = 0; e.boost = 1; });
+    const v0 = sp(e);
+    let n = 0; for (let f = 0; f < 600 && g.S.phase === 'play'; f++) { step(); n = Math.max(n, e.boost); }
+    g.foes.length = 0;
+    const e2 = g.makeFoe('ricoch', 1); e2.x = 25; e2.y = 33; e2.vx = 7; e2.vy = 0; e2.boost = 2; g.foes.push(e2);
+    const b0 = e2.boost; step(150); const b1 = e2.boost;
+    console.log('ricocheur : facteur de vitesse max ' + n.toFixed(2) + ' en rebondissant, et il retombe (' + b0.toFixed(2) + ' -> ' + b1.toFixed(2) + ') quand il ne touche plus rien');
+    if (n <= 1.05) throw new Error('le ricocheur n\'accelere pas en rebondissant');
+  }
+  // Embusque : invisible et sans effet tant qu'il est cache, il se reveille quand on trace pres de lui
+  {
+    const e = lone('ambush', e => { e.x = 25; e.y = 20; });
+    if (!g.absent(e)) throw new Error('un embusque cache doit etre sans effet');
+    if (g.seaSeeds().length !== 0) throw new Error('un embusque cache ne doit pas bloquer le remplissage');
+    // on trace vers lui : il doit se reveiller puis foncer
+    g.P.x = Math.floor(25 * G); g.P.y = Math.floor(14 * G);
+    let st = e.st; let n = 0;
+    while (e.st === 'hide' && n++ < 400) { g.setDir('down'); step(); }
+    const woke = e.st;
+    n = 0; while (e.st !== 'rush' && n++ < 200) step();
+    console.log(`embusqué : caché -> ${woke} -> ${e.st}, puis il fonce à ${sp(e).toFixed(1)} cases/s`);
+    if (e.st !== 'rush' || sp(e) < 8) throw new Error('l\'embusque ne fonce pas');
+  }
+  // Meduse : ses tentacules declenchent l'onde de choc, loin derriere elle
+  {
+    // la tete file a droite du fil, les tentacules trainent a gauche et le balaient : on teste bien les tentacules
+    const e = lone('jelly', e => { e.x = PX() + 2.4; e.y = PY() - 3; e.vx = 3; e.vy = 0; });
+    step(2);
+    if (!e.tail || e.tail.length < 5) throw new Error('la meduse n\'a pas de tentacules');
+    const far = Math.hypot(e.tail[e.tail.length - 1].x - e.x, e.tail[e.tail.length - 1].y - e.y);
+    let wave = false;
+    let headOff = 9;
+    for (let f = 0; f < 240 && g.S.phase === 'play'; f++) { step(); if (g.wave) { wave = true; headOff = Math.abs(e.x - PX()); break; } }
+    console.log('méduse : ' + e.tail.length + ' tentacules jusqu\'à ' + far.toFixed(1) + ' cases derrière elle ; onde déclenchée ' + (wave ? 'oui, tête à ' + headOff.toFixed(1) + ' cases du fil' : 'non'));
+    if (far < 2) throw new Error('les tentacules de la meduse sont trop courtes');
+    if (!wave) throw new Error('les tentacules de la meduse ne coupent pas le fil');
+    if (headOff < 1) throw new Error('c\'est la tete qui a touche le fil, pas les tentacules');
+  }
+  // Piranhas : ils remontent le fil et le DEVORENT sans tuer (la conquete est perdue, pas la vie)
+  {
+    g.newGame(1, 1); g.go(); g.foes.length = 0;
+    g.setDir('down'); step(70);
+    const lives0 = g.S.lives, len0 = g.trail.length;
+    if (len0 < 8) throw new Error('fil trop court pour le test des piranhas');
+    const e = g.makeFoe('piranha', 1);
+    e.x = g.wx(g.trail[2]); e.y = g.wy(g.trail[2]); e.vx = e.vy = 0; g.foes.push(e);
+    let n = 0; while (e.ride == null && n++ < 120) step();
+    const rode = e.ride != null;
+    n = 0; while (g.trail.length > 2 && n++ < 400 && g.S.phase === 'play') step();
+    console.log(`piranhas : accrochés au fil ${rode ? 'oui' : 'non'}, fil ${len0} -> ${g.trail.length}, vies ${lives0} -> ${g.S.lives}`);
+    if (!rode) throw new Error('les piranhas ne s\'accrochent pas au fil');
+    if (g.S.lives < lives0) throw new Error('les piranhas ne doivent pas tuer');
+  }
+  // Salamandre : elle laisse des cases brulantes, et y entrer brule
+  {
+    const e = lone('sala', e => { e.x = 25; e.y = 40; e.vx = 5; e.vy = 0; });
+    step(60);
+    if (!e.hot.length) throw new Error('la salamandre ne laisse pas de cases brulantes');
+    const nhot = e.hot.length;
+    // on pose le vaisseau sur une case brulante, en pleine zone a conquerir
+    g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(60);
+    const e2 = g.makeFoe('sala', 1); e2.x = PX() + 20; e2.y = PY(); e2.vx = e2.vy = 0;
+    e2.hot = [{ x: PX(), y: PY(), t: 4 }]; g.foes.push(e2);
+    const l0 = g.S.lives; step(6);
+    console.log('salamandre : ' + nhot + ' cases brûlantes laissées ; entrer dedans déclenche ' + (g.S.phase === 'crash' ? 'le crash' : 'rien (' + g.S.phase + ')'));
+    if (g.S.phase !== 'crash') throw new Error('une case brulante de salamandre ne brule pas');
+  }
+  // Bulle de magma : elle creve en gouttes, et une goutte tue
+  {
+    const e = lone('magma', e => { e.x = 25; e.y = 50; e.t = .05; });
+    let n = 0; while (e.st !== 'pop' && n++ < 200) step();
+    const nd = e.drops.length;
+    console.log(`bulle de magma : elle crève en ${nd} gouttes`);
+    if (nd < 4) throw new Error('la bulle de magma ne creve pas en gouttes');
+    // une goutte posee sur le vaisseau, en pleine zone
+    g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(60);
+    const e2 = g.makeFoe('magma', 1); e2.x = PX() + 20; e2.y = PY(); e2.st = 'pop'; e2.t = 3;
+    e2.drops = [{ x: PX(), y: PY(), vx: 0, vy: 0, t: 1.5 }]; g.foes.push(e2);
+    const l0 = g.S.lives; step(5);
+    console.log('bulle de magma : une goutte sur le vaisseau déclenche ' + (g.S.phase === 'crash' ? 'le crash' : 'rien (' + g.S.phase + ')'));
+    if (g.S.phase !== 'crash') throw new Error('une goutte de magma ne touche pas');
+  }
+  // les six sont bien sortis de STANDIN et entres dans FOES
+  for (const k of ['ricoch', 'ambush', 'jelly', 'piranha', 'sala', 'magma']) {
+    if (!g.FOES.includes(k)) throw new Error(k + ' absent de FOES');
+    if (g.STANDIN[k]) throw new Error(k + ' est encore une doublure');
+    if (!g.INTRO[k]) throw new Error(k + ' n\'a pas de présentation');
+  }
+  console.log('ennemis de planète : les 6 sont dans FOES, plus de doublure, présentations prêtes');
+}
 // 5z) Les boss : un par planète, au 4e niveau de chacune. Trois noyaux à enfermer, le boss monte d'une phase à chaque
 // noyau, le troisième le tue et finit le niveau. On vérifie aussi que toute attaque est annoncée (plancher de 0,45 s).
 {

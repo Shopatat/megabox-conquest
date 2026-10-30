@@ -452,6 +452,8 @@ const THEMES = {
     spark:'#7fb8ff', sparkHi:'#f2f8ff', snake:'#2fe0b4', snakeHi:'#c8fff0', snakeLo:'#0b6d5c', mine:'#7f89b5', mineHi:'#dfe4fa', mineLo:'#262b47',
     comet:'#8fe3ff', cometHi:'#ffffff', magA:'#ff4d5e', magR:'#4d8bff', echo:'#ff5fd2', scar:'#30e69e', scarHi:'#d8fff0', scarLo:'#0a6b4c',
     thief:'#eef1ff', thiefLo:'#1b1f3a', thiefWing:'#6f8cff', outline:null,
+    ricoch:'#ffb55c', ricochHi:'#fff0d2', ambush:'#c98a4a', ambushHi:'#ff6a4d', jelly:'#9df0ff', jellyHi:'#ffffff',
+    piranha:'#5fe0c0', piranhaHi:'#eafffb', sala:'#ff7a3d', salaHi:'#ffe0a8', magma:'#ff5a3c', magmaHi:'#ffd27a',
     crawler:'#ff4d8d', crawlerCore:'#ffd6e6', amph:'#a58cff', amphHi:'#f1ecff', amphRing:'rgba(220,210,255,0.8)', amphInv:'#1a1230', hole:'#030108',
     playerLand:'#ffffff', playerLandInk:'#100d18', playerSea:'#ffffff', playerSeaInk:'#100d18', flame:'#ff7a4d',
     danger:'#ff3b3b', landP:'#b9a8ff', fresh:'230,236,255', flash:'255,59,59', textShadow:'#100d18',
@@ -462,6 +464,8 @@ const THEMES = {
     spark:'#0b1838', sparkHi:'#5a80c8', snake:'#0b1838', snakeHi:'#5a80c8', snakeLo:'#0b1838', mine:'#0b1838', mineHi:'#5a80c8', mineLo:'#0b1838',
     comet:'#0b1838', cometHi:'#5a80c8', magA:'#0b1838', magR:'#0b1838', echo:'#0b1838', scar:'#cfe2ff', scarHi:'#ffffff', scarLo:'#8fbaf2',
     thief:'#0b1838', thiefLo:'#0b1838', thiefWing:'#0b1838', outline:'#cfe2ff',
+    ricoch:'#0b1838', ricochHi:'#5a80c8', ambush:'#0b1838', ambushHi:'#5a80c8', jelly:'#0b1838', jellyHi:'#5a80c8',
+    piranha:'#0b1838', piranhaHi:'#5a80c8', sala:'#0b1838', salaHi:'#5a80c8', magma:'#0b1838', magmaHi:'#5a80c8',
     crawler:'#cfe2ff', crawlerCore:'#0b1838', amph:'#0b1838', amphHi:'#5a80c8', amphRing:'rgba(11,24,56,0.85)', amphInv:'#cfe2ff', hole:'#0b1838',
     playerLand:'#cfe2ff', playerLandInk:'#0b1838', playerSea:'#0b1838', playerSeaInk:'#8fbaf2', flame:'#0b1838',
     danger:'#0b1838', landP:'#0b1838', fresh:'11,24,56', flash:'11,24,56', textShadow:'#8fbaf2',
@@ -679,6 +683,12 @@ const INTRO = {
   hunt: ['CHASSEUR', 'Tranquille tant que tu restes sur ton terrain. Dès que tu traces, il te vise (un pointillé te prévient) et fonce sur toi par à-coups.'],
   div:  ['DIVISEUR', 'Une grosse cellule : chaque fois qu\'elle touche ton fil, elle se coupe en deux, plus petites et plus rapides (2 fois au plus).'],
   ghost:['SPECTRE', 'Il disparaît de temps en temps. Invisible, il est toujours là : seul un léger scintillement le trahit.'],
+  ricoch:['RICOCHEUR', 'Il accélère à chaque rebond, et il brille de plus en plus : plus tu le laisses rebondir, plus il devient incontrôlable. Les astéroïdes lui donnent de la vitesse.'],
+  ambush:['EMBUSQUÉ', 'Caché dans un astéroïde, invisible. Quand tu traces trop près, il ouvre un œil rouge puis te fonce dessus. L\'œil est ton seul avertissement.'],
+  jelly:['MÉDUSE', 'Elle dérive en pulsant, mais ses tentacules traînent loin derrière elle et touchent ton fil comme le corps du serpent. Ne passe jamais sous elle.'],
+  piranha:['BANC DE PIRANHAS', 'S\'il touche ton fil, il le remonte jusqu\'à toi et le DÉVORE : tu ne meurs pas, mais ta conquête est perdue. Regagne ton terrain avant lui.'],
+  sala:['SALAMANDRE', 'Elle laisse derrière elle des cases brûlantes qui tiennent quelques secondes. Son chemin devient un piège : regarde où elle est passée.'],
+  magma:['BULLE DE MAGMA', 'Elle monte lentement en gonflant, puis elle éclate en gouttes de lave qui partent dans toutes les directions. Mets-toi à l\'abri avant qu\'elle crève.'],
   spark:['ÉTINCELLE', 'Si elle touche ton fil, elle s\'y accroche et le remonte jusqu\'à toi. Pas d\'onde de choc : regagne ton terrain avant qu\'elle t\'atteigne et ta conquête tient.'],
   snake:['SERPENT', 'Sa tête rebondit comme une boule, mais tout son long corps touche ton fil : ne coupe jamais derrière lui.'],
   mine: ['MINE', 'Elle dérive lentement. Si ton fil ou ton vaisseau passe à moins de 3 cases, elle s\'arme et explose : son cercle clignote, sors-en vite. Elle se reforme quelques secondes plus tard.'],
@@ -1849,7 +1859,8 @@ function resetGrid() {
 
 /* ---------- Composition des niveaux ---------- */
 // Ennemis du jeu ; les universels (étincelle, serpent, mine, comète, aimant, écho, scarabée, chapardeur) vont partout.
-const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost', 'spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief'];
+const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost', 'spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief',
+  'ricoch', 'ambush', 'jelly', 'piranha', 'sala', 'magma'];
 // Les écosystèmes (planètes, demande de Fabien) : 8 planètes de 3 niveaux (découverte, plus dur, épreuve), puis un
 // boss au niveau 25, celui de la dernière planète traversée. Ordre fixe, du plus facile au plus dur (ECO_ORDER, S.ecos). Les niveaux sont écrits pour l'Expert, seule difficulté proposée.
 // Chaque planète aura sa mécanique et deux ennemis à elle : en attendant, ceux qui n'existent pas encore sont joués par
@@ -1927,8 +1938,7 @@ const ECOS = [
 // Ennemis prévus pour les planètes, pas encore créés, et leur doublure : ricocheur et lucioles → boule, embusqué et
 // piranhas → chasseur, givreur et salamandre → étincelle, patineur → perforateur, bulle de magma → diviseur, méduse →
 // serpent, mirage → spectre, bobines jumelles et condensateur → pulsar, étoile à neutrons → aimant, vortex → boule.
-const STANDIN = { ricoch: 'out', ambush: 'hunt', frost: 'spark', skate: 'perf', sala: 'spark', magma: 'div', jelly: 'snake', piranha: 'hunt',
-  mirage: 'ghost', fly: 'out', coils: 'puls', capa: 'puls', nstar: 'mag', vortex: 'out' };
+const STANDIN = { frost: 'spark', skate: 'perf', mirage: 'ghost', fly: 'out', coils: 'puls', capa: 'puls', nstar: 'mag', vortex: 'out' };
 const STAGES = ['DÉCOUVERTE', 'PLUS DUR', 'ÉPREUVE', 'BOSS'];
 // Ordre fixe des planètes, de la plus facile à la plus dure (demande de Fabien : une progression jusqu'au boss final ;
 // tomber sur Nébula trop tôt était bien trop dur) : Terra Nova, Astéria, Océania, Pyros, Glacia, Voltaria, Singularité,
@@ -1973,7 +1983,8 @@ const foeCount = c => FOES.reduce((a, k) => a + (c[k] || 0), 0);
 function makeFoe(kind, sp) {
   const deg = kind === 'inn' ? [30, 60] : [30, 45, 60];
   const a = (deg[(Math.random() * deg.length) | 0] + 90 * ((Math.random() * 4) | 0)) * Math.PI / 180;
-  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, puls: 1.4, hunt: 3.2, div: 5.2, ghost: 6.6, spark: 6, snake: 5, mine: 1.2, comet: 0, mag: 2.4, echo: 0, scar: 0, thief: 5 }[kind] * sp;
+  const base = { out: 7.2, perf: 8.8, inn: 4.6, amph: 2.8, puls: 1.4, hunt: 3.2, div: 5.2, ghost: 6.6, spark: 6, snake: 5, mine: 1.2, comet: 0, mag: 2.4, echo: 0, scar: 0, thief: 5,
+    ricoch: 6.4, ambush: 0, jelly: 2.6, piranha: 4.6, sala: 5, magma: 1.8 }[kind] * sp;
   let x, y;
   if (kind === 'inn' || kind === 'amph') { x = 4 + Math.random() * (COLS - 8); y = ROWS - 1; }
   else { x = B + 3 + Math.random() * (COLS - 2*B - 6); y = B + 12 + Math.random() * (ROWS - 2*B - 16); }
@@ -1991,6 +2002,13 @@ function makeFoe(kind, sp) {
   if (kind === 'echo') echoReset(e);
   if (kind === 'scar') scarPlace(e, 4 + Math.random() * (COLS - 8), ROWS - 1);
   if (kind === 'thief') { e.loot = []; e.full = 0; }
+  if (kind === 'ricoch') { e.boost = 1; e.psx = Math.sign(e.vx); e.psy = Math.sign(e.vy); e.r = .5; e.base = base; }
+  if (kind === 'ambush') { e.st = 'hide'; e.t = 0; e.r = .62; e.base = base; ambushHide(e); }
+  if (kind === 'jelly') { e.r = .72; e.pulse = Math.random() * 6; e.base = base; e.tail = []; }
+  if (kind === 'piranha') { e.ride = null; e.rideId = -1; e.cd = 0; e.base = base; e.r = .45;
+    e.fish = Array.from({ length: 7 }, (_, i) => ({ a: i * .9, rr: .3 + Math.random() * .55, ph: Math.random() * 6 })); }
+  if (kind === 'sala') { e.hot = []; e.drop = 0; e.r = .55; e.base = base; }
+  if (kind === 'magma') { e.st = 'grow'; e.t = 4 + Math.random() * 3; e.r = .5; e.drops = []; e.base = base; e.grow = .6; }
   return e;
 }
 
@@ -2129,6 +2147,7 @@ function onTrailHit(e, i) {
   // mine : le contact l'arme (l'explosion soufflera le fil) ; étincelle : elle se pose sur le fil et le remonte
   if (e.kind === 'mine' && !e.blast) { mineArm(e); return; }
   if (e.kind === 'spark' && (e.cd > 0 || e.ride != null)) return;
+  if (e.kind === 'piranha') { if (e.cd > 0 || e.ride != null) return; piranhaBoard(e, trailPos[i]); return; }
   const fast = e.kind === 'perf';
   if (sk('collet')) e.slowT = 2;
   if (sk('glu')) stunBy(e, 1);
@@ -2325,9 +2344,10 @@ function playerPos() {
 }
 
 /* ---------- Conquête ---------- */
-const SEA = { out: 1, perf: 1, puls: 1, hunt: 1, div: 1, ghost: 1, spark: 1, snake: 1, mine: 1, mag: 1, thief: 1 };
+const SEA = { out: 1, perf: 1, puls: 1, hunt: 1, div: 1, ghost: 1, spark: 1, snake: 1, mine: 1, mag: 1, thief: 1,
+  ricoch: 1, ambush: 1, jelly: 1, piranha: 1, sala: 1, magma: 1 };
 const isSea = e => !!SEA[e.kind];
-function seaSeeds() { return foes.filter(e => !e.dead && isSea(e) && !(e.kind === 'mine' && e.st === 'gone')); }
+function seaSeeds() { return foes.filter(e => !e.dead && isSea(e) && !(e.kind === 'mine' && e.st === 'gone') && !(e.kind === 'ambush' && e.st === 'hide')); }
 function capture() {
   const tcells = [];
   for (let k = 0; k < trail.length; k++) if (!erased[k]) { grid[trail[k]] = 1; tcells.push(trail[k]); }
@@ -2793,9 +2813,11 @@ function lootBack(e) {
   for (const type of loot) if (type !== 'life' && type !== 'slife' || S.lives < maxLives()) collect({ type, x: e.x, y: e.y, vx: 0, vy: 0, age: 0, ttl: 30, done: false });
 }
 // hors jeu (aucun contact) : mine qui se reforme, écho pas encore là, comète pas encore lancée
-const absent = e => (e.kind === 'mine' && e.st === 'gone') || (e.kind === 'echo' && !e.on) || (e.kind === 'comet' && e.st !== 'fly');
+const absent = e => (e.kind === 'mine' && e.st === 'gone') || (e.kind === 'echo' && !e.on) || (e.kind === 'comet' && e.st !== 'fly')
+  || (e.kind === 'ambush' && e.st === 'hide') || (e.kind === 'magma' && e.st === 'pop');
 const foeColor = e => ({ out: T.ball, perf: T.perf, inn: T.crawler, amph: T.amph, puls: T.puls, hunt: T.hunt, div: T.div, ghost: T.ghost,
-  spark: T.spark, snake: T.snake, mine: T.mine, comet: T.comet, mag: e.pol > 0 ? T.magA : T.magR, echo: T.echo, scar: T.scar, thief: T.thiefWing })[e.kind];
+  spark: T.spark, snake: T.snake, mine: T.mine, comet: T.comet, mag: e.pol > 0 ? T.magA : T.magR, echo: T.echo, scar: T.scar, thief: T.thiefWing,
+  ricoch: T.ricoch, ambush: T.ambush, jelly: T.jelly, piranha: T.piranha, sala: T.sala, magma: T.magma })[e.kind];
 const isLand = (x, y) => inB(x, y) && grid[at(x, y)] === 1 && !holeG[at(x, y)];
 function moveLand(e, dt) {
   const R = R_LAND, steps = Math.max(1, Math.ceil(Math.hypot(e.vx, e.vy) * dt / 0.25)), h = dt / steps;
@@ -2861,14 +2883,25 @@ function moveFoe(e, dt) {
   else if (e.kind === 'snake') snakeTick(e, dt);
   else if (e.kind === 'mag') magTick(e, dt);
   else if (e.kind === 'thief') thiefTick(e, dt);
+  else if (e.kind === 'jelly') jellyTick(e, dt);
+  else if (e.kind === 'sala') salaTick(e, dt);
+  else if (e.kind === 'magma') magmaTick(e, dt);
+  else if (e.kind === 'piranha' && e.cd > 0) e.cd -= dt;
   if (e.kind === 'mine') { mineTick(e, dt); if (e.st === 'gone') { e.ph += dt * 3; return; } }
   if (e.kind === 'spark' && e.ride != null) sparkRide(e, dt);
+  else if (e.kind === 'piranha' && e.ride != null) piranhaRide(e, dt);
+  else if (e.kind === 'ambush') ambushMove(e, dt);
+  else if (e.kind === 'magma' && e.st === 'pop') { /* la bulle a creve : seules ses gouttes vivent */ }
   else if (e.kind === 'comet') cometTick(e, dt);
   else if (e.kind === 'echo') echoTick(e, dt);
   else if (e.kind === 'scar') scarTick(e, dt);
   else if (isSea(e)) moveSea(e, dt);
   else if (e.kind === 'inn') moveLand(e, dt);
   else moveAmph(e, dt);
+  if (e.kind === 'ricoch') ricochBounce(e, dt);
+  if (e.kind === 'jelly') { jellyTail(e); if (S.phase === 'play' && !(e.stun > 0)) jellyHits(e); }
+  if (e.kind === 'sala') salaBurn(e, dt);
+  if (e.kind === 'magma') magmaDrops(e, dt);
   if (e.kind === 'snake') { snakeBody(e); if (S.phase === 'play' && !(e.stun > 0)) snakeHits(e); }
   e.ph += dt * 3;
   e.hist.unshift({ x: e.x, y: e.y }); if (e.hist.length > 7) e.hist.pop();
@@ -2904,6 +2937,7 @@ function updateFoes(dt) {
 function foeDist(e, pp) {
   let d = Math.hypot(e.x - pp.x, e.y - pp.y);
   if (e.kind === 'snake' && e.body) for (const s of snakeSegs(e)) if (cellW(s.x, s.y) !== 1) d = Math.min(d, Math.hypot(s.x - pp.x, s.y - pp.y) + .15);
+  if (e.kind === 'jelly' && e.tail) for (const s of e.tail) if (cellW(s.x, s.y) !== 1) d = Math.min(d, Math.hypot(s.x - pp.x, s.y - pp.y) + .2);
   return d;
 }
 // Le vaisseau est touché (par un ennemi, ou par l'anneau d'un pulsar si e est nul)
@@ -2992,6 +3026,386 @@ function drawStun(e) {
     ctx.beginPath();
     for (let j = 0; j < 10; j++) { const rr = j % 2 ? .07 : .17, b = -Math.PI/2 + j * Math.PI/5; ctx.lineTo(Math.cos(b)*rr, Math.sin(b)*rr); }
     ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+}
+
+
+/* -- Ennemis d'Astéria, d'Océania et de Pyros -- */
+// Ricocheur : il rebondit comme une boule, mais chaque rebond l'accélère (jusqu'à RICOCH_MAX fois sa vitesse) et le
+// fait briller davantage. Il ralentit doucement s'il ne touche rien : le laisser ricocher entre deux astéroïdes le
+// rend incontrôlable. Il déclenche l'onde de choc comme une boule.
+const RICOCH_MAX = 2.3;
+function ricochBounce(e, dt) {
+  const sx = Math.sign(e.vx), sy = Math.sign(e.vy);
+  const hit = (e.psx && sx && e.psx !== sx) || (e.psy && sy && e.psy !== sy);
+  e.psx = sx; e.psy = sy;
+  const old = e.boost || 1;
+  if (hit) {
+    e.boost = Math.min(RICOCH_MAX, old + .17);
+    if (!muted) tone(260 + e.boost * 240, .07, 'triangle', .022, 180);
+    if (T.glow) burst(e.x, e.y, T.ricochHi, 7, 5);
+  } else e.boost = Math.max(1, old - dt * .085);
+  if (e.boost !== old && old > 0) { const k = e.boost / old; e.vx *= k; e.vy *= k; }
+}
+function drawRicoch(e) {
+  const k = ((e.boost || 1) - 1) / (RICOCH_MAX - 1), r = .5 + k * .12, a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, r * (2.4 + k * 1.6), T.ricoch, .3 + k * .35);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  // traînée : d'autant plus longue qu'il va vite
+  if (T.glow) {
+    ctx.globalAlpha = .3 + k * .4; ctx.fillStyle = T.ricoch;
+    ctx.beginPath(); ctx.moveTo(0, -r * .7); ctx.lineTo(-r * (2 + k * 4), 0); ctx.lineTo(0, r * .7); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  const g = T.smooth ? ctx.createRadialGradient(-r * .3, -r * .35, r * .1, 0, 0, r) : null;
+  if (g) { g.addColorStop(0, T.ricochHi); g.addColorStop(.6, T.ricoch); g.addColorStop(1, '#6b3a12'); ctx.fillStyle = g; }
+  else ctx.fillStyle = T.ricoch;
+  glowOn(T.ricoch, 2 + k * 2);
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill(); ctx.shadowBlur = 0;
+  // facettes de roche : elles s'allument avec la vitesse
+  if (T.smooth) {
+    ctx.strokeStyle = T.ricochHi; ctx.lineWidth = .07; ctx.globalAlpha = .4 + k * .6;
+    for (let i = 0; i < 5; i++) { const b = e.ph * .6 + i * TAU / 5; ctx.beginPath(); ctx.moveTo(Math.cos(b) * r * .25, Math.sin(b) * r * .25); ctx.lineTo(Math.cos(b) * r * .92, Math.sin(b) * r * .92); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  eye(e.x + Math.cos(a) * .12, e.y + Math.sin(a) * .12, .15, a, T.ink);
+}
+
+// Embusqué : caché dans un astéroïde (invisible, il ne bloque pas le remplissage et ne touche pas). Si tu traces à
+// moins de AMBUSH_SEE cases, un œil rouge s'ouvre (AMBUSH_WAKE s d'avertissement) puis il fonce droit sur toi. Après
+// sa charge il repart se cacher ailleurs.
+const AMBUSH_SEE = 8.5, AMBUSH_WAKE = .7, AMBUSH_RUSH = 1.3, AMBUSH_V = 13.5;
+function ambushHide(e) {
+  // de préférence dans un astéroïde (c'est sa planète), sinon n'importe où dans la zone à conquérir, loin du vaisseau
+  const pp = P ? playerPos() : { x: COLS / 2, y: 1 }, rocks0 = [];
+  for (let i = 0; i < N; i++) if (rockG[i]) rocks0.push(i);
+  for (let n = 0; n < 60; n++) {
+    let x, y;
+    if (rocks0.length) { const i = rocks0[(Math.random() * rocks0.length) | 0]; x = wx(i); y = wy(i); }
+    else { x = urand(B + 3, COLS - B - 3); y = urand(B + 10, ROWS - B - 3); }
+    if (Math.hypot(x - pp.x, y - pp.y) < 9) continue;
+    e.x = x; e.y = y; e.vx = e.vy = 0; e.st = 'hide'; e.t = 0; return;
+  }
+  e.st = 'hide'; e.t = 0; e.vx = e.vy = 0;
+}
+function ambushMove(e, dt) {
+  if (e.st === 'hide') {
+    e.t += dt;
+    // sa cachette a été conquise : il va se cacher ailleurs
+    if (grid[at(gc(e.x), gc(e.y))] === 1 && e.t > .5) { ambushHide(e); return; }
+    if (!P || !P.drawing || e.t < .6) return;
+    const pp = playerPos();
+    if (Math.hypot(pp.x - e.x, pp.y - e.y) > AMBUSH_SEE) return;
+    e.st = 'wake'; e.t = AMBUSH_WAKE;
+    if (!muted) { tone(150, .3, 'sawtooth', .04, 120); tone(900, .12, 'triangle', .02, -400, .1); }
+    rings.push({ x: e.x, y: e.y, r: 0, max: 3.2, age: 0, color: T.ambushHi });
+    return;
+  }
+  if (e.st === 'wake') {
+    if ((e.t -= dt) > 0) return;
+    const pp = playerPos(), a = Math.atan2(pp.y - e.y, pp.x - e.x);
+    e.vx = Math.cos(a) * AMBUSH_V * e.sp; e.vy = Math.sin(a) * AMBUSH_V * e.sp;
+    e.st = 'rush'; e.t = AMBUSH_RUSH;
+    burst(e.x, e.y, T.ambushHi, 22, 9);
+    if (!muted) tone(220, .22, 'sawtooth', .05, 400);
+    return;
+  }
+  // il fonce : il rebondit comme une boule (et son onde de choc part s'il touche le fil)
+  moveSea(e, dt);
+  if ((e.t -= dt) <= 0) { e.st = 'back'; e.t = 1.4; }
+  if (e.st === 'back' && (e.t -= dt) <= 0) ambushHide(e);
+}
+function drawAmbush(e) {
+  if (e.st === 'hide') {
+    // juste un frémissement de poussière sur sa cachette, à peine visible
+    if (!T.smooth || Math.random() > .04) return;
+    ctx.save(); ctx.globalAlpha = .25; ctx.fillStyle = T.ambush;
+    ctx.beginPath(); ctx.arc(e.x + urand(-.5, .5), e.y + urand(-.5, .5), .1, 0, TAU); ctx.fill(); ctx.restore();
+    return;
+  }
+  const wake = e.st === 'wake', k = wake ? 1 - e.t / AMBUSH_WAKE : 1, a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, 1.6 + k, T.ambushHi, wake ? .25 + k * .5 : .45);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(wake ? 0 : a);
+  // carapace de roche fendue
+  const g = T.smooth ? ctx.createRadialGradient(-.2, -.25, .05, 0, 0, .7) : null;
+  if (g) { g.addColorStop(0, '#e0b183'); g.addColorStop(.65, T.ambush); g.addColorStop(1, '#3a2110'); ctx.fillStyle = g; }
+  else ctx.fillStyle = T.ambush;
+  ctx.beginPath();
+  for (let i = 0; i < 9; i++) { const b = i * TAU / 9, rr = .62 + .12 * Math.sin(i * 2.3 + e.ph * .2); const fn = i ? 'lineTo' : 'moveTo'; ctx[fn](Math.cos(b) * rr, Math.sin(b) * rr); }
+  ctx.closePath(); ctx.fill();
+  // l'œil : le seul avertissement, il s'ouvre pendant le réveil
+  glowOn(T.ambushHi, 2.6); ctx.fillStyle = T.ambushHi;
+  const h = .1 + .18 * k;
+  ctx.beginPath(); ctx.ellipse(.18, 0, .3, h, 0, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0; ctx.fillStyle = '#2a0a06';
+  ctx.beginPath(); ctx.ellipse(.24, 0, .1, h * .6, 0, 0, TAU); ctx.fill();
+  if (T.smooth && e.st === 'rush') { ctx.globalAlpha = .4; ctx.fillStyle = T.ambushHi; ctx.beginPath(); ctx.moveTo(-.4, -.4); ctx.lineTo(-2.6, 0); ctx.lineTo(-.4, .4); ctx.closePath(); ctx.fill(); }
+  ctx.restore();
+}
+
+// Méduse : elle dérive en pulsant (sa vitesse bat), et ses tentacules traînent derrière elle. Tout le chapelet touche
+// le fil (onde de choc, comme le corps du serpent) et le vaisseau : il ne faut jamais passer sous elle.
+const JELLY_N = 7, JELLY_GAP = .46;
+function jellyTick(e, dt) {
+  e.pulse += dt * 2.2;
+  // battement : elle avance par poussées
+  const k = .45 + .9 * Math.max(0, Math.sin(e.pulse));
+  setSpeed(e, e.base * k);
+}
+function jellyTail(e) {
+  // les tentacules suivent la tête avec un décalage, en ondulant
+  const a = Math.atan2(e.vy, e.vx) + Math.PI;
+  if (!e.tail) e.tail = [];
+  for (let i = 0; i < JELLY_N; i++) {
+    const d = (i + 1) * JELLY_GAP, w = Math.sin(e.pulse * 1.3 - i * .7) * .3 * (i + 1) / JELLY_N;
+    const x = e.x + Math.cos(a) * d + Math.cos(a + 1.57) * w, y = e.y + Math.sin(a) * d + Math.sin(a + 1.57) * w;
+    if (e.tail[i]) { e.tail[i].x = x; e.tail[i].y = y; } else e.tail[i] = { x, y };
+  }
+}
+function jellyHits(e) {
+  if (!P || !P.drawing || !e.tail) return;
+  for (const s of e.tail) {
+    const cx = gc(s.x), cy = gc(s.y);
+    if (cell(cx, cy) === 2) { onTrailHit(e, at(cx, cy)); return; }
+  }
+}
+function drawJelly(e) {
+  const t = e.pulse, sq = .82 + .22 * Math.sin(t), a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, 2.6, T.jelly, .3);
+  // tentacules, du bout vers la tête
+  if (e.tail) {
+    ctx.save(); ctx.strokeStyle = T.jelly; ctx.lineCap = 'round';
+    for (let i = e.tail.length - 1; i >= 0; i--) {
+      const s = e.tail[i], prev = i ? e.tail[i - 1] : e;
+      ctx.globalAlpha = .3 + .5 * (1 - i / e.tail.length); ctx.lineWidth = .3 * (1 - i / (e.tail.length + 2));
+      ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(s.x, s.y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+  }
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a + 1.57);
+  // ombrelle translucide
+  const g = T.smooth ? ctx.createRadialGradient(0, -.2, .05, 0, 0, .95) : null;
+  if (g) { g.addColorStop(0, T.jellyHi); g.addColorStop(.55, T.jelly); g.addColorStop(1, 'rgba(60,140,180,.15)'); ctx.fillStyle = g; }
+  else ctx.fillStyle = T.jelly;
+  glowOn(T.jelly, 2.4);
+  ctx.beginPath(); ctx.ellipse(0, 0, .78, .78 * sq, 0, Math.PI, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 0, .78, .4 * sq, 0, 0, Math.PI); ctx.fill();
+  ctx.shadowBlur = 0;
+  if (T.smooth) {
+    ctx.strokeStyle = T.jellyHi; ctx.lineWidth = .06; ctx.globalAlpha = .7;
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * .28, -.1); ctx.lineTo(i * .22, -.68 * sq); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  eye(e.x, e.y, .13, Math.atan2(e.vy, e.vx), T.ink);
+}
+
+// Banc de piranhas : s'il touche ton fil, il s'y accroche et le remonte jusqu'à toi (comme l'étincelle), mais il ne
+// tue pas : il DÉVORE le fil. Arrivé à la tête, toute la conquête est perdue et le banc retombe dans la zone.
+const PIR_V = 12;
+function piranhaBoard(e, k) {
+  if (k == null || k < 0) return;
+  e.ride = k; e.rideId = trailId; e.x = wx(trail[k]); e.y = wy(trail[k]);
+  burst(e.x, e.y, T.piranha, 16, 7);
+  if (!muted) { tone(520, .1, 'triangle', .03, 300); tone(1400, .07, 'square', .015, -500, .04); }
+}
+function piranhaDrop(e) {
+  e.ride = null; e.cd = 1;
+  const a = Math.random() * TAU; e.vx = Math.cos(a); e.vy = Math.sin(a); setSpeed(e, e.base);
+}
+function piranhaRide(e, dt) {
+  if (!P || !P.drawing || !trail.length || e.rideId !== trailId) { piranhaDrop(e); return; }
+  const last = trail.length - 1, k0 = Math.min(last, Math.floor(e.ride)), k = Math.min(last, e.ride + PIR_V * e.sp * G * dt);
+  for (let j = k0; j <= Math.floor(k); j++) if (erased[j]) { e.x = wx(trail[j]); e.y = wy(trail[j]); piranhaDrop(e); return; }
+  e.ride = k;
+  const a = trail[Math.floor(k)], b = trail[Math.min(last, Math.floor(k) + 1)], f = k - Math.floor(k);
+  e.x = wx(a) + (wx(b) - wx(a)) * f; e.y = wy(a) + (wy(b) - wy(a)) * f;
+  if (T.glow && Math.random() < .4) particles.push({ x: e.x, y: e.y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, life: 0, max: .2 + Math.random() * .2, color: T.piranhaHi, size: .08 + Math.random() * .08, ng: 1 });
+  if (!muted && Math.random() < .2) tone(700 + Math.random() * 500, .025, 'triangle', .012);
+  // arrivé à la tête : il dévore le fil. On ne meurt pas, mais la conquête est perdue.
+  if (k >= last - .2 && S.phase === 'play') {
+    const pp = playerPos();
+    popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.6), text: 'DÉVORÉ !', age: 0, color: T.piranha });
+    burst(pp.x, pp.y, T.piranha, 30, 10);
+    cancelConquest();
+    piranhaDrop(e);
+  }
+}
+function drawPiranha(e) {
+  const a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, 2.2, T.piranha, .26);
+  // un petit banc : chaque poisson tourne autour du centre
+  ctx.save();
+  for (const f of e.fish) {
+    const b = a + f.a + Math.sin(e.ph * 1.6 + f.ph) * .5, rr = f.rr * (.85 + .25 * Math.sin(e.ph * 2 + f.ph));
+    const x = e.x + Math.cos(b) * rr, y = e.y + Math.sin(b) * rr, fa = a + Math.sin(e.ph * 3 + f.ph) * .4;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(fa);
+    glowOn(T.piranha, 1.4); ctx.fillStyle = T.piranha;
+    ctx.beginPath(); ctx.moveTo(.2, 0); ctx.lineTo(-.1, .11); ctx.lineTo(-.22, 0); ctx.lineTo(-.1, -.11); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (T.smooth) { ctx.fillStyle = T.piranhaHi; ctx.beginPath(); ctx.arc(.1, -.03, .035, 0, TAU); ctx.fill(); }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// Salamandre : elle rebondit comme une boule et laisse derrière elle des cases brûlantes qui tiennent SALA_T
+// secondes. Son chemin devient un piège : y entrer brûle (mêmes dégâts que la lave).
+const SALA_T = 4.2, SALA_MAX = 26, SALA_DROP = .13;
+function salaTick(e, dt) {
+  if ((e.drop -= dt) > 0) return;
+  e.drop = SALA_DROP;
+  e.hot.push({ x: e.x, y: e.y, t: SALA_T });
+  if (e.hot.length > SALA_MAX) e.hot.shift();
+}
+function salaBurn(e, dt) {
+  for (const h of e.hot) h.t -= dt;
+  if (e.hot.length && e.hot[0].t <= 0) e.hot = e.hot.filter(h => h.t > 0);
+  if (S.phase !== 'play' || !P || helmet() || power.sup > 0 || !inSeaNow()) return;
+  const pp = playerPos();
+  for (const h of e.hot) {
+    if (h.t < .25 || Math.hypot(h.x - pp.x, h.y - pp.y) > .72) continue;
+    hitSrc = 'sala'; hitPlayer(null); hitSrc = 'ring';
+    if (S.phase === 'crash') popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.4), text: 'BRÛLÉ !', age: 0, color: T.danger });
+    return;
+  }
+}
+function drawSala(e) {
+  // les braises de son passage, d'abord (sous elle)
+  if (T.smooth) {
+    ctx.save(); ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+    for (const h of e.hot) {
+      const k = Math.min(1, h.t / SALA_T);
+      ctx.globalAlpha = .18 + .5 * k * k;
+      const g = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, .75);
+      g.addColorStop(0, T.salaHi); g.addColorStop(.5, T.sala); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y, .75, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  } else {
+    ctx.save(); ctx.fillStyle = T.sala;
+    for (const h of e.hot) if ((h.t * 5 | 0) % 2) ctx.fillRect(h.x - .3, h.y - .3, .6, .6);
+    ctx.restore();
+  }
+  const a = Math.atan2(e.vy, e.vx);
+  halo(e.x, e.y, 2.4, T.sala, .34);
+  ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(a);
+  const g = T.smooth ? ctx.createLinearGradient(-.6, 0, .6, 0) : null;
+  if (g) { g.addColorStop(0, '#6b1c08'); g.addColorStop(.5, T.sala); g.addColorStop(1, T.salaHi); ctx.fillStyle = g; }
+  else ctx.fillStyle = T.sala;
+  glowOn(T.sala, 2.4);
+  // corps allongé + queue qui ondule
+  ctx.beginPath(); ctx.ellipse(0, 0, .62, .32, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-.5, -.14);
+  ctx.quadraticCurveTo(-1, Math.sin(e.ph * 3) * .35, -1.35, Math.sin(e.ph * 3 + .6) * .3);
+  ctx.quadraticCurveTo(-1, Math.sin(e.ph * 3) * .35 + .14, -.5, .14); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur = 0;
+  if (T.smooth) {
+    // quatre pattes
+    ctx.strokeStyle = '#8a2d0c'; ctx.lineWidth = .1;
+    for (const sx of [-.28, .22]) for (const sy of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(sx, sy * .2);
+      ctx.lineTo(sx - .12, sy * (.42 + .1 * Math.sin(e.ph * 4 + sx * 6 + sy))); ctx.stroke();
+    }
+    // crête incandescente
+    ctx.fillStyle = T.salaHi; ctx.globalAlpha = .6 + .3 * Math.sin(e.ph * 4);
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(i * .22 - .06, -.2); ctx.lineTo(i * .22, -.42); ctx.lineTo(i * .22 + .06, -.2); ctx.closePath(); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  eye(e.x + Math.cos(a) * .3, e.y + Math.sin(a) * .3, .12, a, '#2a0a06');
+}
+
+// Bulle de magma : elle monte lentement en gonflant, puis elle crève en MAGMA_N gouttes de lave qui partent dans
+// toutes les directions. Les gouttes tuent au contact et coupent le fil. La bulle se reforme ensuite ailleurs.
+const MAGMA_N = 6, MAGMA_LIFE = 1.6, MAGMA_V = 11, MAGMA_BACK = 3.2;
+function magmaTick(e, dt) {
+  if (e.st === 'grow') {
+    e.grow = Math.min(1, e.grow + dt * .12);
+    // elle monte doucement vers le haut de l'écran
+    e.vx = Math.cos(e.ph * .4) * e.base * .5; e.vy = -e.base;
+    if ((e.t -= dt) <= 0) magmaPop(e);
+    return;
+  }
+  if (e.st === 'pop' && (e.t -= dt) <= 0 && !e.drops.length) {
+    // elle se reforme en bas de la zone, loin du vaisseau
+    const pp = P ? playerPos() : { x: COLS / 2, y: 1 };
+    for (let n = 0; n < 40; n++) {
+      const x = urand(B + 3, COLS - B - 3), y = urand(ROWS * .55, ROWS - B - 3);
+      if (Math.hypot(x - pp.x, y - pp.y) < 9 || lavaG[at(gc(x), gc(y))]) continue;
+      e.x = x; e.y = y; break;
+    }
+    e.st = 'grow'; e.t = 4 + Math.random() * 3; e.grow = .5; e.vy = -e.base;
+    rings.push({ x: e.x, y: e.y, r: 0, max: 3, age: 0, color: T.magma });
+    if (!muted) tone(180, .25, 'sine', .03, 160);
+  }
+}
+function magmaPop(e) {
+  e.st = 'pop'; e.t = MAGMA_BACK; e.drops = [];
+  const n = MAGMA_N + (e.grow > .9 ? 2 : 0);
+  for (let i = 0; i < n; i++) {
+    const a = i * TAU / n + Math.random() * .4, v = MAGMA_V * e.sp * (.7 + Math.random() * .6);
+    e.drops.push({ x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: MAGMA_LIFE });
+  }
+  burst(e.x, e.y, T.magma, 36, 13); burst(e.x, e.y, T.magmaHi, 18, 8);
+  rings.push({ x: e.x, y: e.y, r: 0, max: 4.5, age: 0, color: T.magmaHi });
+  shake = Math.max(shake, REDUCED ? 0 : .35);
+  if (!muted) { tone(90, .45, 'sawtooth', .06, -40); tone(400, .2, 'triangle', .03, -250, .02); }
+}
+function magmaDrops(e, dt) {
+  if (!e.drops.length) return;
+  const pp = P ? playerPos() : null;
+  for (const d of e.drops) {
+    d.t -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vy += dt * 4;     // elles retombent
+    if (d.x < B || d.x > COLS - B || d.y < B || d.y > ROWS - B) { d.t = 0; continue; }
+    if (S.phase !== 'play' || !pp) continue;
+    // elles coupent le fil et touchent le vaisseau
+    const cx = gc(d.x), cy = gc(d.y);
+    if (P && P.drawing && cell(cx, cy) === 2) { onTrailHit({ kind: 'magma', x: d.x, y: d.y, vx: d.vx, vy: d.vy }, at(cx, cy)); d.t = 0; continue; }
+    if (Math.hypot(d.x - pp.x, d.y - pp.y) < .62 && inSeaNow()) {
+      hitSrc = 'magma'; hitPlayer(null); hitSrc = 'ring'; d.t = 0;
+      if (S.phase === 'crash') popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.4), text: 'ARROSÉ !', age: 0, color: T.danger });
+    }
+  }
+  if (e.drops.some(d => d.t <= 0)) e.drops = e.drops.filter(d => d.t > 0);
+}
+function drawMagma(e) {
+  // les gouttes
+  if (e.drops.length) {
+    ctx.save();
+    for (const d of e.drops) {
+      const k = Math.min(1, d.t / MAGMA_LIFE), a = Math.atan2(d.vy, d.vx);
+      if (!T.smooth) { ctx.fillStyle = T.magma; ctx.fillRect(d.x - .2, d.y - .2, .4, .4); continue; }
+      glowOn(T.magmaHi, 2.2); ctx.globalAlpha = .4 + .6 * k;
+      const g = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, .34);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(.4, T.magmaHi); g.addColorStop(1, T.magma);
+      ctx.fillStyle = g;
+      ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(a);
+      ctx.beginPath(); ctx.ellipse(0, 0, .34, .2, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
+  }
+  if (e.st === 'pop') return;
+  const r = .42 + e.grow * .55, wob = 1 + .07 * Math.sin(e.ph * 2.4);
+  halo(e.x, e.y, r * 2.6, T.magma, .28 + e.grow * .2);
+  ctx.save(); ctx.translate(e.x, e.y);
+  const g = T.smooth ? ctx.createRadialGradient(-r * .3, -r * .35, r * .1, 0, 0, r) : null;
+  if (g) { g.addColorStop(0, T.magmaHi); g.addColorStop(.55, T.magma); g.addColorStop(1, '#5a1004'); ctx.fillStyle = g; }
+  else ctx.fillStyle = T.magma;
+  glowOn(T.magma, 2.6);
+  ctx.beginPath(); ctx.ellipse(0, 0, r * wob, r / wob, 0, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0;
+  if (T.smooth) {
+    // elle est de plus en plus tendue : la croûte se fend juste avant d'éclater
+    const k = e.grow;
+    ctx.strokeStyle = T.magmaHi; ctx.lineWidth = .07; ctx.globalAlpha = k * (e.t < 1 ? .4 + .6 * Math.abs(Math.sin(e.ph * 9)) : .5);
+    for (let i = 0; i < 4; i++) { const b = i * TAU / 4 + e.ph * .2; ctx.beginPath(); ctx.moveTo(Math.cos(b) * r * .2, Math.sin(b) * r * .2); ctx.lineTo(Math.cos(b + .5) * r * .85, Math.sin(b + .5) * r * .85); ctx.stroke(); }
+    ctx.globalAlpha = .55; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-r * .3, -r * .34, r * .18, 0, TAU); ctx.fill();
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
@@ -3885,7 +4299,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20, hole: .30, boss: .25 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20, hole: .30, boss: .25, ricoch: .12, ambush: .15, jelly: .12, sala: .18, magma: .14 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -7776,6 +8190,12 @@ function drawFoe(e) {
     else if (e.kind === 'echo') drawEcho(e);
     else if (e.kind === 'scar') drawScar(e);
     else if (e.kind === 'thief') drawThief(e);
+    else if (e.kind === 'ricoch') drawRicoch(e);
+    else if (e.kind === 'ambush') drawAmbush(e);
+    else if (e.kind === 'jelly') drawJelly(e);
+    else if (e.kind === 'piranha') drawPiranha(e);
+    else if (e.kind === 'sala') drawSala(e);
+    else if (e.kind === 'magma') drawMagma(e);
     else drawOut(e);
   }
 }
@@ -9104,6 +9524,11 @@ function setupFoePics() {
     if (e.kind === 'comet') e.st = 'fly';
     if (e.kind === 'echo') { e.on = 1; e.vx = 1; e.vy = 0; }
     if (e.kind === 'scar') { e.vx = 1; e.vy = 0; }
+    // l'embusqué se montre sur son portrait (sur le terrain il est invisible), la bulle de magma est gonflée
+    if (e.kind === 'ambush') { e.st = 'rush'; e.t = 9; e.vx = 1; e.vy = 0; }
+    if (e.kind === 'magma') { e.st = 'grow'; e.t = 9; e.grow = 1; }
+    if (e.kind === 'jelly') { e.vx = 0; e.vy = -1; jellyTail(e); }
+    if (e.kind === 'sala') { e.vx = 1; e.vy = 0; e.hot = []; }
     if (e.kind === 'snake') e.body = Array.from({ length: SNAKE_N * 2 + 1 }, (_, j) => ({ x: PIC / 2 - Math.cos(j * .32) * (.2 + j * .045), y: PIC / 2 + Math.sin(j * .32) * (.2 + j * .045) }));
     return { c, g: c.getContext('2d'), e, a: Math.random() * 6 };
   });
