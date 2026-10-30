@@ -36,12 +36,26 @@ plus doux. Hypothèse retenue et annoncée : « j'exclue juste la graine » = la
 - **Équilibrage** : les 8 boss et les 14 ennemis n'ont jamais été joués par un humain, seulement par le test de
   fumée. Voir « Pistes pour la suite » dans CLAUDE.md.
 
-## Budget
-Plan Pro. Hebdo : 66 % au départ, 86 % à la fin de l'étape 4 (reset le 2 novembre). Le gros fan-out d'agents de
-l'étape 1 a coûté 14 points pour 2 M de tokens (chaque agent paie le CLAUDE.md de 114 Ko à l'entrée) ; le travail
-en direct a coûté 1 point par étape pour un résultat bien plus grand. **Leçon : sur ce projet, travailler en
-direct, et réserver les agents aux audits en lecture seule où leur parallélisme paie vraiment.**
+## Budget : la leçon de la session
+Plan Pro. Hebdo : **66 % au départ, 95 % à l'arrêt** (reset le 2 novembre). Le détail compte, parce qu'il change
+la façon de travailler sur ce projet :
 
-## Prochaine action
-Reprendre l'audit de bugs sur les 22 zones restantes, en petits lots (5 agents à la fois), puis l'optimisation,
-puis les compétences.
+| Ce qui a été fait | Coût | Résultat |
+|---|---|---|
+| Fan-out de 34 agents (audit initial) | **14 points**, 2 M de tokens | 3 zones sur 25 (la limite de session a tué les 31 autres) |
+| Fan-out de 10 agents (conception des boss) | compris dans les 14 | 1 spec sur 10 (le reste tué) |
+| Fan-out de 6 agents (relecture du code neuf) | **7 points**, 1,07 M de tokens | **rien du tout**, les 6 tués par la limite |
+| Travail en direct (bugs, boss, audio, ennemis, doc) | **~5 points en tout** | 6 commits, 2 141 lignes neuves, tout testé |
+
+**Leçon, à appliquer la prochaine fois : ne pas utiliser de sous-agents sur ce projet.** Chaque agent paie le
+CLAUDE.md (114 Ko, ~30 k tokens) à l'entrée avant d'avoir lu une ligne de code, et un fan-out qui se fait couper
+par la limite de session perd TOUT (les agents en vol ne rendent rien). Le travail en direct a été environ
+**quinze fois plus productif par point d'usage**. Si un audit en parallèle est vraiment souhaité, le faire par
+lots de 3 ou 4 agents maximum, et vérifier l'usage entre chaque lot.
+
+## Prochaine action (session suivante, après le reset du 2 novembre)
+1. **Relire le code écrit aujourd'hui** : 2 141 lignes neuves (moteur de boss et 8 modules, 14 ennemis, audio
+   refondu, intégration des 32 niveaux) n'ont été relues par personne. Le test de fumée passe mais ne couvre pas
+   tout. À faire en direct, zone par zone, en commençant par le moteur de boss et l'intégration.
+2. **Jouer** : les 8 boss et les 14 ennemis n'ont jamais été vus par un humain. C'est l'équilibrage qui manque.
+3. Puis l'audit des 22 zones de code ancien, l'optimisation, et les compétences.
