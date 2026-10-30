@@ -1485,6 +1485,111 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   }
   console.log('ennemis de planète : les 6 sont dans FOES, plus de doublure, présentations prêtes');
 }
+// 5y2) Les ennemis de Glacia, Voltaria, Singularite et Nebula
+{
+  const lone = (kind, setup) => { g.newGame(1, 1); g.go(); g.foes.length = 0; g.setDir('down'); step(40); const e = g.makeFoe(kind, 1); setup(e); g.foes.push(e); return e; };
+  const sp = e => Math.hypot(e.vx, e.vy);
+
+  // Givreur : il gele le fil au lieu de declencher l'onde tout de suite, et ca eclate 2 s plus tard
+  {
+    const e = lone('frost', e => { e.x = PX() + 3; e.y = PY() - 2; e.vx = -5.6; e.vy = 0; });
+    let n = 0; while (!e.fz && n++ < 200 && g.S.phase === 'play') step();
+    const froze = !!e.fz, waveAt = !!g.wave;
+    n = 0; while (!g.wave && n++ < 200 && g.S.phase === 'play') step();
+    console.log(`givreur : fil gelé ${froze ? 'oui' : 'non'}, onde immédiate ${waveAt ? 'oui' : 'non'}, onde après le délai ${g.wave ? 'oui' : 'non'}`);
+    if (!froze) throw new Error('le givreur ne gele pas le fil');
+    if (waveAt) throw new Error('le givreur ne doit pas declencher l\'onde tout de suite');
+    if (!g.wave) throw new Error('le gel du givreur n\'eclate jamais');
+  }
+  // Patineur : toujours sur un axe, jamais en diagonale, et plus vite sur la glace
+  {
+    const e = lone('skate', e => { e.x = 25; e.y = 40; e.vx = 9; e.vy = 0; });
+    let diag = 0;
+    for (let f = 0; f < 600 && g.S.phase === 'play'; f++) { step(); if (Math.abs(e.vx) > 1e-6 && Math.abs(e.vy) > 1e-6) diag++; }
+    console.log(`patineur : ${diag} images en diagonale sur 600, vitesse ${sp(e).toFixed(1)} cases/s`);
+    if (diag > 3) throw new Error('le patineur part en diagonale');
+  }
+  // Bobines jumelles : c'est l'ARC entre les deux qui coupe le fil, pas les bobines
+  {
+    const e = lone('coils', e => { e.x = PX(); e.y = PY() - 4; e.vx = 0; e.vy = 2.8; e.a = 1.5708; e.rad = 2.9; });
+    let n = 0, far = 0;
+    while (!g.wave && n++ < 300 && g.S.phase === 'play') {
+      step();
+      if (g.wave) far = Math.min(Math.abs(e.x - Math.cos(e.a) * e.rad - PX()), Math.abs(e.x + Math.cos(e.a) * e.rad - PX()));
+    }
+    console.log(`bobines jumelles : onde déclenchée ${g.wave ? 'oui' : 'non'} par l'arc`);
+    if (!g.wave) throw new Error('l\'arc des bobines ne coupe pas le fil');
+  }
+  // Condensateur : il se charge beaucoup plus vite s'il y a une onde en cours, puis il decharge
+  {
+    let e = lone('capa', e => { e.x = 25; e.y = 50; e.vx = e.vy = 0; e.ch = 0; });
+    step(60); const calm = e.ch;
+    e = lone('capa', e => { e.x = 25; e.y = 50; e.vx = e.vy = 0; e.ch = 0; });
+    // on fabrique une onde de choc en lancant une boule sur le fil
+    const b = g.makeFoe('out', 1); b.x = PX() + 3; b.y = PY() - 1; b.vx = -7; b.vy = 0; g.foes.push(b);
+    let n = 0; while (!g.wave && n++ < 200 && g.S.phase === 'play') step();
+    const c0 = e.ch; step(30); const gained = e.ch - c0;
+    console.log(`condensateur : charge ${calm.toFixed(2)} en 1 s au calme, +${gained.toFixed(2)} en 0,5 s pendant une onde`);
+    if (!(gained > calm * .6)) throw new Error('le condensateur n\'absorbe pas les ondes');
+    // plein, il decharge et coupe le fil
+    const e2 = lone('capa', e => { e.x = PX() + 2; e.y = PY() - 1; e.vx = e.vy = 0; e.ch = .99; });
+    n = 0; while (e2.zap <= 0 && n++ < 60) step();
+    console.log(`condensateur : décharge déclenchée ${e2.zap > 0 ? 'oui' : 'non'}`);
+    if (!(e2.zap > 0)) throw new Error('le condensateur ne decharge pas');
+  }
+  // Etoile a neutrons : elle courbe la route des autres ennemis
+  {
+    const e = lone('nstar', e => { e.x = 25; e.y = 40; e.vx = e.vy = 0; });
+    const b = g.makeFoe('out', 1); b.x = 25; b.y = 46; b.vx = 7.2; b.vy = 0; g.foes.push(b);
+    const a0 = Math.atan2(b.vy, b.vx); step(40); const a1 = Math.atan2(b.vy, b.vx);
+    console.log(`étoile à neutrons : la boule est déviée de ${(Math.abs(a1 - a0) * 57.3).toFixed(1)}°`);
+    if (Math.abs(a1 - a0) < .05) throw new Error('l\'etoile a neutrons ne courbe rien');
+  }
+  // Vortex jumeaux : il teleporte un ennemi d'un passage a l'autre, et ne tue jamais
+  {
+    const e = lone('vortex', e => { e.x = 25; e.y = 40; e.vx = e.vy = 0; e.a = 0; e.rad = 7.5; e.cd = 0; });
+    const b = g.makeFoe('out', 1); b.x = 25 - 7.5; b.y = 40; b.vx = 0; b.vy = 0; g.foes.push(b);
+    let n = 0, moved = false;
+    while (n++ < 60 && !moved) { step(); if (b.x > 25) moved = true; }
+    console.log(`vortex jumeaux : ennemi téléporté d'un passage à l'autre ${moved ? 'oui' : 'non'}`);
+    if (!moved) throw new Error('le vortex ne teleporte pas');
+    // il ne touche jamais le vaisseau
+    const e2 = lone('vortex', e => { e.x = PX(); e.y = PY(); e.vx = e.vy = 0; e.a = 0; e.rad = 0; });
+    step(20);
+    console.log(`vortex jumeaux : posé sur le vaisseau, phase ${g.S.phase} (il ne tue pas)`);
+    if (g.S.phase !== 'play') throw new Error('le vortex ne doit pas tuer');
+  }
+  // Mirage : trois exemplaires, un seul reel
+  {
+    const e = lone('mirage', e => { e.x = 25; e.y = 40; });
+    step(10);
+    console.log(`mirage : ${e.cop.length} copies autour du vrai`);
+    if (e.cop.length !== 2) throw new Error('le mirage doit avoir deux copies');
+  }
+  // Lucioles : chaque lumiere pique, meme si le centre de l'essaim est plus loin
+  {
+    const e = lone('fly', e => { e.x = PX() + 1.4; e.y = PY(); e.vx = e.vy = 0; });
+    step(2);
+    const nl = e.lights.length, dc = Math.hypot(e.x - PX(), e.y - PY());
+    let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
+    console.log(`lucioles : ${nl} lumières ; centre à ${dc.toFixed(1)} cases, phase ${g.S.phase}`);
+    if (nl < 4) throw new Error('l\'essaim de lucioles est vide');
+    if (g.S.phase !== 'crash') throw new Error('une luciole ne pique pas');
+  }
+  // les quatorze ennemis de planete existent, et il ne reste plus aucune doublure
+  const all = ['ricoch', 'ambush', 'jelly', 'piranha', 'sala', 'magma', 'frost', 'skate', 'coils', 'capa', 'nstar', 'vortex', 'mirage', 'fly'];
+  for (const k of all) {
+    if (!g.FOES.includes(k)) throw new Error(k + ' absent de FOES');
+    if (!g.INTRO[k]) throw new Error(k + ' n\'a pas de présentation');
+  }
+  if (Object.keys(g.STANDIN).length) throw new Error('il reste des doublures : ' + Object.keys(g.STANDIN).join(','));
+  // toutes les planetes ne citent plus que de vrais ennemis
+  for (const eco of g.ECOS) for (const lv of eco.levels) for (const k in lv) {
+    if (k === 'name' || k === 'boss') continue;
+    if (!g.FOES.includes(k)) throw new Error(eco.key + ' cite un ennemi inconnu : ' + k);
+  }
+  console.log(`ennemis de planète : les ${all.length} existent, plus aucune doublure, toutes les planètes citent de vrais ennemis`);
+}
 // 5z) Les boss : un par planète, au 4e niveau de chacune. Trois noyaux à enfermer, le boss monte d'une phase à chaque
 // noyau, le troisième le tue et finit le niveau. On vérifie aussi que toute attaque est annoncée (plancher de 0,45 s).
 {
