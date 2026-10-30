@@ -1075,26 +1075,46 @@ const menuDiff = 2;
 let menuLevel = 1, menuShip = Math.min(SHIPS.length - 1, Math.max(0, store.get('ship', 0)));
 
 /* ---------- Son ---------- */
-let actx = null, muted = store.get('mute', false), sfxBus = null;
+let actx = null, muted = store.get('mute', false), sfxBus = null, sfxRev = null;
 function ensureAudio() {
   if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } audioGraph(); }
   if (actx.state === 'suspended') actx.resume().catch(() => {});
 }
+// Un bruitage passe par un filtre qui arrondit les harmoniques dures des carrés et des scies, une enveloppe sans
+// à-coup (attaque courte mais pas carrée, extinction en courbe), un léger désaccord qui épaissit les sons tenus au
+// lieu de les laisser nus, et un envoi vers une réverbération courte qui les pose dans l'espace. Les aigus au-delà de
+// 1500 Hz sont adoucis plutôt que coupés : c'est ce qui piquait. Même signature qu'avant : aucun appel de sfx à changer.
 function tone(f, dur, type = 'square', vol = 0.045, slide = 0, delay = 0) {
   if (muted || !actx) return;
-  const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
-  o.type = type; o.frequency.setValueAtTime(f, t);
-  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + dur);
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(sfxBus || actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  const t = actx.currentTime + delay, hard = type === 'square' || type === 'sawtooth';
+  const voices = hard && dur >= .09 ? 2 : 1;
+  const hi = f > 1500 ? Math.max(.45, 1 - (f - 1500) / 4200) : 1;
+  const v = Math.max(.0004, vol * hi * (hard ? .92 : 1) / (voices > 1 ? 1.55 : 1));
+  const g = actx.createGain(), lp = actx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.Q.value = .6;
+  const cut = Math.min(hard ? 7000 : 12000, Math.max(700, f * (hard ? 4.2 : 8)));
+  lp.frequency.setValueAtTime(cut, t);
+  if (slide) lp.frequency.exponentialRampToValueAtTime(Math.max(320, Math.min(14000, cut + slide * 2)), t + dur);
+  const atk = Math.min(.03, Math.max(.005, dur * .12));
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(v, t + atk);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(atk + .012, dur));
+  lp.connect(g); g.connect(sfxBus || actx.destination);
+  if (sfxRev && dur >= .07) { const s = actx.createGain(); s.gain.value = .15; g.connect(s); s.connect(sfxRev); }
+  for (let i = 0; i < voices; i++) {
+    const o = actx.createOscillator();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + dur);
+    if (i) o.detune.setValueAtTime(8, t);
+    o.connect(lp); o.start(t); o.stop(t + dur + 0.03);
+  }
 }
 const sfx = {
   start(){ [523,659,784].forEach((f,i)=>tone(f,.09,'square',.04,0,i*.07)); },
-  draw(){ tone(880,.03,'triangle',.02); },
+  draw(){ tone(760,.05,'sine',.018); },
   capture(n){ const k=Math.min(6,2+Math.floor(n/(G*G)/120)); for(let i=0;i<k;i++) tone(392*Math.pow(1.26,i),.08,'square',.04,0,i*.05); },
-  mega(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.12,'triangle',.05,0,.25+i*.06)); },
-  shock(){ tone(1400,.6,'sawtooth',.03,-1200); },
+  mega(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.16,'triangle',.05,0,.25+i*.065)); tone(392,.4,'sine',.03,0,.25); },
+  shock(){ tone(1050,.55,'triangle',.034,-850); tone(240,.45,'sine',.03,-110); },
   cancel(){ tone(500,.3,'square',.035,-300); },
   crash(){ tone(90,.5,'square',.07,-40); tone(440,.6,'sawtooth',.05,-400,.05); },
   boom(){ tone(70,.7,'sawtooth',.07,-30); tone(200,.5,'square',.04,-150,.03); },
@@ -1103,18 +1123,18 @@ const sfx = {
   power(){ [660,880,1320].forEach((f,i)=>tone(f,.1,'triangle',.05,0,i*.06)); tone(1760,.25,'sine',.03,0,.2); },
   terr(){ tone(200,.7,'triangle',.06,600); [523,784,1047].forEach((f,i)=>tone(f,.15,'square',.03,0,.3+i*.08)); },
   appear(){ tone(1046,.08,'sine',.03); tone(1568,.12,'sine',.03,0,.08); },
-  dissolve(){ tone(700,.35,'triangle',.04,-500); },
+  dissolve(){ tone(620,.4,'sine',.042,-420); tone(1240,.2,'triangle',.012,-800); },
   smash(){ tone(160,.3,'square',.06,-100); tone(1200,.15,'triangle',.04,-900,.02); },
-  warn(){ tone(1200,.05,'square',.02); },
+  warn(){ tone(880,.08,'triangle',.02); tone(1760,.04,'sine',.006); },
   chrono(){ tone(1200,.6,'sine',.04,-900); [880,660,440].forEach((f,i)=>tone(f,.12,'triangle',.035,0,.15+i*.1)); },
   superChrono(){ tone(1600,1.2,'sine',.05,-1450); tone(110,1.2,'triangle',.05,-40); [1319,988,784,659,523,392].forEach((f,i)=>tone(f,.16,'triangle',.04,0,.3+i*.09)); },
   chronoEnd(){ [440,660,880].forEach((f,i)=>tone(f,.08,'triangle',.03,0,i*.06)); },
-  tick(sup){ tone(sup ? 1500 : 1900,.025,'square',.012); },
+  tick(sup){ tone(sup ? 1120 : 1420,.04,'triangle',.016); tone(sup ? 2240 : 2840,.02,'sine',.005); },
   grab(){ tone(220,.9,'sawtooth',.05,-190); tone(90,1,'sine',.06,-50,.05); },
-  rare(){ [1047,1319,1568,2093,1568,2093,2637].forEach((f,i)=>tone(f,.07,'sine',.035,0,i*.05)); },
+  rare(){ [1047,1319,1568,2093,1568,2093,2637].forEach((f,i)=>tone(f,.11,'sine',.034,0,i*.055)); },
   bomb(){ tone(55,1.4,'sawtooth',.09,-25); tone(110,1,'square',.06,-80,.02); tone(900,.8,'sawtooth',.03,-850,.05); [392,523,659,784,1047,1319].forEach((f,i)=>tone(f,.18,'square',.04,0,.45+i*.07)); },
-  zap(){ for(let i=0;i<6;i++) tone(1800-i*200+Math.random()*300,.05,'sawtooth',.04,-900,i*.04); [880,1320,1760,2640].forEach((f,i)=>tone(f,.12,'square',.035,0,.28+i*.05)); },
-  crackle(){ tone(2400+Math.random()*1600,.025,'sawtooth',.012,-1500); },
+  zap(){ for(let i=0;i<6;i++) tone(1200-i*140+Math.random()*200,.06,'triangle',.038,-600,i*.04); [660,990,1320,1760].forEach((f,i)=>tone(f,.14,'triangle',.032,0,.28+i*.05)); },
+  crackle(){ tone(1400+Math.random()*900,.035,'triangle',.014,-800); },
   rage(){ tone(70,.7,'sawtooth',.08,90); tone(140,.5,'square',.04,-60,.05); [392,523,784,1047].forEach((f,i)=>tone(f,.09,'sawtooth',.04,0,.08+i*.05)); },
   rageEnd(){ tone(620,.35,'triangle',.04,-420); },
   burn(){ tone(240,.35,'sawtooth',.05,-170); tone(1300,.25,'triangle',.03,-1000,.02); for(let i=0;i<4;i++) tone(2000+Math.random()*1500,.03,'sawtooth',.015,-1200,.03+i*.05); },
@@ -1127,11 +1147,11 @@ const sfx = {
   cloak(){ tone(1100, .45, 'sine', .03, -850); tone(2200, .25, 'triangle', .012, -1800, .05); },
   decloak(){ tone(300, .3, 'sine', .03, 800); },
   guardUp(){ [784,1175,1568].forEach((f,i)=>tone(f,.09,'sine',.04,0,i*.07)); },
-  coin(){ tone(1568,.06,'square',.03); tone(2093,.14,'square',.03,0,.06); },
+  coin(){ tone(1568,.07,'triangle',.032); tone(2093,.16,'triangle',.028,0,.06); },
   spin(){ [523,659,784,1047].forEach((f,i)=>tone(f,.07,'triangle',.035,0,i*.05)); },
   win(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.1,'triangle',.045,0,i*.07)); tone(2093,.2,'sine',.03,0,.3); },
   lose(){ [392,370,349,311].forEach((f,i)=>tone(f,i === 3 ? .5 : .22,'sawtooth',.035,i === 3 ? -60 : -15,i*.22)); },
-  jackpot(){ for(let i=0;i<16;i++) tone(1047+(i%4)*262,.07,'square',.035,0,i*.06); [523,659,784,1047,1319].forEach((f,i)=>tone(f,.45,'triangle',.05,0,1+i*.05)); },
+  jackpot(){ for(let i=0;i<16;i++) tone(1047+(i%4)*262,.09,'triangle',.032,0,i*.06); [523,659,784,1047,1319].forEach((f,i)=>tone(f,.5,'triangle',.05,0,1+i*.05)); },
   heavyHeart(){ tone(46,.16,'sine',.1); tone(40,.14,'sine',.08,0,.2); },
   lunge(c){ tone(110+c*25,.2,'sawtooth',.05,300+c*80); tone(1600+c*200,.07,'square',.02,-1200,.02); },
   crunch(c){ tone(55,.28,'square',.08,-25); tone(160+c*30,.14,'sawtooth',.06,-120,.01); for(let i=0;i<3;i++) tone(1100-i*250+c*80,.035,'square',.03,-500,.04+i*.035); if(c>=5) tone(90,.6,'sawtooth',.06,140,.1); },
@@ -1153,19 +1173,35 @@ const MUSIC_VOL = .18, DRUM_V = .55;
 const mx = { songs: [], key: undefined, l1: 0, l2: 0, hold: 0, tempo: 1, pitch: 1, vol: -1, fq: 0, dly: 0 };
 function audioGraph() {
   const A = actx;
-  sfxBus = A.createGain(); sfxBus.connect(A.destination);
+  sfxBus = A.createGain();
+  // un limiteur doux sur les bruitages : quand dix partent ensemble (gerbe de particules, machine à sous, carnage du
+  // Prédateur), ça ne sature plus. La musique, elle, n'en a pas : il écrasait son équilibre.
+  const lim = A.createDynamicsCompressor();
+  lim.threshold.value = -14; lim.knee.value = 8; lim.ratio.value = 4; lim.attack.value = .004; lim.release.value = .14;
+  sfxBus.connect(lim); lim.connect(A.destination);
+  // réverbération COURTE propre aux bruitages (celle de la musique dure 2,6 s et les noierait)
+  {
+    const sr0 = A.sampleRate, n0 = Math.floor(sr0 * .55), ir0 = A.createBuffer(2, n0, sr0);
+    for (let c = 0; c < 2; c++) { const a = ir0.getChannelData(c); for (let i = 0; i < n0; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n0, 5.5); }
+    const cv0 = A.createConvolver(); cv0.buffer = ir0;
+    const rg0 = A.createGain(); rg0.gain.value = .5;
+    sfxRev = A.createGain(); sfxRev.connect(cv0); cv0.connect(rg0); rg0.connect(lim);
+  }
   mx.out = A.createGain(); mx.out.gain.value = 0; mx.out.connect(A.destination);
   mx.dry = A.createBiquadFilter(); mx.dry.type = 'lowpass'; mx.dry.frequency.value = 18000; mx.dry.Q.value = .7; mx.dry.connect(mx.out);
   // réverbération : réponse impulsionnelle tirée au hasard (bruit qui s'éteint en 2,6 s)
-  const sr = A.sampleRate, n = Math.floor(sr * 2.6), ir = A.createBuffer(2, n, sr);
-  for (let c = 0; c < 2; c++) { const a = ir.getChannelData(c); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2); }
+  const sr = A.sampleRate, n = Math.floor(sr * 3.6), ir = A.createBuffer(2, n, sr);
+  // une queue plus longue et plus douce, avec un petit pre-delai (les 25 premieres millisecondes sont vides) : la
+  // musique respire au lieu d'etre collee a l'oreille
+  const pre = Math.floor(sr * .025);
+  for (let c = 0; c < 2; c++) { const a = ir.getChannelData(c); for (let i = pre; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - (i - pre) / (n - pre), 2.3); }
   const cv = A.createConvolver(); cv.buffer = ir;
-  mx.rev = A.createGain(); const rg = A.createGain(); rg.gain.value = .5;
+  mx.rev = A.createGain(); const rg = A.createGain(); rg.gain.value = .66;
   mx.rev.connect(cv); cv.connect(rg); rg.connect(mx.dry);
   // écho calé sur le tempo (trois doubles croches), assourdi à chaque répétition
   mx.del = A.createGain(); mx.dl = A.createDelay(2); mx.dl.delayTime.value = .4;
   const fb = A.createGain(), df = A.createBiquadFilter(), dg = A.createGain();
-  fb.gain.value = .38; df.type = 'lowpass'; df.frequency.value = 2400; dg.gain.value = .5;
+  fb.gain.value = .44; df.type = 'lowpass'; df.frequency.value = 1700; dg.gain.value = .52;
   mx.del.connect(mx.dl); mx.dl.connect(df); df.connect(fb); fb.connect(mx.dl); df.connect(dg); dg.connect(mx.dry); dg.connect(mx.rev);
   mx.noise = A.createBuffer(1, sr, sr);
   const nz = mx.noise.getChannelData(0); for (let i = 0; i < sr; i++) nz[i] = Math.random() * 2 - 1;
@@ -1197,7 +1233,15 @@ const PATCH = {
   brass: { w: ['sawtooth'], n: 3, det: 9, a: .06, d: .4, s: .75, r: .25, f: 900, fe: 2, fq: 1.5, v: .085, vib: 6, vibr: 5, vibd: .2, rev: .4 },
   flute: { w: ['triangle', 'sine'], n: 2, det: 3, a: .06, d: .3, s: .8, r: .3, v: .17, vib: 14, vibr: 5, vibd: .3, rev: .5, del: .3 },
   theremin: { w: ['sine'], a: .12, d: .3, s: .9, r: .5, v: .15, vib: 35, vibr: 6, vibd: .15, rev: .7, del: .3 },
-  sq:    { w: ['square'], a: .005, d: .12, s: .55, r: .08, f: 2600, fq: 1, v: .075, vib: 8, vibr: 6, vibd: .2, rev: .2, del: .2 }
+  sq:    { w: ['square'], a: .005, d: .12, s: .55, r: .08, f: 2600, fq: 1, v: .075, vib: 8, vibr: 6, vibd: .2, rev: .2, del: .2 },
+  // instruments d'atmosphere (refonte demandee par Fabien : plus atmospherique, moins entetant) : ce sont eux qui
+  // portent la couche calme, pendant que la melodie se tait. Nappes qui montent lentement, drone, cordes, cloches
+  // lointaines noyees de reverberation, et un bois doux.
+  air:   { w: ['triangle', 'sawtooth'], n: 3, det: 15, a: 1.2, d: 1.6, s: .9, r: 2.6, f: 620, fq: .6, v: .042, rev: .95 },
+  drone: { w: ['sine', 'sawtooth'], n: 2, det: 5, sub: .5, a: 1.5, d: 2, s: .95, r: 2.6, f: 300, fq: .5, v: .08, rev: .5 },
+  strings: { w: ['sawtooth'], n: 4, det: 12, a: .8, d: 1, s: .85, r: 1.6, f: 1150, fe: .8, fq: 1.2, v: .052, vib: 7, vibr: 4.4, vibd: .5, rev: .75 },
+  far:   { fm: [2.01, 2.4, 1.6], a: .004, d: 2.6, s: 0, r: 1.4, v: .085, rev: .95, del: .45 },
+  wood:  { fm: [4.02, 1.1, .35], a: .002, d: .9, s: 0, r: .5, v: .1, rev: .6, del: .3 }
 };
 const DRUMS = new Set(['kick', 'snare', 'clap', 'hat', 'ohat', 'shk', 'rim', 'tom', 'boom', 'cym']);
 const SCALES = { aeo: [0, 2, 3, 5, 7, 8, 10], dor: [0, 2, 3, 5, 7, 9, 10], phr: [0, 1, 3, 5, 7, 8, 10], lyd: [0, 2, 4, 6, 7, 9, 11], maj: [0, 2, 4, 5, 7, 9, 11], hm: [0, 2, 3, 5, 7, 8, 11] };
@@ -1286,79 +1330,96 @@ function mDrum(k, t, vel, tune, rev) {
 // (0 à 3, puis 4 à 7 une octave au-dessus) ; c : l'accord entier. o : décalage en demi-tons, v : volume, mask : mesures
 // jouées (« 1 »), pan : stéréo.
 const K4 = 'x...x...x...x...', BB = '....x.......x...', OFF = '..x...x...x...x.', H8 = 'x.x.x.x.x.x.x.x.', H16 = 'xoxoxoxoxoxoxoxo', PAD = 'x---------------';
+// batteries clairsemees et masques de respiration : la melodie joue 8 mesures puis se tait 8 mesures (MASK_BREATHE),
+// les percussions arrivent par vagues. C'est ce qui enleve la sensation de boucle.
+const K2 = 'x.......x.......', K1 = 'x...............', H4 = 'x...x...x...x...', SH2 = '......x.......x.';
+const BREATHE = '1111111100000000', WAVE = '1111000011110000', RARE = '1000000010000000';
 const MEL = {
-  title: '4---2-4-7---6-4-|6-------4-2-1---|3---5-3-8---7-5-|4-----------....|9-..9-7-6-7-4---|8---7-6-4---6---|7-5-3-5-7---9---|8-----------....',
-  aste: '7-------9---a---|b-----a-9-------|9---7---5-------|6-----8-6-------|7---b---e-------|d-b-a-9-b-------|c-----b-9---7---|8-------a-------',
-  glace: '9---b---d---b---|a-------8---c---|c---b---9-------|d-----b-a---8---|e---d---b---9---|a---c---e---c---|c-------9-b-c-9-|b---------------',
-  pyros: '7---8-7-4---7---|8-----a-c---a---|b---9-8-7-------|6---8---a---8---|e---d-c-b---7---|c---a---8---a---|b-c-b-9-b---7---|6-------8---6---',
-  ocea: '9-------7---5---|6---8---a-------|9-----b-d---b---|c---------------|e---c---a---9---|8---b---d---b---|9---8---6---4---|5-------7---9---',
-  nebu: 'b-------9---7---|c-----b-9-------|a---9---7---5---|6-----------8---|e-------d---b---|c---e---c---b---|a-------c---a---|d-----------....',
-  volt: '7.7.b.7.9.b.e.b.|d.b.9.b.7...4...|c.c.9.c.e.c.9.7.|d---b---a---8---|7.7.b.7.9.b.e.b.|e.d.b.9.b-------|c---e---c---9---|d---------------',
-  sing: '7-------8-------|9-------8---6---|7---------------|6-------5---6---|b-------c-------|a-------8---a---|b---9---7---b---|d-----------c---',
+  // melodies d'atmosphere : peu de notes, tenues longtemps, avec des silences ou l'on n'entend que les nappes
+  title: '7-------9-------|b-----------....|9-------7-------|6---------------|9-------b-------|d-----------....|b-------9-------|7---------------',
+  aste: '7-------........|7---9-----------|a-------9-------|7---------------|b-------........|b---a-----------|9-------7-------|6---------------',
+  glace: '9-----------....|b-------d-------|c-----------....|9---------------|d-------c-------|e-----------....|c-------9-------|8---------------',
+  pyros: '7-------........|8-------7-------|b-----------....|7---------------|c-------b-------|a-----------....|8-------7-------|4---------------',
+  ocea: '9-----------....|7-------5-------|6-----------....|9---------------|b-------9-------|c-----------....|9-------6-------|4---------------',
+  nebu: 'b-----------....|9-------7-------|a-----------....|7---------------|e-------d-------|c-----------....|a-------9-------|7---------------',
+  volt: '7---b---9---b---|e-----------....|c---9---c---e---|d---------------|7---b---9---b---|e-------d-------|c---e---c---9---|b---------------',
+  sing: '7---------------|8-----------....|9-------8-------|6---------------|b---------------|a-----------....|b-------9-------|7---------------',
   super: '9.b.e.b.9.b.e.b.|d.b.8.b.d.b.e.d.|c.9.7.9.c.9.e.c.|a.c.e.c.a---b---',
-  title0: 'b---9-7-9---b---|c-----b-9---7---|9---b-d-e---d---|d-------a-----..|b---9-7-9---b-e-|c---e---c-b-9---|9-b-9-7-6---4---|6-8-a-d-e-------'
+  title0: 'b-------9-------|c-----------....|9-------b-------|d---------------|b-------9-------|e-----------....|d-------b-------|9---------------'
 };
 const SONGS = {
-  // écran titre : synthwave, l'hymne du jeu (il monte tout seul, puis respire)
-  title: { bpm: 104, root: 45, sc: 'aeo', prog: '0 5 2 6', tr: [
-    ['pad', 0, PAD, { c: 1, o: 12 }], ['sub', -1, '0-------0-------'], ['pbass', 1, '0.0.4.0.0.0.4.0.'],
-    ['bell', -1, '0.......2.......|1.......3.......', { o: 24 }], ['arp', 1, '0124012401240124', { o: 12, pan: -.3 }],
-    ['pluck', 2, '..4...2...4..2..', { o: 24, pan: .35 }], ['lead', 1, MEL.title0, { s: 1, o: 12 }], ['lead', 2, MEL.title0, { s: 1, o: 24, v: .45 }],
-    ['kick', 1, K4], ['clap', 1, BB], ['hat', 1, OFF], ['hat', 2, H16, { v: .7 }],
-    ['cym', 2, 'x...............', { mask: '10001000' }], ['tom', 2, '........3.2.1.1.', { mask: '00000001' }]] },
-  // Terra Nova : synthwave néon, le berceau
-  terra: { bpm: 112, root: 50, sc: 'dor', prog: '0 6 3 4', tr: [
-    ['warm', 0, PAD, { c: 1 }], ['sub', -1, '0-------0---0---', { o: -12 }], ['pbass', 1, '0.00.00.0.00.0.4', { o: -12 }],
-    ['bell', -1, '4.......2...0...', { o: 12 }], ['arp', 1, '0124212401242124', { o: 12, pan: -.25 }],
-    ['lead', 1, MEL.title, { s: 1, o: 12 }], ['sq', 2, MEL.title, { s: 1, o: 24, v: .5 }],
-    ['kick', 1, K4], ['snare', 1, BB], ['hat', 1, H8, { v: .8 }], ['ohat', 2, OFF], ['shk', -1, OFF, { v: .6 }],
-    ['cym', 2, 'x...............', { mask: '1000' }]] },
-  // Astéria : rock spatial lourd, séquence analogique et percussions de métal (les astéroïdes qui s'entrechoquent)
-  aste: { bpm: 96, root: 52, sc: 'aeo', prog: '0 0 5 6', tr: [
-    ['pad', 0, PAD, { c: 1, v: .9 }], ['sub', 0, '0-------0-------', { o: -12 }], ['acid', 1, '0.00.0.00.00.0.0', { o: -12 }],
-    ['metal', -1, '..0.....4..2....', { o: 24 }], ['metal', 1, '..0...0...4..2..', { o: 24, pan: .4 }],
-    ['brass', 1, MEL.aste, { s: 1, o: 12 }], ['lead', 2, MEL.aste, { s: 1, o: 24, v: .4 }],
-    ['kick', 1, 'x.....x...x.....'], ['snare', 1, '........x.......'], ['hat', 1, H8], ['rim', 2, '..x..x....x..x.x'],
-    ['boom', 0, 'x...............', { mask: '1000' }], ['tom', 2, '............3.21', { mask: '0001' }]] },
-  // Glacia : cristallin, carillons de verre et flûte, batterie légère comme de la glace qui craque
-  glace: { bpm: 92, root: 53, sc: 'lyd', prog: '0 1 5 4', tr: [
-    ['warm', 0, PAD, { c: 1 }], ['glass', 0, '0.2.1.3.4.3.1.2.', { o: 12, v: .8 }], ['bell', 1, '4..2..1.4..2..3.', { o: 24, pan: -.3 }],
-    ['sub', 0, '0-------------..', { o: -12 }], ['pbass', 1, '0...0.4.0...0...', { o: -12, v: .8 }],
-    ['flute', 1, MEL.glace, { s: 1, o: 12 }], ['glass', 2, MEL.glace, { s: 1, o: 24, v: .6 }],
-    ['kick', 1, 'x.......x.......'], ['rim', 1, BB], ['shk', 1, H16, { v: .8 }], ['snare', 2, BB], ['ohat', 2, OFF, { v: .6 }],
-    ['cym', 0, 'x...............', { mask: '1000', v: .6 }]] },
-  // Pyros : tambours tribaux, basse saturée, gamme phrygienne
-  pyros: { bpm: 126, root: 50, sc: 'phr', prog: '0 1 0 6', tr: [
-    ['pad', 0, PAD, { c: 1, v: .8 }], ['sub', -1, '0-------0-------', { o: -12 }], ['fuzz', 1, '0.00.00.0.00.0.0', { o: -12 }],
-    ['tom', 0, '1..2..1.1..2.1..', { tune: [0, 70, 95, 130], v: .8 }], ['tom', 2, '..3..3.3..3..33.', { tune: [0, 70, 95, 130] }],
-    ['kick', 1, 'x..x..x...x..x..'], ['clap', 1, BB], ['hat', 1, H16, { v: .7 }], ['boom', 1, 'x...............', { mask: '1010' }],
-    ['lead', 1, MEL.pyros, { s: 1, o: 12 }], ['fuzz', 2, MEL.pyros, { s: 1, o: 12, v: .5 }], ['pluck', 2, '0.0.4.0.0.4.0.4.', { o: 12 }]] },
-  // Océania : dub aquatique, gouttes qui résonnent dans l'écho, flûte, contretemps
-  ocea: { bpm: 84, root: 51, sc: 'maj', prog: '3 4 2 5', sw: .12, tr: [
-    ['warm', 0, PAD, { c: 1 }], ['sub', 0, '0-----0-....0-..', { o: -12 }], ['drop', 0, '..2.....4..1....', { o: 24 }],
-    ['pluck', 1, '.0.2.1.4.0.2.1.3', { o: 12, v: .8 }], ['flute', 1, MEL.ocea, { s: 1, o: 12 }], ['bell', 2, MEL.ocea, { s: 1, o: 24, v: .5 }],
-    ['kick', 1, 'x.........x.....'], ['rim', 1, '........x.......'], ['shk', 1, '..x...x...x...xx'], ['snare', 2, '........x.......', { v: .7 }],
-    ['hat', 2, H8, { v: .6 }], ['drop', 2, '0.2.4.2.0.2.4.7.', { o: 24, v: .6 }]] },
-  // Nébula : chœurs fantômes, boîte à musique, thérémine, cœur qui bat
-  nebu: { bpm: 72, root: 47, sc: 'hm', prog: '0 5 3 4', tr: [
-    ['choir', 0, PAD, { c: 1, o: 12 }], ['sub', 0, '0---------------', { o: -12 }], ['box', 0, '0..2..1.4..2..1.', { o: 24 }],
-    ['kick', 0, 'x..x............', { v: .7 }], ['theremin', 1, MEL.nebu, { s: 1, o: 12 }], ['box', 2, MEL.nebu, { s: 1, o: 24, v: .5 }],
-    ['pluck', 1, '0000222211114444', { o: 12, v: .6 }], ['shk', 1, OFF], ['rim', 1, '......x.......x.'], ['snare', 2, '........x.......'],
-    ['tom', 2, '............1.21', { mask: '01', tune: [0, 65, 90] }], ['boom', 2, 'x...............', { mask: '1000' }]] },
-  // Voltaria : électro rapide, arpèges qui crépitent, basse qui pompe
-  volt: { bpm: 134, root: 49, sc: 'aeo', prog: '0 0 5 6', tr: [
-    ['pad', 0, PAD, { c: 1, v: .8 }], ['sub', -1, '0-------0-------', { o: -12 }], ['pbass', 1, '.0.0.0.0.0.0.0.0', { o: -12 }],
-    ['zap', 1, '0124012401240124', { o: 24, v: .8, pan: .3 }], ['arp', -1, '0...2...1...4...', { o: 12 }],
-    ['sq', 1, MEL.volt, { s: 1, o: 12, v: 1.6 }], ['lead', 2, MEL.volt, { s: 1, o: 24, v: .4 }],
-    ['kick', 1, K4], ['clap', 1, BB], ['hat', 1, OFF], ['hat', 2, 'xxxxxxxxxxxxxxxx', { v: .5 }], ['rim', 2, '.x..x..x.x..x..x'],
-    ['cym', 2, 'x...............', { mask: '10' }]] },
-  // Singularité : lent et immense, chœurs, grondements, une horloge qui tique (le temps se dilate)
-  sing: { bpm: 68, root: 41, sc: 'phr', prog: '0 1 0 6', tr: [
-    ['choir', 0, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .7 }], ['sub', 0, '0---------------'],
-    ['boom', 0, 'x...............', { mask: '10' }], ['rim', -1, 'x...x...x...x...', { v: .6 }],
-    ['kick', 1, 'x.......x..x....'], ['snare', 1, '........x.......'], ['hat', 1, H8, { v: .6 }], ['shk', 2, H16],
-    ['brass', 1, MEL.sing, { s: 1, o: 12 }], ['lead', 2, MEL.sing, { s: 1, o: 24, v: .35 }],
-    ['acid', 2, '0000000000000000', { v: .7 }], ['tom', 2, '..........3.2.11', { mask: '0001', tune: [0, 60, 80, 105] }]] },
+  // ecran titre : synthwave, l'hymne du jeu. Il s'installe, respire, et ne fatigue pas au dixieme lancement.
+  title: { bpm: 100, root: 45, sc: 'aeo', prog: '0 5 2 6 0 5 3 4', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['drone', 0, PAD, { o: -12 }], ['pad', 0, PAD, { c: 1, o: 12, v: .75 }],
+    ['far', -1, K1, { o: 24, mask: RARE }], ['bell', -1, '0.......2.......', { o: 24, mask: WAVE }],
+    ['pbass', 1, '0.......0...4...', { o: -12 }], ['arp', 1, '0...2...4...2...', { o: 12, pan: -.3, mask: WAVE }],
+    ['lead', 1, MEL.title0, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1, v: .9 }],
+    ['kick', 1, K2], ['clap', 1, BB, { mask: WAVE }], ['hat', 1, H4, { v: .65 }], ['shk', 2, OFF, { v: .55 }],
+    ['cym', 2, K1, { mask: RARE }]] },
+  // Terra Nova : le berceau. C'est le morceau le plus joue du jeu (4 niveaux) : il doit s'effacer derriere le jeu.
+  terra: { bpm: 104, root: 50, sc: 'dor', prog: '0 6 3 4 0 6 5 1', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['warm', 0, PAD, { c: 1, v: .8 }], ['drone', 0, PAD, { o: -12 }],
+    ['far', -1, K1, { o: 24, mask: WAVE }], ['bell', -1, '4.......2.......', { o: 12, mask: BREATHE }],
+    ['pbass', 1, '0.......0...4...', { o: -12 }], ['arp', 1, '0...2...4...2...', { o: 12, pan: -.25, mask: WAVE }],
+    ['lead', 1, MEL.title, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1 }],
+    ['kick', 1, K2], ['snare', 1, BB, { mask: WAVE }], ['hat', 1, H4, { v: .6 }], ['shk', 2, OFF, { v: .5 }],
+    ['cym', 2, K1, { mask: RARE }]] },
+  // Asteria : rock spatial lourd, percussions de metal (les asteroides qui s'entrechoquent), mais de l'air autour
+  aste: { bpm: 92, root: 52, sc: 'aeo', prog: '0 0 5 6 0 0 3 4', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .85 }], ['drone', 0, PAD, { o: -12 }],
+    ['metal', -1, '..0.....4.......', { o: 24, mask: WAVE }], ['far', -1, K1, { o: 12, mask: RARE }],
+    ['acid', 1, '0.......0.0.....', { o: -12 }], ['metal', 1, '..0.......4.....', { o: 24, pan: .4, mask: WAVE }],
+    ['brass', 1, MEL.aste, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1, v: .95 }],
+    ['kick', 1, 'x.....x.........'], ['snare', 1, '........x.......', { mask: WAVE }], ['hat', 1, H4, { v: .6 }],
+    ['rim', 2, SH2], ['boom', 0, K1, { mask: RARE }], ['tom', 2, '............3.21', { mask: RARE }]] },
+  // Glacia : cristallin. Carillons de verre, flute lointaine, et de la glace qui craque au loin.
+  glace: { bpm: 88, root: 53, sc: 'lyd', prog: '0 1 5 4 0 1 2 5', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['warm', 0, PAD, { c: 1 }], ['drone', 0, PAD, { o: -12 }],
+    ['glass', -1, '0...2.......4...', { o: 12, v: .8, mask: WAVE }], ['far', -1, K1, { o: 24, mask: WAVE }],
+    ['pbass', 1, '0.......0...4...', { o: -12, v: .8 }], ['bell', 1, '4.......1.......', { o: 24, pan: -.3, mask: WAVE }],
+    ['flute', 1, MEL.glace, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1 }],
+    ['kick', 1, K2], ['rim', 1, BB, { mask: WAVE }], ['shk', 1, H4, { v: .6 }], ['ohat', 2, OFF, { v: .5 }],
+    ['cym', 0, K1, { mask: RARE, v: .55 }]] },
+  // Pyros : tambours tribaux et basse saturee, mais la tension monte par couches au lieu de taper sans arret
+  pyros: { bpm: 116, root: 50, sc: 'phr', prog: '0 1 0 6 0 1 5 6', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .8 }], ['drone', 0, PAD, { o: -12 }],
+    ['far', -1, K1, { o: 12, mask: RARE }], ['wood', -1, '0...2.......1...', { o: 12, mask: WAVE }],
+    ['fuzz', 1, '0.......0.0.....', { o: -12 }], ['tom', 1, '1..2..1.........', { tune: [0, 70, 95, 130], v: .8 }],
+    ['lead', 1, MEL.pyros, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1, v: .9 }],
+    ['tom', 2, '..3..3.3..3..33.', { tune: [0, 70, 95, 130] }], ['kick', 1, 'x..x..x.........'],
+    ['clap', 1, BB, { mask: WAVE }], ['hat', 1, H4, { v: .6 }], ['boom', 1, K1, { mask: RARE }]] },
+  // Oceania : dub aquatique. Des gouttes qui resonnent dans l'echo, du swing, et beaucoup de place entre les notes.
+  ocea: { bpm: 80, root: 51, sc: 'maj', prog: '3 4 2 5 3 4 0 5', sw: .14, tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['warm', 0, PAD, { c: 1 }], ['drone', 0, PAD, { o: -12 }],
+    ['drop', -1, '..2.........4...', { o: 24, mask: WAVE }], ['far', -1, K1, { o: 12, mask: WAVE }],
+    ['sub', 0, '0-----0-....0-..', { o: -12 }], ['pluck', 1, '.0.2.......4....', { o: 12, v: .8, mask: WAVE }],
+    ['flute', 1, MEL.ocea, { s: 1, o: 12, mask: BREATHE }], ['strings', 2, PAD, { c: 1 }],
+    ['kick', 1, 'x.........x.....'], ['rim', 1, '........x.......', { mask: WAVE }], ['shk', 1, SH2],
+    ['snare', 2, '........x.......', { v: .6 }], ['hat', 2, H4, { v: .5 }], ['drop', 2, '0...4...2...7...', { o: 24, v: .55 }]] },
+  // Nebula : le morceau du boss final. Choeurs fantomes, boite a musique, theremine, un coeur qui bat au loin.
+  nebu: { bpm: 68, root: 47, sc: 'hm', prog: '0 5 3 4 0 5 1 4', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['choir', 0, PAD, { c: 1, o: 12 }], ['drone', 0, PAD, { o: -12 }],
+    ['box', -1, '0...2.......1...', { o: 24, mask: WAVE }], ['far', -1, K1, { o: 24, mask: WAVE }],
+    ['sub', 0, '0---------------', { o: -12 }], ['kick', 0, 'x..x............', { v: .6 }],
+    ['theremin', 1, MEL.nebu, { s: 1, o: 12, mask: BREATHE }], ['pluck', 1, '0...2...1...4...', { o: 12, v: .55, mask: WAVE }],
+    ['strings', 2, PAD, { c: 1 }], ['shk', 1, OFF, { v: .7 }], ['rim', 1, SH2, { mask: WAVE }],
+    ['snare', 2, '........x.......'], ['boom', 2, K1, { mask: RARE }]] },
+  // Voltaria : electro. On garde la pompe, mais la grille tourne moins court et les aigus arrivent par vagues.
+  volt: { bpm: 126, root: 49, sc: 'aeo', prog: '0 0 5 6 0 0 1 5', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .8 }], ['drone', 0, PAD, { o: -12 }],
+    ['arp', -1, '0...2.......4...', { o: 12, mask: WAVE }], ['far', -1, K1, { o: 12, mask: RARE }],
+    ['pbass', 1, '.0.0.0.0.0.0.0.0', { o: -12 }], ['zap', 1, '0...2...4...2...', { o: 24, v: .75, pan: .3, mask: WAVE }],
+    ['sq', 1, MEL.volt, { s: 1, o: 12, v: 1.3, mask: BREATHE }], ['strings', 2, PAD, { c: 1, v: .9 }],
+    ['kick', 1, K4], ['clap', 1, BB, { mask: WAVE }], ['hat', 1, H4, { v: .6 }], ['rim', 2, SH2],
+    ['cym', 2, K1, { mask: RARE }]] },
+  // Singularite : lent et immense. Choeurs, grondements, une horloge qui tique : le temps se dilate.
+  sing: { bpm: 64, root: 41, sc: 'phr', prog: '0 1 0 6 0 1 5 6', tr: [
+    ['air', -1, PAD, { c: 1, o: 12 }], ['choir', 0, PAD, { c: 1, o: 12 }], ['pad', 0, PAD, { c: 1, v: .65 }],
+    ['drone', 0, PAD, { o: -12 }], ['far', -1, K1, { o: 12, mask: WAVE }], ['rim', -1, H4, { v: .5 }],
+    ['sub', 0, '0---------------'], ['boom', 0, K1, { mask: RARE }],
+    ['brass', 1, MEL.sing, { s: 1, o: 12, mask: BREATHE }], ['pbass', 1, '0.......0.......', { o: -12 }],
+    ['strings', 2, PAD, { c: 1 }], ['kick', 1, K2], ['snare', 1, '........x.......', { mask: WAVE }],
+    ['hat', 1, H4, { v: .5 }], ['shk', 2, OFF], ['tom', 2, '..........3.2.11', { mask: RARE, tune: [0, 60, 80, 105] }]] },
   // Super Casque : euphorie à 150
   super: { bpm: 150, root: 55, sc: 'maj', prog: '0 4 5 3', tr: [
     ['pad', 0, PAD, { c: 1 }], ['pbass', 0, '0.4.0.4.0.4.0.4.', { o: -12 }], ['arp', 0, '0124212401242124', { o: 12 }],
