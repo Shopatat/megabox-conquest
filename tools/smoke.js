@@ -1574,7 +1574,9 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
     const e = lone('fly', e => { e.x = PX() + DC; e.y = PY(); e.vx = e.vy = 0; });
     const nl = e.lights.length;
     e.lights = [{ a: Math.PI, rr: DC / .95, ph: 0 }];
-    let n = 0; while (g.S.phase === 'play' && n++ < 150) step();
+    // le vaisseau reste sur place (sinon il s'éloigne de l'essaim et le test devient aléatoire)
+    let n = 0;
+    while (g.S.phase === 'play' && n++ < 150) { g.P.dir = { x: 0, y: 0 }; g.P.next = null; e.x = PX() + DC; e.y = PY(); step(); }
     console.log(`lucioles : ${nl} lumières ; une lumière qui balaie le vaisseau pique (phase ${g.S.phase}) alors que le centre est à ${DC} cases`);
     if (nl < 4) throw new Error('l\'essaim de lucioles est vide');
     if (g.S.phase !== 'crash') throw new Error('une luciole ne pique pas');
