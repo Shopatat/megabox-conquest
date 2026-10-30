@@ -168,6 +168,9 @@ canvas{display:block;border-radius:16px;touch-action:none}
 .card .new{font-size:13px;line-height:1.4;padding:9px 12px;border-radius:14px;background:rgba(255,92,138,.08);border:1px solid rgba(255,92,138,.25)}
 .card .new .foecv{float:left;width:48px;height:48px;margin:1px 10px 2px 0;border-radius:13px;background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.09),rgba(255,255,255,0) 72%),rgba(6,4,20,.55);border:1px solid rgba(255,255,255,.08)}
 .card .new::after{content:"";display:block;clear:both}
+/* le bloc du boss sur l'écran d'info : liseré doré, fond plus marqué */
+.card .new.boss{background:rgba(255,196,80,.1);border-color:rgba(255,196,80,.45);box-shadow:0 0 0 1px rgba(255,196,80,.14),0 10px 30px rgba(255,140,40,.1)}
+.card .new.boss b{color:#ffd68a}
 .card .new b{font-family:var(--display);font-size:10.5px;letter-spacing:.06em;color:var(--accent);font-weight:700}
 .rows{display:grid;gap:8px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--line);font-family:var(--display);font-size:12px}
 .rows div{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
@@ -311,6 +314,15 @@ details li b{color:var(--text);font-weight:600}
 .chip.oxy{color:#7ff0ff}.chip.oxy b{background:#7ff0ff;box-shadow:0 0 6px #7ff0ff}.chip.heat{color:#ffb35c}.chip.heat b{background:#ffb35c;box-shadow:0 0 6px #ffb35c}.chip.heat.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
 .chip.storm{color:#ffe27a}.chip.storm b{background:#ffe27a;box-shadow:0 0 6px #ffe27a}.chip.storm.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .3s ease-in-out infinite}
 .chip.oxy.low{color:#ff5c6e;border-color:#ff1f3d;animation:ragechip .45s ease-in-out infinite}
+/* niveau boss : les trois noyaux, l'information la plus importante du niveau */
+.chip.cores{color:#9ff3ff;border-color:rgba(70,217,255,.45)}
+.chip.cores b{background:radial-gradient(circle,#fff,#46d9ff 65%,#7a4dff);box-shadow:0 0 7px #46d9ff}
+.chip.cores .cdots{display:flex;gap:3px;font-style:normal}
+.chip.cores em{width:7px;height:7px;border-radius:50%;display:block}
+.chip.cores em.on{background:#46d9ff;box-shadow:0 0 6px #46d9ff;animation:corepulse 1.4s ease-in-out infinite}
+.chip.cores em.off{background:transparent;border:1px solid rgba(255,255,255,.38)}
+.chip.cores em.dead{background:transparent;border:1px solid rgba(255,77,94,.55)}
+@keyframes corepulse{0%,100%{opacity:1}50%{opacity:.45}}
 .chip.guard{color:#ff9fb5}.chip.guard b{background:#5dffb0;box-shadow:0 0 6px #5dffb0}
 @keyframes hypchip{0%{box-shadow:0 0 4px #46d9ff}50%{box-shadow:0 0 14px #9ff3ff,0 0 2px #fff}}
 .stage.super canvas{animation:supglow .8s linear infinite}
@@ -365,7 +377,7 @@ details li b{color:var(--text);font-weight:600}
 @media (prefers-reduced-motion:reduce){.card h1,.btn::after,.pw.ready,.pw.chip.on .in,.meter .fill::after,.chip,.overlay{animation:none}}
 @media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
 /* les puces qui clignotent ont une classe plus précise que .chip : il faut les citer pour que « réduire les animations » les arrête */
-@media (prefers-reduced-motion:reduce){.chip.schr,.chip.rage,.chip.oxy.low,.chip.heat.low,.chip.storm.low{animation:none}}
+@media (prefers-reduced-motion:reduce){.chip.schr,.chip.rage,.chip.oxy.low,.chip.heat.low,.chip.storm.low,.chip.cores em.on{animation:none}}
 </style>
 </head>
 <body>
@@ -423,7 +435,7 @@ details li b{color:var(--text);font-weight:600}
 // terrain, du fil et du vaisseau est G fois plus fine (GC × GR cases, demande de Fabien : un jeu plus « HD », des tracés
 // plus précis). G = 1 redonne la grille d'origine. Conversions : wx / wy (case de la grille → monde), gc (monde → grille).
 const G = 2;
-const COLS = 50, ROWS = 66, B = 2, GC = COLS * G, GR = ROWS * G, BG = B * G, N = GC * GR, STEP = 1 / 17 / G, POWER_T = 10, MAX_LEVEL = 25;
+const COLS = 50, ROWS = 66, B = 2, GC = COLS * G, GR = ROWS * G, BG = B * G, N = GC * GR, STEP = 1 / 17 / G, POWER_T = 10, MAX_LEVEL = 32;
 const R_SEA = 0.42, R_LAND = 0.4, R_AMPH = 1.2;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -1426,7 +1438,8 @@ function musicKey() {
 // danger : la couche la plus intense
 function musicDanger() {
   return !!(wave || grab || ab.on > 0 || pred.heat > .35 || (oc && oc.o2 < OXY_LOW) || (ic && FROST_MAX - ic.frost < FROST_LOW)
-    || (vt && vt.charge >= BOLT_AIM) || (SH().key === 'pred' && pred.blood < bloodMax() * BLOOD_LOW));
+    || (vt && vt.charge >= BOLT_AIM) || (SH().key === 'pred' && pred.blood < bloodMax() * BLOOD_LOW)
+    || (bs && !bs.won && (bs.phase >= 1 || bs.tell > .5)));
 }
 function musicUpdate(dt) {
   if (!actx || !mx.out) return;
@@ -1785,14 +1798,16 @@ const ECOS = [
   { key: 'terra', name: 'TERRA NOVA', tag: 'Le berceau : là où tout commence.', sig: 'perf', look: null, levels: [
     { out: 3, inn: 1 },
     { out: 3, perf: 1, thief: 1, inn: 1 },
-    { name: 'DUEL', out: 2, perf: 2, scar: 1, inn: 2 } ] },
+    { name: 'DUEL', out: 2, perf: 2, scar: 1, inn: 2 },
+    { name: 'LE COLOSSE', boss: 1, out: 2, inn: 1 } ] },
   { key: 'aste', name: 'ASTÉRIA', tag: 'Une ceinture d\'astéroïdes à la dérive.', sig: 'comet',
     look: { empty: '#120d12', vignette: 'rgba(255,160,80,0.17)', landGrad: ['#c47a34', '#6b4a96'], edge: '#ffe6c8', landP: '#ffc89a',
       nebulas: [[12, 18, 16, '255,140,60'], [38, 46, 18, '170,90,60'], [30, 10, 10, '255,205,120'], [8, 54, 11, '140,80,200']] },
     levels: [
     { out: 3, ricoch: 2 },
     { out: 2, ricoch: 2, ambush: 1, hunt: 1 },
-    { name: 'PLUIE DE MÉTÉORES', ricoch: 2, ambush: 1, hunt: 1, comet: 1, mine: 1, inn: 1 } ] },
+    { name: 'PLUIE DE MÉTÉORES', ricoch: 2, ambush: 1, hunt: 1, comet: 1, mine: 1, inn: 1 },
+    { name: 'LE BROYEUR', boss: 1, ricoch: 2, ambush: 1 } ] },
   { key: 'glace', name: 'GLACIA', tag: 'Un monde de glace, où tout glisse.', sig: 'scar',
     rule: 'Hors du camp, le froid gèle ton vaisseau : il ralentit (moitié de sa vitesse à 30 s) et à 60 s il est pris dans la glace. Reviens près du feu pour dégeler. Sur les plaques de glace, tu files tout droit, plus vite, sans tourner ni t’arrêter.',
     look: { empty: '#07132a', vignette: 'rgba(120,220,255,0.2)', landGrad: ['#86e0ff', '#4b6dff'], edge: '#f0fbff', landP: '#e2f7ff',
@@ -1800,7 +1815,8 @@ const ECOS = [
     levels: [
     { out: 3, frost: 1, inn: 1 },
     { out: 2, frost: 2, skate: 1, scar: 1 },
-    { name: 'BANQUISE', frost: 2, skate: 2, div: 1, inn: 2 } ] },
+    { name: 'BANQUISE', frost: 2, skate: 2, div: 1, inn: 2 },
+    { name: 'LA REINE DES GLACES', boss: 1, frost: 2, skate: 1 } ] },
   { key: 'pyros', name: 'PYROS', tag: 'Des volcans qui crachent la lave.', sig: 'spark',
     rule: 'Gouffres de lave : on n\'y entre pas, enfermés ils refroidissent. Météores : une cible annonce l\'impact, même sur ton terrain.',
     look: { empty: '#190a0a', vignette: 'rgba(255,80,40,0.2)', landGrad: ['#ff8a3d', '#b8185a'], edge: '#ffe0cc', landP: '#ffb38a',
@@ -1808,7 +1824,8 @@ const ECOS = [
     levels: [
     { out: 3, sala: 1, inn: 1 },
     { out: 2, sala: 1, magma: 2, perf: 1 },
-    { name: 'ÉRUPTION', sala: 2, magma: 2, perf: 2, spark: 1 } ] },
+    { name: 'ÉRUPTION', sala: 2, magma: 2, perf: 2, spark: 1 },
+    { name: 'LE TITAN DE LAVE', boss: 1, sala: 2, magma: 1 } ] },
   { key: 'ocea', name: 'OCÉANIA', tag: 'Une île, et l\'océan à perte de vue.', sig: 'mine',
     rule: 'Sous l’eau, ton air baisse (deux fois moins vite sur ton terrain) et tu vas moins vite : remonte sur l’île pour respirer. Bulles d’air : passe dedans, ou enferme-les pour en faire des stations.',
     look: { empty: '#04162a', vignette: 'rgba(40,180,255,0.22)', landGrad: ['#22c9b2', '#2a58d6'], edge: '#dcfff8', landP: '#b8fff2',
@@ -1816,7 +1833,8 @@ const ECOS = [
     levels: [
     { out: 2, jelly: 1 },
     { jelly: 2, piranha: 1, mine: 1 },
-    { name: 'ABYSSES', jelly: 2, piranha: 1, snake: 1, mine: 2 } ] },
+    { name: 'ABYSSES', jelly: 2, piranha: 1, snake: 1, mine: 2 },
+    { name: 'LE LÉVIATHAN', boss: 1, jelly: 2, piranha: 1 } ] },
   { key: 'nebu', name: 'NÉBULA', tag: 'Un brouillard où rôdent les fantômes.', sig: 'ghost',
     rule: 'Brouillard : tu ne vois qu’autour de ton vaisseau, ton terrain le chasse. Les éclairs dans les nuages dévoilent un instant ce qui rôde.',
     look: { empty: '#120a1e', vignette: 'rgba(255,110,220,0.2)', landGrad: ['#ff6fd2', '#7a4dff'], edge: '#ffe6fa', landP: '#ffd0f2',
@@ -1824,7 +1842,8 @@ const ECOS = [
     levels: [
     { out: 2, ghost: 2, fly: 1 },
     { ghost: 2, mirage: 1, fly: 1, thief: 1 },
-    { name: 'FANTÔMES', ghost: 3, mirage: 1, echo: 1, fly: 1, inn: 1 } ] },
+    { name: 'FANTÔMES', ghost: 3, mirage: 1, echo: 1, fly: 1, inn: 1 },
+    { name: 'LE ROI SPECTRE', boss: 1, ghost: 2, mirage: 1, fly: 1 } ] },
   { key: 'volt', name: 'VOLTARIA', tag: 'L\'orage gronde en permanence.', sig: 'mag',
     rule: 'Ton fil attire la foudre : plus il est long, plus il se charge et crépite. Une cible annonce l’éclair, qui coupe le fil. Les globes à plasma attirent la foudre ; enferme-les : ils protègent ton fil autour d’eux et foudroient les ennemis proches.',
     look: { empty: '#0a0c1a', vignette: 'rgba(255,230,90,0.14)', landGrad: ['#f5c93a', '#5146ff'], edge: '#fffbe0', landP: '#fff3b0',
@@ -1832,7 +1851,8 @@ const ECOS = [
     levels: [
     { out: 2, puls: 1, spark: 1 },
     { puls: 1, spark: 2, coils: 1, mag: 1 },
-    { name: 'TEMPÊTE', puls: 1, spark: 2, coils: 1, capa: 1, mag: 1 } ] },
+    { name: 'TEMPÊTE', puls: 1, spark: 2, coils: 1, capa: 1, mag: 1 },
+    { name: 'LA DYNAMO', boss: 1, spark: 2, coils: 1 } ] },
   { key: 'sing', name: 'SINGULARITÉ', tag: 'Au bord du gouffre, tout tombe vers le centre.', sig: 'hunt',
     rule: 'Un trou noir géant occupe le centre : il ne se conquiert jamais et engloutit tout ce qui y entre. Dans la zone à conquérir, son attraction tire ton vaisseau et courbe la route des ennemis. À l’épreuve, son horizon grandit à chaque zone conquise.',
     look: { empty: '#05040a', vignette: 'rgba(200,160,80,0.14)', landGrad: ['#caa24b', '#3b2a60'], edge: '#fff1cc', landP: '#ffe7a8',
@@ -1840,32 +1860,39 @@ const ECOS = [
     levels: [
     { out: 3, nstar: 1 },
     { out: 2, nstar: 1, vortex: 1, hunt: 1, comet: 1 },
-    { name: 'HORIZON', amph: 1, nstar: 1, vortex: 1, hunt: 2, comet: 1 } ] }
+    { name: 'HORIZON', amph: 1, nstar: 1, vortex: 1, hunt: 2, comet: 1 },
+    { name: 'LE DÉVOREUR', boss: 1, nstar: 1, vortex: 1, hunt: 1 } ] }
 ];
 // Ennemis prévus pour les planètes, pas encore créés, et leur doublure : ricocheur et lucioles → boule, embusqué et
 // piranhas → chasseur, givreur et salamandre → étincelle, patineur → perforateur, bulle de magma → diviseur, méduse →
 // serpent, mirage → spectre, bobines jumelles et condensateur → pulsar, étoile à neutrons → aimant, vortex → boule.
 const STANDIN = { ricoch: 'out', ambush: 'hunt', frost: 'spark', skate: 'perf', sala: 'spark', magma: 'div', jelly: 'snake', piranha: 'hunt',
   mirage: 'ghost', fly: 'out', coils: 'puls', capa: 'puls', nstar: 'mag', vortex: 'out' };
-const STAGES = ['DÉCOUVERTE', 'PLUS DUR', 'ÉPREUVE'];
+const STAGES = ['DÉCOUVERTE', 'PLUS DUR', 'ÉPREUVE', 'BOSS'];
 // Ordre fixe des planètes, de la plus facile à la plus dure (demande de Fabien : une progression jusqu'au boss final ;
 // tomber sur Nébula trop tôt était bien trop dur) : Terra Nova, Astéria, Océania, Pyros, Glacia, Voltaria, Singularité,
 // et Nébula en dernier (on n'y voit rien).
 const ECO_ORDER = [0, 1, 4, 3, 2, 6, 7, 5];
 const ecoOrder = () => [...ECO_ORDER];
 const ECO0 = [0, 1, 2, 3, 4, 5, 6, 7];
-// rang de la planète (1 à 8) et son étape (0 découverte, 1 plus dur, 2 épreuve) ; le niveau 25 est le boss de la 8e
-const ecoRank = L => Math.min(8, Math.ceil(L / 3));
+// rang de la planète (1 à 8) et son étape (0 découverte, 1 plus dur, 2 épreuve, 3 BOSS de la planète) : 8 × 4 = 32
+// niveaux, le 32e étant le boss de la 8e planète, donc le boss final du jeu
+const ecoRank = L => Math.min(8, Math.ceil(L / 4));
 function ecoAt(L, order = S.ecos || ECO0) { return ECOS[order[ecoRank(L) - 1]]; }
 // Composition d'un niveau. Le rang ajuste les niveaux 2 et 3 : un ennemi de moins si la planète tombe en 2e ou 3e
 // position, un visiteur venu de la planète précédente en 7e et 8e. Débutant et Confirmé (plus proposés) : 60 % et 80 %
 // des ennemis, au moins un de chaque. Jamais plus d'un trou noir.
 function comp(L, d, order = S.ecos || ECO0) {
-  const D = DIFFS[d], boss = L > 24, rank = ecoRank(L), E = ecoAt(L, order), st = boss ? 2 : (L - 1) % 3;
-  const R = E.levels[st], c = Object.fromEntries(FOES.map(k => [k, 0]));
-  for (const k in R) if (k !== 'name') c[FOES.includes(k) ? k : STANDIN[k]] += R[k];
-  // niveau 25, en attendant les boss : l'épreuve de la dernière planète, avec un visiteur de chacune des deux d'avant
-  if (boss) { c[ECOS[order[6]].sig]++; c[ECOS[order[5]].sig]++; }
+  const D = DIFFS[d], rank = ecoRank(L), E = ecoAt(L, order);
+  const st = (L - 1) % 4, boss = st === 3, final = L >= MAX_LEVEL;
+  // un boss dont le module de combat n'existe pas encore retombe sur l'épreuve de sa planète, avec un visiteur en
+  // plus : le jeu reste jouable et cohérent pendant qu'on écrit les boss un par un
+  const mod = boss && !!BOSSES[E.key];
+  const R = E.levels[mod ? 3 : Math.min(2, st)], c = Object.fromEntries(FOES.map(k => [k, 0]));
+  for (const k in R) if (k !== 'name' && k !== 'boss') c[FOES.includes(k) ? k : STANDIN[k]] += R[k];
+  // boss final : les planètes des deux rangs précédents envoient leur signature prêter main-forte
+  if (final) { c[ECOS[order[6]].sig]++; c[ECOS[order[5]].sig]++; }
+  else if (boss && !mod && rank >= 2) c[ECOS[order[rank - 2]].sig]++;
   if (!boss && st > 0 && rank <= 3) {
     const k = FOES.filter(k => k !== 'amph' && c[k] > 0).sort((a, b) => c[b] - c[a] || (b === 'out') - (a === 'out'))[0];
     if (k) c[k]--;
@@ -1873,8 +1900,13 @@ function comp(L, d, order = S.ecos || ECO0) {
   if (!boss && st > 0 && rank >= 7) c[ECOS[order[rank - 2]].sig]++;
   if (d < 2) for (const k of FOES) if (c[k]) c[k] = Math.max(1, Math.round(c[k] * (d ? .8 : .6)));
   c.amph = Math.min(1, c.amph); c.perf = Math.min(D.maxPerf, c.perf);
+  // pendant un combat de boss : au plus une comète (deux plus un boss, c'est injuste) et des bonus qui ne dérivent
+  // pas (un bonus qui bouge au milieu d'un signe d'attaque est un piège illisible)
+  if (boss) c.comet = Math.min(1, c.comet);
   const p = Math.ceil(L / 2);
-  return Object.assign(c, { name: boss ? 'BOUQUET FINAL' : R.name || '', eco: E, stage: st, rank, boss, bonus: true, mobile: p >= D.mobile, sp: D.sp * (1 + 0.02 * (L - 1)), p });
+  return Object.assign(c, { name: boss ? ((E.levels[3] && E.levels[3].name) || R.name || '') : R.name || '',
+    eco: E, stage: st, rank, boss, final, bossMod: mod, bonus: true,
+    mobile: !boss && p >= D.mobile, sp: D.sp * (1 + 0.02 * (L - 1)), p });
 }
 const foeCount = c => FOES.reduce((a, k) => a + (c[k] || 0), 0);
 function makeFoe(kind, sp) {
@@ -1960,7 +1992,7 @@ function setupLevel(L, instant) {
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
-    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos });
+    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos, v: 2 });
   }
   $('testbar').hidden = !S.test; S.testWipe = 0;
   if (S.test) testSync();
@@ -1984,7 +2016,7 @@ function respawnCell(px, py) {
     if (grid[at(x, y)] !== 1) continue;
     const cx = (x + .5) / G, cy = (y + .5) / G;
     const near = foes.some(e => !e.dead && Math.hypot(e.x - cx, e.y - cy) < (e.kind === 'amph' ? 5 : 3.5));
-    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0) + (rockG[at(x, y)] ? 60 : 0) + (holeG[at(x, y)] ? 1e4 : 0);
+    const d = Math.hypot(cx - px, cy - py) + (near ? 40 : 0) + (rockG[at(x, y)] ? 60 : 0) + (holeG[at(x, y)] ? 1e4 : 0) + (bossNear(cx, cy) ? 80 : 0);
     if (d < bd) { bd = d; best = [x, y]; }
   }
   return best || [GC >> 1, 0];
@@ -2116,6 +2148,8 @@ function moveInto(nx, ny) {
   }
   // Singularité : le trou noir du centre engloutit (jamais franchissable : crash, ou arrêt net sous Casque)
   if (holeG[at(nx, ny)] && S.phase === 'play' && singEat(nx, ny)) return;
+  // un boss dont une partie fait mur : le vaisseau s'arrête net devant, comme devant du terrain
+  if (bs && bs.def.solid && bs.def.solid(bs, nx, ny)) return;
   // Pyros : gouffre de lave (crash, ou bord infranchissable si le coup est encaissé ; sous Casque, on passe au-dessus)
   if (c === 0 && lavaG[at(nx, ny)] && !(helmet() || power.sup > 0) && S.phase === 'play' && lavaBurn(nx, ny)) return;
   const ox = P.x, oy = P.y;
@@ -2284,6 +2318,7 @@ function capture() {
   if (S.depouille) { for (const [x, y] of S.depouille) claimNear(x, y, Math.round(S.interior * .02)); S.depouille = null; }
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
+  if (bs) bossCheckCores();
   if (sg) singGrow();
   checkGoal();
 }
@@ -2298,6 +2333,7 @@ function claimNear(x, y, n) {
   const d0 = take[0][0];
   startReveal(take.map(([d, i]) => ({ i, t: (d - d0) * .03 })));
   awardCells(take.length, { x, y }, false);
+  if (bs) bossCheckCores();
 }
 function startReveal(list) {
   if (reveal) for (let r = reveal.k; r < reveal.list.length; r++) paintCellIdx(reveal.list[r].i);
@@ -2327,7 +2363,9 @@ function checkGoal() {
     }
     return;
   }
-  if (S.phase === 'play' && S.filled / S.interior >= DIFFS[S.diff].goal) { S.phase = 'clearing'; clearT = 1.2; playJingle(S.level % 3 ? 'clear' : 'clearBig', sfx.level); }
+  // niveau boss : pas d'objectif de pourcentage, c'est le 3e noyau enfermé qui finit le niveau (bossSlay)
+  if (bs) return;
+  if (S.phase === 'play' && S.filled / S.interior >= DIFFS[S.diff].goal) { S.phase = 'clearing'; clearT = 1.2; playJingle(S.level % 4 ? 'clear' : 'clearBig', sfx.level); }
 }
 
 /* ---------- Ennemis ---------- */
@@ -3175,6 +3213,18 @@ function predCheck() {
     const r = (e.r ? e.r + .45 : .9) + reach;
     if (Math.hypot(e.x - pp.x, e.y - pp.y) < r) hitPlayer(e);
   }
+  // le Prédateur ne trace pas de fil : il détruit un noyau en le dévorant pendant son bond
+  if (bs && !bs.won) {
+    const r2 = CORE_R + .45 + reach;
+    for (const c of bs.cores)
+      if (c.alive && c.armed && !bs.pending.includes(c.id) && Math.hypot(c.x - pp.x, c.y - pp.y) < r2) {
+        bs.pending.push(c.id);
+        pred.combo = Math.min(predMax(), pred.combo + 1); pred.ct = predWin(); pred.cd = 0; pred.again = true;
+        pred.blood = Math.min(bloodMax(), pred.blood + 8);
+        if (pred.bite > 0) pred.bite = Math.max(pred.bite, PRED_CARRY);
+        popups.push({ x: c.x, y: Math.max(3, c.y - 2), text: 'NOYAU DÉVORÉ', age: -.2, color: T.danger });
+      }
+  }
 }
 // Dévore un ennemi ; renvoie false s'il ne se mange pas (le contact compte alors comme un coup)
 function devour(e) {
@@ -3309,6 +3359,7 @@ function predConquer(x, y, c) {
   awardCells(list.length, { x, y: y + 2.4 }, list.length >= S.interior * 0.15, c);
   for (const it of items) if (ITEM[it.type].medium === 'sea' && grid[at(gc(it.x), gc(it.y))] === 1) collect(it);
   items = items.filter(it => !it.done);
+  if (bs) bossCheckCores();
   checkGoal();
 }
 function predSweep() {
@@ -3320,6 +3371,7 @@ function predSweep() {
   awardCells(list.length, { x: pp.x, y: pp.y + 2.4 }, list.length >= S.interior * 0.15, Math.max(1, pred.combo));
   for (const it of items) if (ITEM[it.type].medium === 'sea') collect(it);
   items = items.filter(it => !it.done);
+  if (bs) bossCheckCores();
   checkGoal();
 }
 // Les proies fuient le Prédateur : elles virent pour s'éloigner, d'autant plus vite qu'il est près (même vitesse)
@@ -3439,7 +3491,7 @@ function snap() {
   const gi = grab ? foes.indexOf(grab.e) : -1;
   return { grid: grid.slice(), trail: trail.slice(), erased: erased.slice(), P: structuredClone(P), foes: structuredClone(foes),
     wave: wave && { ...wave }, grab: grab && gi >= 0 ? { ...grab, e: gi } : null, items: structuredClone(items), power: { ...power },
-    filled: S.filled, score: S.score, lives: S.lives, ab: { ...ab }, invuln };
+    filled: S.filled, score: S.score, lives: S.lives, ab: { ...ab }, invuln, boss: bs ? bossSnap() : null };
 }
 function unsnap(sn) {
   const redraw = sn.filled !== S.filled;
@@ -3451,6 +3503,8 @@ function unsnap(sn) {
   S.filled = sn.filled; S.score = sn.score; S.lives = sn.lives; invuln = sn.invuln;
   reveal = null; spawned = [];
   if (sg) for (const i of sg.cells) grid[i] = 1;
+  // un rembobinage rend un noyau détruit : on peut revenir sur une erreur, pas garder le noyau gagné
+  if (bs) bossUnsnap(sn.boss);
   if (redraw) drawBoard();
 }
 function recordRewind(dt) {
@@ -3770,7 +3824,7 @@ function trapFoe(e) {
 // l'ennemi est renvoyé et ne peut pas le refrapper avant HIT_CD s. À 0, c'est le crash. Réparation : ARMOR_CELLS cases tracées
 // pour 100 %. Le blindage n'est pas réparé entre les niveaux.
 const ARMOR_CELLS = 5000, HIT_CD = .8;
-const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20, hole: .30 };
+const ARMOR_DMG = { out: .10, perf: .15, inn: .12, amph: .30, puls: .10, hunt: .15, ghost: .10, div: .10, spark: .10, snake: .12, mine: .15, comet: .20, mag: .10, echo: .15, scar: .12, thief: .10, ring: .08, lava: .20, meteor: .15, drown: .25, freeze: .25, bolt: .15, wave: .05, fastWave: .08, self: .20, hole: .30, boss: .25 };
 // cd : court répit après une onde ou un croisement de fil, pour qu'un même incident ne compte qu'une fois
 const armor = { hp: 1, jolt: 0, cd: 0 };
 // blindage maximal (Forteresse : 150 %) et réparation (Soudeur : deux fois plus rapide)
@@ -4166,6 +4220,7 @@ function crash(cause) {
   if (skillSave(cause)) return;
   S.phase = 'crash'; S.crashT = 0; S.exploded = false;
   crashPos = playerPos();
+  if (bs) { bs.pending = []; bs.pgap = 0; bs.tell = 0; bs.aims = []; }
   // Leçon : l'ennemi responsable (sa place dans foes, retrouvée après le rembobinage)
   const ke = S.lastHit && time - S.lastHit.t < .1 ? S.lastHit.e : null;
   S.killer = ke && foes.includes(ke) ? { i: foes.indexOf(ke), kind: ke.kind, x: ke.x, y: ke.y } : null;
@@ -4207,6 +4262,7 @@ function updateCrash(dt) {
     if (S.test && armor.hp <= 0) armor.hp = armorMax();
     rw.hist = []; camo.on = 0;
     invuln = 0;
+    if (bs) { bs.calm = BOSS_CALM; bs.stt = 0; bs.tell = 0; bs.aims = []; }
     // on repart aussitôt, sans écran d'info (demande de Fabien : l'interruption cassait le rythme), dans la zone protégée
     S.phase = 'play'; hud(); pwHud();
     if (!S.test) {
@@ -4790,6 +4846,8 @@ const lavaG = new Uint8Array(N);
 let hz = null, pools = [], meteors = [], scorch = [], ecoClock = 0, hitSrc = 'ring';
 // dangers de la planète (appelée par setupLevel, après la remise à zéro du terrain)
 function ecoSetup(eco, st) {
+  // l'étape 3 est le niveau boss : les tables par étape des planètes n'en ont que trois, on retombe sur l'épreuve
+  st = Math.min(2, st || 0);
   ambSetup(eco ? eco.key : 'terra');
   lavaG.fill(0); pools = []; meteors = []; scorch = []; ecoClock = 0;
   oc = null;
@@ -4804,8 +4862,11 @@ function ecoSetup(eco, st) {
   if (eco && eco.key === 'aste') asteSetup(st);
   holeG.fill(0); sg = null;
   if (eco && eco.key === 'sing') singSetup(st);
-  hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[Math.min(2, st || 0)]) : null;
+  hz = eco && eco.key === 'pyros' ? Object.assign({ next: urand(3, 5) }, LAVA[st]) : null;
   if (hz) makePools(hz.pools);
+  // le boss vient en dernier : ses noyaux doivent éviter la lave, le trou noir, les astéroïdes, l'île et le camp
+  bs = null;
+  if (eco && !S.test && S.comp && S.comp.boss) bossSetup(eco, S.comp);
 }
 function makePools(n) {
   for (let tries = 0; pools.length < n && tries < 400; tries++) {
@@ -4947,6 +5008,7 @@ function ecoUpdate(dt) {
   if (vt) voltUpdate(dt);
   if (rocks.length) asteUpdate(dt);
   if (sg) sgUpdate(dt);
+  if (bs) bossUpdate(dt);
   for (const s of scorch) s.age += dt;
   if (scorch.length) scorch = scorch.filter(s => s.age < s.max);
   for (const p of pools) {
@@ -5803,6 +5865,1099 @@ function drawVolt(layer, pp) {
   ctx.restore();
 }
 
+/* ---------- Boss ---------- */
+// Un boss par planète, au 4e niveau de chacune (8 planètes × 4 = 32 niveaux, le 32e étant le boss final).
+// Pas d'objectif de pourcentage : le boss a TROIS NOYAUX posés dans la zone à conquérir, et on en détruit un en
+// l'ENFERMANT — sa case devient du terrain conquis, comme pour le piège du Piégeur. Chaque noyau détruit fait monter
+// le boss d'une phase, plus agressive ; au troisième il explose et la planète est conquise. Son corps tue au contact
+// et rien ne l'entame : tout se joue au tracé et à la lecture de ses signes.
+// Règle d'or de Fabien : aucune attaque sans signe annonciateur, jamais de mort qu'on n'a pas vu venir. C'est pour ça
+// que les attaques passent toutes par bossAim(), qui impose un délai d'annonce d'au moins BOSS_WARN secondes.
+let bs = null;
+const CORE_R = 1.1, CORE_GAP = .9, BOSS_CALM = 2.5, BOSS_FOES_MAX = 10, BOSS_WIN_T = 3.4, CORE_KEEP = 2.5, BOSS_WARN = .45;
+const TAU = Math.PI * 2;
+
+// Difficulté d'un boss : le rang de sa planète (1 à 8, l'ordre est fixe, du plus facile au plus dur) et sa phase
+// (noyaux déjà détruits). Aucun module ne doit écrire un numéro de niveau : tout passe par ces facteurs.
+function bossTier() {
+  const rank = bs ? bs.rank : 1, p = bs ? bs.phase : 0, k = (rank - 1) / 7;
+  return { rank, phase: p, k,
+    sp: (1 + .35 * k) * (1 + .18 * p),       // vitesses du boss et de ses projectiles
+    cd: (1 - .25 * k) * (1 - .18 * p),       // délai entre deux attaques
+    tell: (1 - .3 * k) * (1 - .12 * p),      // durée du signe annonciateur
+    minions: 2 + Math.round(3 * k) + p,      // sbires visés en même temps
+    reach: 1 + .25 * k,                      // portée des attaques
+    hide: .25 * k + .25 * p };               // part de feinte laissée au module
+}
+// un signe ne descend JAMAIS sous BOSS_WARN : à 13,6 cases/s (le Blindé, le plus lent) ça laisse 6 cases pour fuir
+const bossTell = base => Math.max(BOSS_WARN, base * bossTier().tell);
+const bossLv = () => !!bs;
+// distance d'un point à un segment, en cases du monde (attaques en ligne)
+function segDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2)) : 0;
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// une case de la zone à conquérir, loin du départ, des bords, des autres noyaux et des dangers fixes de la planète
+function coreSpot(minD = 9, far = 13) {
+  const cands = [];
+  for (let y = BG + 2; y < GR - BG - 2; y++) for (let x = BG + 2; x < GC - BG - 2; x++) {
+    const i = at(x, y);
+    if (grid[i] !== 0 || lavaG[i] || rockG[i] || holeG[i]) continue;
+    const cx = wx(i), cy = wy(i);
+    if (Math.hypot(cx - COLS / 2, cy - 1) < far) continue;
+    if (bs.cores.some(c => Math.hypot(c.x - cx, c.y - cy) < minD)) continue;
+    cands.push([cx, cy]);
+  }
+  return cands.length ? cands[(Math.random() * cands.length) | 0] : [COLS / 2, ROWS / 2];
+}
+// création du boss, à la fin de ecoSetup (donc après que la planète a posé ses dangers : les noyaux les évitent)
+function bossSetup(eco, C) {
+  const def = BOSSES[eco.key];
+  if (!def) return;
+  bs = { key: eco.key, def, name: C.name || def.name, rank: ecoRank(S.level), t: 0, vt: 0, phase: 0, left: 3,
+    cores: [], pending: [], pgap: 0, st: 'enter', stt: 0, tell: 0, calm: BOSS_CALM, dying: 0, won: false,
+    idle: 0, hitCd: 0, x: COLS / 2, y: 15, r: 2.6, parts: [], aims: [], minions: 0, mt: 0, d: {} };
+  const spots = def.cores ? def.cores(bs) : [coreSpot(), coreSpot(), coreSpot()];
+  bs.cores = spots.map((s, i) => Array.isArray(s)
+    ? { id: i, x: s[0], y: s[1], alive: true, armed: true, ph: i * 2.1, vx: 0, vy: 0, hit: 0 }
+    : Object.assign({ id: i, alive: true, armed: true, ph: i * 2.1, vx: 0, vy: 0, hit: 0 }, s));
+  if (def.setup) def.setup(bs, bossTier());
+}
+
+/* -- les noyaux -- */
+// un noyau armé dont la case est passée en terrain conquis est condamné. Appelée partout où du terrain apparaît.
+function bossCheckCores() {
+  if (!bs || bs.won) return;
+  for (const c of bs.cores)
+    if (c.alive && c.armed && grid[at(gc(c.x), gc(c.y))] === 1 && !bs.pending.includes(c.id)) bs.pending.push(c.id);
+}
+function bossKillCore(id) {
+  const c = bs.cores.find(x => x.id === id);
+  if (!c || !c.alive) return;
+  c.alive = false; bs.left--; bs.phase = 3 - bs.left;
+  const dbl = bs.pending.length > 0, pts = Math.round(5000 * S.level * (dbl ? 2 : 1));
+  S.score += pts;
+  burst(c.x, c.y, T.danger, 52, 15); burst(c.x, c.y, T.shock, 30, 10);
+  rings.push({ x: c.x, y: c.y, r: 0, max: 11, age: 0, color: T.rainbow ? '#ffffff' : T.shock },
+              { x: c.x, y: c.y, r: 0, max: 7, age: -.12, color: T.danger });
+  popups.push({ x: c.x, y: Math.max(3, c.y - 2.4), text: (dbl ? 'DOUBLÉ ! ' : '') + 'NOYAU ' + bs.phase + '/3  +' + fmt(pts), age: -.2, color: T.danger, big: true });
+  shake = REDUCED ? 0 : 1.1; flash = Math.max(flash, .85);
+  sfx.bomb(); hud(); powersHud();
+  bs.calm = Math.max(bs.calm, .9);             // un court répit : le joueur voit le boss changer
+  if (bs.def.onCore) bs.def.onCore(bs, bs.phase, bossTier());
+  if (bs.left <= 0) bossSlay();
+}
+// le boss reprend un disque de terrain conquis : il redevient à conquérir. C'est ce qui empêche de gagner à l'usure.
+function bossReclaim(x, y, r) {
+  let n = 0;
+  const pp = P ? playerPos() : null;
+  for (let gy = Math.max(BG, gc(y - r)); gy <= Math.min(GR - BG - 1, gc(y + r)); gy++)
+    for (let gx = Math.max(BG, gc(x - r)); gx <= Math.min(GC - BG - 1, gc(x + r)); gx++) {
+      const i = at(gx, gy);
+      if (grid[i] !== 1 || rockG[i] || holeG[i] || isleG[i] || campG[i]) continue;
+      if (pp && Math.hypot(wx(i) - pp.x, wy(i) - pp.y) < 1.6) continue;    // jamais sous le vaisseau
+      if (Math.hypot(wx(i) - x, wy(i) - y) > r) continue;
+      grid[i] = 0; n++;
+    }
+  if (!n) return 0;
+  S.filled = Math.max(0, S.filled - n);
+  boardDirty = true; drawBoard();
+  rings.push({ x, y, r: 0, max: r + 2, age: 0, color: T.danger });
+  shake = Math.max(shake, REDUCED ? 0 : .5);
+  popups.push({ x, y: Math.max(3, y - r - 1), text: 'TERRAIN PERDU', age: 0, color: T.danger });
+  if (!muted) { tone(70, .7, 'sawtooth', .055, -25); tone(150, .4, 'triangle', .03, -70, .05); }
+  hud();
+  return n;
+}
+/* -- attaques annoncées, communes aux 8 -- */
+// Le module pose une visée (un disque, ou une ligne de (x,y) à (x2,y2)) ; le moteur compte, dessine la cible, puis
+// frappe. Un module ne frappe JAMAIS directement : c'est ce qui garantit le signe annonciateur.
+function bossAim(x, y, r, warn, kind = 'disc', x2, y2) {
+  if (!bs) return null;
+  const a = { x, y, r, t: 0, max: Math.max(BOSS_WARN, warn), kind, x2: x2 ?? x, y2: y2 ?? y, done: false };
+  bs.aims.push(a);
+  if (!muted) tone(kind === 'line' ? 300 : 420, .1, 'triangle', .022, 120);
+  return a;
+}
+function bossAims(dt) {
+  let fired = false;
+  for (const a of bs.aims) {
+    a.t += dt;
+    if (a.t < a.max) continue;
+    a.done = fired = true;
+    if (a.kind === 'line') bossBlastSeg(a.x, a.y, a.x2, a.y2, a.r);
+    else bossBlastSeg(a.x, a.y, a.x, a.y, a.r);
+  }
+  if (fired) bs.aims = bs.aims.filter(a => !a.done);
+  bs.tell = bs.aims.length ? bs.aims.reduce((m, a) => Math.max(m, a.t / a.max), 0) : 0;
+}
+// explosion le long d'un segment (un point : un disque) : le fil dans le rayon est soufflé (onde de choc depuis le
+// point le plus proche, comme la mine) et le vaisseau est touché s'il est dedans
+function bossBlastSeg(x1, y1, x2, y2, r) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1);
+  const steps = Math.max(1, Math.round(len / 2.2));
+  for (let s = 0; s <= steps; s++) {
+    const f = steps ? s / steps : 0, px = x1 + (x2 - x1) * f, py = y1 + (y2 - y1) * f;
+    burst(px, py, T.danger, len > 2 ? 12 : 34, 11);
+    rings.push({ x: px, y: py, r: 0, max: r, age: -s * .03, color: T.shock });
+  }
+  shake = Math.max(shake, REDUCED ? 0 : .7); flash = Math.max(flash, .3);
+  if (!muted) { tone(66, .55, 'sawtooth', .07, -28); tone(190, .35, 'square', .04, -150, .02); }
+  if (S.phase !== 'play' || !P || helmet() || power.sup > 0) return;
+  if (P.drawing && SH().key !== 'fur') {
+    let bk = -1, bd = 1e9; const hit = [];
+    for (let k = 0; k < trail.length; k++) {
+      if (erased[k]) continue;
+      const d = segDist(wx(trail[k]), wy(trail[k]), x1, y1, x2, y2);
+      if (d < r) { hit.push(k); if (d < bd) { bd = d; bk = k; } }
+    }
+    if (bk >= 0 && !onFire(trail[bk])) { onTrailHit({ kind: 'boss', x: mx, y: my, vx: 0, vy: 0 }, trail[bk]); for (const k of hit) if (!onFire(trail[k])) eraseK(k); }
+  }
+  const pp = playerPos();
+  if (S.phase === 'play' && segDist(pp.x, pp.y, x1, y1, x2, y2) < r + .3) {
+    hitSrc = 'boss'; hitPlayer(null); hitSrc = 'ring';
+    if (S.phase === 'crash') popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.4), text: 'FRAPPÉ !', age: 0, color: T.danger });
+  }
+}
+// coupe le fil le long d'un segment, sans explosion (rayon tournant, corps qui balaie)
+function bossCutSeg(x1, y1, x2, y2, r) {
+  if (S.phase !== 'play' || !P || !P.drawing || helmet() || power.sup > 0 || SH().key === 'fur') return;
+  let bk = -1, bd = 1e9;
+  for (let k = 0; k < trail.length; k++) {
+    if (erased[k]) continue;
+    const d = segDist(wx(trail[k]), wy(trail[k]), x1, y1, x2, y2);
+    if (d < r && d < bd) { bd = d; bk = k; }
+  }
+  if (bk >= 0 && !onFire(trail[bk])) onTrailHit({ kind: 'boss', x: x2, y: y2, vx: 0, vy: 0 }, trail[bk]);
+}
+/* -- sbires -- */
+function bossSpawn(kind, x, y) {
+  if (foes.filter(e => !e.dead).length >= BOSS_FOES_MAX) return null;
+  const k = FOES.includes(kind) ? kind : STANDIN[kind] || 'out';
+  const e = makeFoe(k, S.comp.sp * bossTier().sp);
+  if (x != null) { e.x = x; e.y = y; }
+  const pp = P ? playerPos() : { x: COLS / 2, y: 1 };
+  for (let n = 0; n < 40 && (Math.hypot(e.x - pp.x, e.y - pp.y) < 10 || lavaG[at(gc(e.x), gc(e.y))] || holeG[at(gc(e.x), gc(e.y))]); n++) {
+    e.x = urand(B + 3, COLS - B - 3); e.y = urand(B + 10, ROWS - B - 3);
+  }
+  foes.push(e); unstick(e);
+  rings.push({ x: e.x, y: e.y, r: 0, max: 3.5, age: 0, color: foeColor(e) });
+  burst(e.x, e.y, foeColor(e), 18, 7);
+  return e;
+}
+// maintient un nombre de sbires, un à la fois (jamais une vague d'un coup : illisible)
+function bossKeepMinions(dt, target, kinds) {
+  if ((bs.mt -= dt) > 0) return;
+  const live = foes.filter(e => !e.dead).length;
+  if (live >= Math.min(target, BOSS_FOES_MAX)) { bs.mt = .6; return; }
+  bs.mt = 1.2;
+  bossSpawn(kinds[(Math.random() * kinds.length) | 0]);
+}
+/* -- contact, bouclier, reprise -- */
+function bossTouch() {
+  if (!P || bs.won || bs.calm > 0 || bs.hitCd > 0 || P.shield || S.safe > 0) return;
+  const pp = playerPos();
+  const parts = bs.parts && bs.parts.length ? bs.parts : [bs];
+  const touched = bs.def.hit ? bs.def.hit(bs, pp)
+    : parts.some(p => p.live !== false && Math.hypot(p.x - pp.x, p.y - pp.y) < (p.r || bs.r) + .45);
+  if (!touched) return;
+  bs.hitCd = .8;
+  hitSrc = 'boss'; hitPlayer(null); hitSrc = 'ring';
+  if (S.phase === 'crash') popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.4), text: 'BROYÉ !', age: 0, color: T.danger });
+}
+// le boss rebondit sur la zone protégée du départ et de la reprise, comme tous les ennemis
+function bossShieldBounce(ox, oy) {
+  const pp = playerPos();
+  if (Math.hypot(bs.x - pp.x, bs.y - pp.y) > SHIELD_R + bs.r) return;
+  bs.x = ox; bs.y = oy;
+  if (bs.d.vx != null) { bs.d.vx = -bs.d.vx; bs.d.vy = -bs.d.vy; }
+}
+// vrai à proximité d'un noyau vivant ou du corps du boss : la reprise après un crash et les bonus évitent ces cases
+function bossNear(x, y) {
+  if (!bs) return false;
+  if (bs.cores.some(c => c.alive && Math.hypot(c.x - x, c.y - y) < 4)) return true;
+  const parts = bs.parts && bs.parts.length ? bs.parts : [bs];
+  return parts.some(p => p.live !== false && Math.hypot(p.x - x, p.y - y) < (p.r || bs.r) + 3);
+}
+/* -- mort du boss -- */
+function bossSlay() {
+  bs.won = true; bs.dying = 0; bs.calm = 99; bs.pending = []; bs.aims = [];
+  S.phase = 'clearing'; clearT = BOSS_WIN_T;
+  const pts = 20000 * S.level;
+  S.score += pts;
+  for (const e of foes) if (!e.dead && isSea(e)) killFoe(e, '', T.danger, 500 * S.level);
+  popups.push({ x: COLS / 2, y: ROWS / 2 - 3, text: bs.name + ' VAINCU !', age: -.1, color: T.rainbow ? '#ffd23f' : T.ball, big: true });
+  popups.push({ x: COLS / 2, y: ROWS / 2 + 1, text: '+' + fmt(pts), age: -.5, color: T.ball, big: true });
+  playJingle('clearBig', sfx.level);
+  hud(); powersHud();
+}
+function bossDie(dt) {
+  if (bs.def.die && bs.def.die(bs, dt)) return;
+  const parts = bs.parts && bs.parts.length ? bs.parts : [bs];
+  if ((bs.d.dieT = (bs.d.dieT || 0) - dt) <= 0) {
+    bs.d.dieT = .3;
+    const p = parts[(Math.random() * parts.length) | 0];
+    const x = p.x + urand(-1.5, 1.5), y = p.y + urand(-1.5, 1.5);
+    burst(x, y, T.danger, 26, 12); burst(x, y, T.shock, 14, 8);
+    rings.push({ x, y, r: 0, max: 5 + Math.random() * 4, age: 0, color: T.shock });
+    shake = Math.max(shake, REDUCED ? 0 : .9); flash = Math.max(flash, .4);
+    if (!muted) sfx.boom();
+  }
+  if (bs.dying > 2.6 && !bs.d.bigBoom) {
+    bs.d.bigBoom = 1;
+    rings.push({ x: bs.x, y: bs.y, r: 0, max: 44, age: 0, color: T.rainbow ? '#ffffff' : T.shock });
+    burst(bs.x, bs.y, '#ffffff', 90, 22);
+    superFlash = 1; shake = REDUCED ? 0 : 1.6;
+    if (!muted) sfx.bomb();
+  }
+}
+/* -- boucle -- */
+function bossUpdate(dt) {
+  if (!bs) return;
+  const ph = S.phase;
+  if (ph !== 'play' && ph !== 'crash' && ph !== 'clearing') return;
+  bs.vt += dt;
+  if (bs.won) { bs.dying += dt; bossDie(dt); return; }
+  if (ph === 'crash') return;                       // le monde est figé pendant l'explosion du vaisseau
+  const gd = dt * foeSlow();                        // Chrono, Super Chrono, Temps mort et tracé éclair le ralentissent
+  bs.t += gd; bs.stt += gd;
+  if (bs.calm > 0) bs.calm -= dt;
+  if (bs.hitCd > 0) bs.hitCd -= dt;
+  if (P && (P.dir.x || P.dir.y)) bs.idle = 0; else bs.idle += dt;
+  if (bs.pending.length && (bs.pgap -= dt) <= 0) { bossKillCore(bs.pending.shift()); bs.pgap = CORE_GAP; }
+  if (!bs) return;                                  // le dernier noyau a tué le boss
+  for (const c of bs.cores) c.ph += gd;
+  const ox = bs.x, oy = bs.y;
+  if (bs.def.update) bs.def.update(bs, gd, bossTier());
+  bossAims(gd);
+  if (P && P.shield) bossShieldBounce(ox, oy);
+  bossCheckCores();
+  if (ph === 'play' && !bs.won) bossTouch();
+}
+/* -- le Rembobineur : le boss est fait de données simples, donc clonable -- */
+function bossSnap() {
+  const { def, ...rest } = bs;
+  const s = structuredClone(rest);
+  if (def.snap) s.x_ = def.snap(bs);
+  return s;
+}
+function bossUnsnap(s) {
+  if (!s || !bs) return;
+  const def = bs.def, x_ = s.x_;
+  bs = Object.assign(structuredClone(s), { def });
+  delete bs.x_;
+  if (def.unsnap) def.unsnap(bs, x_);
+  powersHud();
+}
+/* -- rendu -- */
+// Un noyau se voit de loin et à travers tout (brouillard de Nébula, obscurité du trou noir) : c'est l'objectif.
+function drawCore(c) {
+  const t = bs.vt, pend = bs.pending.includes(c.id);
+  if (!c.alive) return;
+  const col = c.armed ? (T.rainbow ? T.shock : T.ball) : '#8d93b8';
+  if (!T.smooth) {   // MYX-3 : un carré plein qui clignote
+    if ((t * 3 | 0) % 2) { ctx.fillStyle = T.ball; ctx.fillRect(c.x - .7, c.y - .7, 1.4, 1.4); }
+    return;
+  }
+  ctx.save();
+  // lien discret vers le boss : on comprend de quoi il dépend
+  if (!bs.d.noLink && c.armed) {
+    ctx.globalAlpha = .22; ctx.strokeStyle = col; ctx.lineWidth = .1; ctx.setLineDash([.35, .5]);
+    ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(bs.x, bs.y); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (c.armed) {
+    const hr = CORE_R * (2.6 + .35 * Math.sin(t * 2.1 + c.ph));
+    ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+    ctx.globalAlpha = pend ? .4 : .22;
+    const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, hr);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, hr, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  // anneau en pointillé qui tourne (il se resserre vite quand le noyau est condamné)
+  ctx.globalAlpha = 1; ctx.strokeStyle = col; ctx.lineWidth = .12;
+  const rr = pend ? CORE_R + .45 - (bs.pgap > 0 ? (CORE_GAP - bs.pgap) / CORE_GAP : 1) * .4 : CORE_R + .45;
+  ctx.setLineDash([.5, .35]); ctx.lineDashOffset = -t * 2.5;
+  ctx.beginPath(); ctx.arc(c.x, c.y, rr, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  // cœur qui bat
+  const bt = pend ? 1.25 : 1 + .12 * Math.sin(t * 8.8 + c.ph);
+  glowOn(col, 2.2);
+  const cg = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, CORE_R * .5 * bt);
+  cg.addColorStop(0, '#ffffff'); cg.addColorStop(.55, col); cg.addColorStop(1, T.rainbow ? '#7a4dff' : col);
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(c.x, c.y, CORE_R * .46 * bt, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0;
+  if (c.armed) {
+    // trois éclats en orbite, dans le sens inverse de l'anneau
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = .85;
+    for (let k = 0; k < 3; k++) {
+      const a = -t * .9 + c.ph + k * TAU / 3;
+      ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * CORE_R * .85, c.y + Math.sin(a) * CORE_R * .85, .11, 0, TAU); ctx.fill();
+    }
+  } else {
+    // noyau blindé : coque hexagonale, le joueur voit tout de suite que ce n'est pas le moment
+    ctx.globalAlpha = .8; ctx.strokeStyle = '#b9bedd'; ctx.lineWidth = .14;
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) { const a = k * TAU / 6 + t * .3; const fn = k ? 'lineTo' : 'moveTo'; ctx[fn](c.x + Math.cos(a) * (CORE_R + .3), c.y + Math.sin(a) * (CORE_R + .3)); }
+    ctx.closePath(); ctx.stroke();
+  }
+  ctx.restore();
+}
+// cible d'une attaque annoncée : elle clignote de plus en plus vite à mesure que le coup approche
+function drawAim(a) {
+  const k = a.t / a.max, fast = 2 + k * 10;
+  ctx.save();
+  ctx.globalAlpha = (.3 + .45 * k) * (.55 + .45 * Math.sin(a.t * fast * 2));
+  ctx.strokeStyle = T.danger; ctx.lineWidth = .16;
+  if (a.kind === 'line') {
+    const nx = -(a.y2 - a.y), ny = a.x2 - a.x, L = Math.hypot(nx, ny) || 1;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(a.x + nx / L * a.r * s, a.y + ny / L * a.r * s);
+      ctx.lineTo(a.x2 + nx / L * a.r * s, a.y2 + ny / L * a.r * s); ctx.stroke();
+    }
+    ctx.globalAlpha *= .3; ctx.fillStyle = T.danger;
+    ctx.beginPath(); ctx.moveTo(a.x + nx / L * a.r, a.y + ny / L * a.r); ctx.lineTo(a.x2 + nx / L * a.r, a.y2 + ny / L * a.r);
+    ctx.lineTo(a.x2 - nx / L * a.r, a.y2 - ny / L * a.r); ctx.lineTo(a.x - nx / L * a.r, a.y - ny / L * a.r); ctx.closePath(); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, TAU); ctx.stroke();
+    ctx.globalAlpha *= .9; ctx.lineWidth = .1;
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r * (1 - k), 0, TAU); ctx.stroke();
+    ctx.globalAlpha *= .25; ctx.fillStyle = T.danger;
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawBoss(layer) {
+  if (!bs) return;
+  if (layer === 'cores') {
+    for (const c of bs.cores) drawCore(c);
+    if (bs.def.draw) bs.def.draw(bs, 'cores');
+    // dans le brouillard ou quand le joueur cherche sans bouger, un chevron montre le noyau le plus proche
+    if ((fg || bs.d.dark || bs.idle > 5) && P && T.smooth) {
+      const pp = playerPos();
+      let c = null, bd = 1e9;
+      for (const k of bs.cores) if (k.alive) { const d = Math.hypot(k.x - pp.x, k.y - pp.y); if (d < bd) { bd = d; c = k; } }
+      if (c && bd > 9) {
+        const a = Math.atan2(c.y - pp.y, c.x - pp.x);
+        ctx.save(); ctx.globalAlpha = .3 + .15 * Math.sin(bs.vt * 6); ctx.strokeStyle = T.ball; ctx.lineWidth = .18;
+        ctx.translate(pp.x + Math.cos(a) * 5.5, pp.y + Math.sin(a) * 5.5); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(-.5, -.7); ctx.lineTo(.5, 0); ctx.lineTo(-.5, .7); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    return;
+  }
+  if (layer === 'sky') {
+    for (const a of bs.aims) drawAim(a);
+    if (bs.def.draw) bs.def.draw(bs, 'sky');
+    return;
+  }
+  if (bs.def.draw) bs.def.draw(bs, layer);
+}
+
+/* -- outils de dessin et de déplacement partagés par les modules -- */
+// une masse ombrée, éclairée d'en haut à gauche comme tout le reste du jeu ; silhouette pleine en MYX-3
+function bossOrb(x, y, r, c1, c2, glow = 2.4) {
+  if (!T.smooth) { ctx.fillStyle = T.ball; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); return; }
+  glowOn(c1, glow);
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .08, x, y, r);
+  g.addColorStop(0, c1); g.addColorStop(.6, c2); g.addColorStop(1, '#0b0718');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+// deux yeux qui suivent le vaisseau : on sait toujours s'il nous regarde
+function bossEyes(x, y, r, face, col) {
+  if (!T.smooth) return;
+  const pp = P ? playerPos() : { x, y: y + 5 }, d = Math.atan2(pp.y - y, pp.x - x);
+  for (const s of [-1, 1]) {
+    const ex = x + Math.cos(face + s * .55) * r * .42, ey = y + Math.sin(face + s * .55) * r * .42;
+    ctx.fillStyle = '#100a18'; ctx.beginPath(); ctx.arc(ex, ey, r * .18, 0, TAU); ctx.fill();
+    glowOn(col, 1.6); ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(ex + Math.cos(d) * r * .06, ey + Math.sin(d) * r * .06, r * .095, 0, TAU); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+// ombre portée au sol, sur la couche du dessous
+function bossShadow(x, y, r) {
+  if (!T.smooth) return;
+  ctx.save(); ctx.globalAlpha = .34; ctx.fillStyle = '#05030e';
+  ctx.beginPath(); ctx.ellipse(x + .5, y + r * .5, r * 1.05, r * .42, 0, 0, TAU); ctx.fill(); ctx.restore();
+}
+// il marche et rebondit sur les bords du terrain ; jamais dans la bande de départ
+function bossWander(Z, dt) {
+  const d = Z.d, lo = B + 2 + Z.r, hiX = COLS - B - 2 - Z.r, hiY = ROWS - B - 2 - Z.r, loY = B + 7 + Z.r;
+  Z.x += d.vx * dt; Z.y += d.vy * dt;
+  if (Z.x < lo) { Z.x = lo; d.vx = Math.abs(d.vx); } else if (Z.x > hiX) { Z.x = hiX; d.vx = -Math.abs(d.vx); }
+  if (Z.y < loY) { Z.y = loY; d.vy = Math.abs(d.vy); } else if (Z.y > hiY) { Z.y = hiY; d.vy = -Math.abs(d.vy); }
+}
+// pendant le répit (départ, reprise après un crash) le boss s'écarte du vaisseau et n'attaque pas
+function bossFlee(Z, dt, sp) {
+  if (!P) return;
+  const pp = playerPos(), a = Math.atan2(Z.y - pp.y, Z.x - pp.x);
+  Z.d.vx = Math.cos(a) * sp; Z.d.vy = Math.sin(a) * sp;
+  bossWander(Z, dt);
+}
+// un point visé devant le vaisseau : la feinte (tier.hide) décale la visée, mais il reste toujours où fuir
+function bossLead(lead, hide) {
+  const pp = playerPos();
+  const vx = P && P.dir ? P.dir.x : 0, vy = P && P.dir ? P.dir.y : 0;
+  const j = hide > 0 && Math.random() < hide ? urand(-2.5, 2.5) : 0;
+  return [Math.max(B + 1, Math.min(COLS - B - 1, pp.x + vx * lead + j)),
+          Math.max(B + 1, Math.min(ROWS - B - 1, pp.y + vy * lead + j))];
+}
+
+// Les huit boss. Chaque module remplit le contrat : cores, setup, update, draw, onCore (et hit / solid / die au besoin).
+// Rien dans Z.d ne doit être une fonction ni une référence vers foes / items : le Rembobineur clone cet objet.
+const BOSSES = {
+  // TERRA NOVA — LE COLOSSE. Le premier boss : il apprend la règle. Il marche lourdement entre ses noyaux fixes et
+  // frappe le sol. Chaque coup est annoncé par un cercle rouge. S'il piétine longtemps, il tasse ton terrain.
+  terra: {
+    name: 'LE COLOSSE', tag: 'Le gardien du berceau, taillé dans la pierre.',
+    tip: 'Il frappe le sol et le cercle rouge dit où : trace entre deux coups.',
+    setup(Z, tier) {
+      Z.r = 2.9; Z.x = COLS / 2; Z.y = 20;
+      Z.d = { vx: 3.4 * tier.sp, vy: 1.8 * tier.sp, cd: 2.6, stomp: 0, pack: 0, rise: 0 };
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      if (Z.calm > 0) { bossFlee(Z, dt, 3.4 * tier.sp); return; }
+      d.rise = Math.max(0, d.rise - dt * 1.6);
+      bossWander(Z, dt);
+      // il frappe le sol : un ou deux coups selon la phase, annoncés 1,05 s à l'avance
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (2.9 + Math.random() * 1.1) * tier.cd;
+        const n = 1 + (tier.phase >= 1 ? 1 : 0) + (tier.phase >= 2 ? 1 : 0);
+        for (let k = 0; k < n; k++) {
+          const [x, y] = bossLead(2.2 + k * 1.6, tier.hide);
+          bossAim(x, y, 5.2 * tier.reach, bossTell(1.05) + k * .35);
+        }
+        d.rise = 1;
+        if (!muted) tone(110, .3, 'sawtooth', .05, 60);
+      }
+      // il tasse le sol : du terrain conquis redevient à conquérir sous ses pieds
+      if ((d.pack -= dt) <= 0) { d.pack = 19 * tier.cd; if (bossReclaim(Z.x, Z.y, 4.2)) popups.push({ x: Z.x, y: Math.max(3, Z.y - 4), text: 'IL TASSE LE SOL', age: 0, color: T.danger }); }
+      bossKeepMinions(dt, tier.minions, ['out', 'inn']);
+    },
+    onCore(Z, k) { Z.d.cd = Math.min(Z.d.cd, 1.4); Z.r = 2.9 + k * .22; bossSpawn('out'); },
+    draw(Z, layer) {
+      if (layer === 'back') { bossShadow(Z.x, Z.y, Z.r + Z.d.rise * .3); return; }
+      if (layer !== 'main') return;
+      const t = Z.vt, face = Math.atan2(Z.d.vy, Z.d.vx), r = Z.r * (1 + Z.d.rise * .07);
+      ctx.save();
+      // deux blocs d'épaule
+      for (const s of [-1, 1]) bossOrb(Z.x + Math.cos(face + s * 1.57) * r * .78, Z.y + Math.sin(face + s * 1.57) * r * .78, r * .46, '#c9a06a', '#5c4530', 1.6);
+      bossOrb(Z.x, Z.y, r, '#e0bd8a', '#6b4a2c');
+      // fissures incandescentes qui respirent
+      if (T.smooth) {
+        ctx.globalAlpha = .55 + .3 * Math.sin(t * 2.3);
+        glowOn('#ff8a3d', 2.2); ctx.strokeStyle = '#ff8a3d'; ctx.lineWidth = .16;
+        for (let k = 0; k < 4; k++) {
+          const a = face + 1.1 + k * 1.3;
+          ctx.beginPath(); ctx.moveTo(Z.x + Math.cos(a) * r * .25, Z.y + Math.sin(a) * r * .25);
+          ctx.lineTo(Z.x + Math.cos(a + .35) * r * .82, Z.y + Math.sin(a + .35) * r * .82); ctx.stroke();
+        }
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      }
+      bossEyes(Z.x, Z.y, r, face, '#ffd27a');
+      ctx.restore();
+    }
+  },
+  // ASTÉRIA — LE BROYEUR. Deux meules qui tournent en sens inverse. Il AVALE un noyau s'il passe dessus : il le garde
+  // blindé pendant quelques secondes puis le recrache ailleurs. Il faut donc l'enfermer avant qu'il arrive dessus.
+  aste: {
+    name: 'LE BROYEUR', tag: 'Deux meules qui réduisent la roche en poussière.',
+    tip: 'Il avale un noyau s\'il passe dessus et le recrache ailleurs : ferme avant qu\'il arrive.',
+    setup(Z, tier) {
+      Z.r = 2.4; Z.x = COLS / 2; Z.y = 22;
+      Z.d = { vx: 4.6 * tier.sp, vy: 2.8 * tier.sp, cd: 2.4, spin: 0, held: -1, hold: 0 };
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      d.spin += dt * (3.4 + tier.phase * 1.3);
+      if (Z.calm > 0) { bossFlee(Z, dt, 4.6 * tier.sp); return; }
+      // il va vers le noyau armé le plus proche : c'est lisible, et ça met la pression
+      let tgt = null, bd = 1e9;
+      for (const c of Z.cores) if (c.alive && c.armed) { const dd = Math.hypot(c.x - Z.x, c.y - Z.y); if (dd < bd) { bd = dd; tgt = c; } }
+      if (tgt && d.held < 0) {
+        const a = Math.atan2(tgt.y - Z.y, tgt.x - Z.x), sp = 4.6 * tier.sp;
+        d.vx += (Math.cos(a) * sp - d.vx) * Math.min(1, dt * 1.1);
+        d.vy += (Math.sin(a) * sp - d.vy) * Math.min(1, dt * 1.1);
+      }
+      bossWander(Z, dt);
+      // avale le noyau qu'il atteint, le garde blindé, puis le recrache loin
+      if (d.held < 0 && tgt && bd < Z.r + .8) {
+        d.held = tgt.id; d.hold = 5.5; tgt.armed = false;
+        popups.push({ x: Z.x, y: Math.max(3, Z.y - 3), text: 'NOYAU AVALÉ', age: 0, color: T.danger });
+        burst(Z.x, Z.y, '#ffc89a', 26, 10); if (!muted) sfx.smash(); powersHud();
+      }
+      if (d.held >= 0) {
+        const c = Z.cores.find(x => x.id === d.held);
+        if (!c || !c.alive) { d.held = -1; }
+        else { c.x = Z.x; c.y = Z.y;
+          if ((d.hold -= dt) <= 0) {
+            const [nx, ny] = coreSpot(7, 11);
+            c.x = nx; c.y = ny; c.armed = true; d.held = -1; d.vx = -d.vx; d.vy = -d.vy;
+            rings.push({ x: nx, y: ny, r: 0, max: 6, age: 0, color: T.ball });
+            popups.push({ x: nx, y: Math.max(3, ny - 2.4), text: 'RECRACHÉ', age: 0, color: T.ball });
+            if (!muted) sfx.appear(); powersHud();
+          }
+        }
+      }
+      // il jette un bloc de roche, annoncé au sol
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (3.2 + Math.random() * 1.2) * tier.cd;
+        const n = tier.phase >= 2 ? 2 : 1;
+        for (let k = 0; k < n; k++) { const [x, y] = bossLead(3, tier.hide); bossAim(x, y, 3.8 * tier.reach, bossTell(1) + k * .4); }
+      }
+      bossKeepMinions(dt, tier.minions, ['ricoch', 'ambush']);
+    },
+    onCore(Z, k) { Z.d.cd = Math.min(Z.d.cd, 1.2); Z.d.held = -1; bossSpawn('ricoch'); },
+    draw(Z, layer) {
+      if (layer === 'back') { bossShadow(Z.x, Z.y, Z.r); return; }
+      if (layer !== 'main') return;
+      const r = Z.r, sp = Z.d.spin, face = Math.atan2(Z.d.vy, Z.d.vx);
+      ctx.save();
+      // deux meules dentées en sens inverse
+      for (const s of [-1, 1]) {
+        const cx = Z.x + Math.cos(face + s * 1.57) * r * .62, cy = Z.y + Math.sin(face + s * 1.57) * r * .62;
+        bossOrb(cx, cy, r * .72, '#f0c98f', '#6d4a22', 1.8);
+        if (!T.smooth) continue;
+        ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = .2;
+        for (let k = 0; k < 8; k++) {
+          const a = sp * s + k * TAU / 8;
+          ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * .4, cy + Math.sin(a) * r * .4);
+          ctx.lineTo(cx + Math.cos(a) * r * .78, cy + Math.sin(a) * r * .78); ctx.stroke();
+        }
+      }
+      bossOrb(Z.x, Z.y, r * .66, '#8f6a3f', '#3a2614', 1.4);
+      bossEyes(Z.x, Z.y, r * .66, face, '#ff8a3d');
+      ctx.restore();
+    }
+  },
+  // OCÉANIA — LE LÉVIATHAN. Un long serpent de mer : tout son corps tue. Il annonce une charge en ligne, et tant
+  // qu'il est près de toi il aspire ton oxygène.
+  ocea: {
+    name: 'LE LÉVIATHAN', tag: 'Le long serpent des abysses.',
+    tip: 'Tout son corps tue. Il annonce sa charge par un couloir : sors du couloir.',
+    setup(Z, tier) {
+      Z.r = 1.9; Z.x = COLS / 2; Z.y = 26;
+      Z.d = { vx: 5.4 * tier.sp, vy: 3 * tier.sp, cd: 3.2, ph: 0, dash: 0, dx: 0, dy: 0, seg: [] };
+      for (let k = 0; k < 9; k++) Z.d.seg.push({ x: Z.x, y: Z.y });
+      Z.parts = Z.d.seg.map(s => ({ x: s.x, y: s.y, r: 1.5, live: true }));
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      d.ph += dt * 3.2;
+      if (Z.calm > 0) { bossFlee(Z, dt, 5.4 * tier.sp); }
+      else if (d.dash > 0) {
+        d.dash -= dt;
+        Z.x += d.dx * dt; Z.y += d.dy * dt;
+        bossWander(Z, 0);
+      } else {
+        // il ondule en nageant
+        const a = Math.atan2(d.vy, d.vx) + Math.sin(d.ph) * .5, sp = 5.4 * tier.sp;
+        d.vx = Math.cos(a) * sp; d.vy = Math.sin(a) * sp;
+        bossWander(Z, dt);
+        if ((d.cd -= dt) <= 0) {
+          d.cd = (4 + Math.random() * 1.4) * tier.cd;
+          // couloir annoncé, puis il charge dedans
+          const pp = playerPos(), ang = Math.atan2(pp.y - Z.y, pp.x - Z.x);
+          const ex = Z.x + Math.cos(ang) * 30, ey = Z.y + Math.sin(ang) * 30;
+          bossAim(Z.x, Z.y, 2.1 * tier.reach, bossTell(1.1), 'line', ex, ey);
+          d.pend = 1; d.pa = ang;
+        }
+      }
+      // la charge part juste après la fin du couloir annoncé
+      if (d.pend && !Z.aims.length && Z.calm <= 0) { d.pend = 0; d.dash = .85; const v = 21 * tier.sp; d.dx = Math.cos(d.pa) * v; d.dy = Math.sin(d.pa) * v; if (!muted) sfx.grab(); }
+      // le corps suit la tête
+      let px = Z.x, py = Z.y;
+      for (const s of d.seg) {
+        const dx = px - s.x, dy = py - s.y, dd = Math.hypot(dx, dy) || 1, want = 1.55;
+        if (dd > want) { s.x += dx / dd * (dd - want); s.y += dy / dd * (dd - want); }
+        px = s.x; py = s.y;
+      }
+      Z.parts = [{ x: Z.x, y: Z.y, r: Z.r, live: true }].concat(d.seg.map(s => ({ x: s.x, y: s.y, r: 1.45, live: true })));
+      // il coupe le fil qu'il traverse, comme un corps massif
+      bossCutSeg(Z.x, Z.y, d.seg[2].x, d.seg[2].y, 1.5);
+      // il aspire ton air quand il te serre de près
+      if (oc && P && S.phase === 'play' && !helmet() && power.sup <= 0) {
+        const pp = playerPos();
+        if (Math.hypot(Z.x - pp.x, Z.y - pp.y) < 11) oc.o2 = Math.max(0, oc.o2 - dt * 1.3);
+      }
+      bossKeepMinions(dt, tier.minions, ['jelly', 'piranha']);
+    },
+    onCore(Z, k, tier) { Z.d.cd = Math.min(Z.d.cd, 1.5); for (let i = 0; i < 2; i++) Z.d.seg.push({ x: Z.d.seg[Z.d.seg.length - 1].x, y: Z.d.seg[Z.d.seg.length - 1].y }); bossSpawn('jelly'); },
+    draw(Z, layer) {
+      if (layer === 'back') { for (const s of Z.d.seg) bossShadow(s.x, s.y, 1.3); bossShadow(Z.x, Z.y, Z.r); return; }
+      if (layer !== 'main') return;
+      const seg = Z.d.seg;
+      ctx.save();
+      for (let i = seg.length - 1; i >= 0; i--) {
+        const s = seg[i], f = 1 - i / (seg.length + 1);
+        bossOrb(s.x, s.y, 1.45 * (.45 + f * .62), '#5ff0d8', '#116b7a', 1.6);
+        if (T.smooth && i % 2 === 0) {
+          // nageoires
+          ctx.globalAlpha = .5; ctx.fillStyle = '#9ffff0';
+          const a = Math.atan2(s.y - (seg[i - 1] || Z).y, s.x - (seg[i - 1] || Z).x);
+          for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s.x + Math.cos(a + sd * 1.57) * .9, s.y + Math.sin(a + sd * 1.57) * .9, .7, .26, a, 0, TAU); ctx.fill(); }
+          ctx.globalAlpha = 1;
+        }
+      }
+      const face = Math.atan2(Z.d.vy, Z.d.vx);
+      bossOrb(Z.x, Z.y, Z.r, '#aefff2', '#0f7f8e');
+      if (T.smooth) {   // gueule lumineuse
+        glowOn('#6ff6ff', 2.4); ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.beginPath(); ctx.ellipse(Z.x + Math.cos(face) * Z.r * .6, Z.y + Math.sin(face) * Z.r * .6, Z.r * .4, Z.r * .22, face, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      bossEyes(Z.x, Z.y, Z.r, face, '#ffe27a');
+      ctx.restore();
+    }
+  },
+  // PYROS — LE TITAN DE LAVE. Il ne bouge pas : il est planté au fond, énorme. Il envoie des coulées de lave en ligne
+  // qui reprennent ton terrain, et ses noyaux sont des cheminées qui crachent.
+  pyros: {
+    name: 'LE TITAN DE LAVE', tag: 'Planté dans la roche en fusion, il ne recule jamais.',
+    tip: 'Ses coulées reprennent ton terrain, ses cheminées crachent : garde tes distances et ferme vite.',
+    cores() { return [coreSpot(10, 16), coreSpot(10, 16), coreSpot(10, 16)]; },
+    setup(Z, tier) {
+      Z.r = 4.4; Z.x = COLS / 2; Z.y = ROWS - B - 6;
+      Z.d = { cd: 3, vent: 2.2, breathe: 0, arm: 0 };
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      d.breathe += dt;
+      if (Z.calm > 0) return;        // fixe : pas besoin de fuir, il y a toujours de la place loin de lui
+      d.arm = Math.max(0, d.arm - dt * 1.3);
+      // coulée de lave : une ligne depuis lui vers le vaisseau, annoncée
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (4.2 + Math.random() * 1.6) * tier.cd;
+        const [x, y] = bossLead(2.4, tier.hide);
+        bossAim(Z.x, Z.y - Z.r * .4, 1.7 * tier.reach, bossTell(1.2), 'line', x, y);
+        d.arm = 1; d.flow = [x, y];
+        if (!muted) tone(90, .5, 'sawtooth', .05, 40);
+      }
+      // la coulée laisse une flaque brûlante et reprend du terrain à son point d'arrivée
+      if (d.flow && !Z.aims.length) {
+        const [x, y] = d.flow; d.flow = null;
+        bossReclaim(x, y, 3);
+        if (grid[at(gc(x), gc(y))] === 0) { const p = puddle(x, y, 1.5); if (p) pools.push(p); }
+      }
+      // les cheminées (les noyaux) crachent chacune à leur tour : rester collé à un noyau coûte cher
+      if ((d.vent -= dt) <= 0) {
+        d.vent = (5 - tier.phase * .8) * tier.cd;
+        const live = Z.cores.filter(c => c.alive);
+        if (live.length) { const c = live[(Math.random() * live.length) | 0]; bossAim(c.x, c.y, 4 * tier.reach, bossTell(1.15)); }
+      }
+      bossKeepMinions(dt, tier.minions, ['sala', 'magma']);
+    },
+    onCore(Z, k) { Z.d.cd = Math.min(Z.d.cd, 1.6); Z.d.vent = Math.min(Z.d.vent, 2); Z.r = 4.4 + k * .25; bossSpawn('magma'); },
+    draw(Z, layer) {
+      const r = Z.r, t = Z.vt;
+      if (layer === 'back') {
+        if (!T.smooth) return;
+        // lueur de fournaise au sol
+        ctx.save(); ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over'; ctx.globalAlpha = .3 + .1 * Math.sin(t * 1.7);
+        const g = ctx.createRadialGradient(Z.x, Z.y, 0, Z.x, Z.y, r * 3.2);
+        g.addColorStop(0, 'rgba(255,120,40,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(Z.x, Z.y, r * 3.2, 0, TAU); ctx.fill(); ctx.restore();
+        return;
+      }
+      if (layer !== 'main') return;
+      ctx.save();
+      const bob = Math.sin(t * 1.1) * .16;
+      // épaules de roche
+      for (const s of [-1, 1]) bossOrb(Z.x + s * r * .78, Z.y - r * .25 + bob, r * .5, '#5a3326', '#241112', 1.4);
+      bossOrb(Z.x, Z.y + bob, r, '#ff9a3d', '#5e1a12', 3);
+      if (T.smooth) {
+        // veines de magma
+        ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+        ctx.globalAlpha = .6 + .3 * Math.sin(t * 2.6);
+        glowOn('#ffd24a', 2.6); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = .2;
+        for (let k = 0; k < 5; k++) {
+          const a = -1.9 + k * .95;
+          ctx.beginPath(); ctx.moveTo(Z.x, Z.y + bob);
+          ctx.quadraticCurveTo(Z.x + Math.cos(a) * r * .5, Z.y + bob + Math.sin(a) * r * .5,
+            Z.x + Math.cos(a + .2) * r * .92, Z.y + bob + Math.sin(a + .2) * r * .92);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        // le bras se lève avant une coulée
+        if (Z.d.arm > 0) {
+          ctx.globalAlpha = Z.d.arm;
+          bossOrb(Z.x + r * .95, Z.y - r * (.5 + Z.d.arm * .5), r * .42, '#ffb86b', '#6b2214', 2.2);
+          ctx.globalAlpha = 1;
+        }
+      }
+      bossEyes(Z.x, Z.y + bob - r * .2, r * .8, -1.57, '#fff0b0');
+      ctx.restore();
+    }
+  },
+  // GLACIA — LA REINE DES GLACES. Elle protège le noyau le plus proche d'elle : il devient inattaquable. Il faut
+  // l'attirer ailleurs. Son souffle de givre coupe le fil et te glace au lieu de te tuer.
+  glace: {
+    name: 'LA REINE DES GLACES', tag: 'Elle règne sur un monde qui ne fond jamais.',
+    tip: 'Elle gèle le noyau dont elle est la plus proche : attire-la ailleurs, puis ferme.',
+    setup(Z, tier) {
+      Z.r = 2.2; Z.x = COLS / 2; Z.y = 24;
+      Z.d = { vx: 5 * tier.sp, vy: 2.6 * tier.sp, cd: 3, guard: -1, breath: 0 };
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      if (Z.calm > 0) { bossFlee(Z, dt, 5 * tier.sp); }
+      else {
+        // elle glisse vers le vaisseau sans foncer : élégante, mais elle ne lâche pas
+        const pp = playerPos(), a = Math.atan2(pp.y - Z.y, pp.x - Z.x), sp = 5 * tier.sp;
+        d.vx += (Math.cos(a) * sp - d.vx) * Math.min(1, dt * .5);
+        d.vy += (Math.sin(a) * sp - d.vy) * Math.min(1, dt * .5);
+        bossWander(Z, dt);
+      }
+      // le noyau le plus proche d'elle est gelé : inattaquable tant qu'elle le garde
+      let g = -1, bd = 1e9;
+      for (const c of Z.cores) if (c.alive) { const dd = Math.hypot(c.x - Z.x, c.y - Z.y); if (dd < bd) { bd = dd; g = c.id; } }
+      const range = 13 - tier.phase * 1.2;
+      for (const c of Z.cores) c.armed = !(c.id === g && bd < range);
+      if (g !== d.guard) { d.guard = g; powersHud(); }
+      if (Z.calm > 0) return;
+      // souffle de givre : il coupe le fil et fait monter ton gel, il ne tue pas d'un coup
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (3.6 + Math.random() * 1.2) * tier.cd;
+        const pp = playerPos(), a = Math.atan2(pp.y - Z.y, pp.x - Z.x);
+        bossAim(Z.x, Z.y, 2.4 * tier.reach, bossTell(.95), 'line', Z.x + Math.cos(a) * 20, Z.y + Math.sin(a) * 20);
+        d.breath = 1;
+        if (ic) d.chill = 1;
+      }
+      if (d.chill && !Z.aims.length) { d.chill = 0; if (ic && S.phase === 'play' && !helmet() && power.sup <= 0) { ic.frost = Math.min(FROST_MAX, ic.frost + 11); popups.push({ x: Z.x, y: Math.max(3, Z.y - 3), text: 'SOUFFLE DE GIVRE', age: 0, color: '#9fe8ff' }); } }
+      d.breath = Math.max(0, d.breath - dt * 1.2);
+      bossKeepMinions(dt, tier.minions, ['frost', 'skate']);
+    },
+    onCore(Z, k) { Z.d.cd = Math.min(Z.d.cd, 1.4); if (ic) ic.frost = Math.min(FROST_MAX, ic.frost + 5); bossSpawn('frost'); },
+    draw(Z, layer) {
+      if (layer === 'back') { bossShadow(Z.x, Z.y, Z.r); return; }
+      if (layer === 'main') {
+        const r = Z.r, t = Z.vt, face = Math.atan2(Z.d.vy, Z.d.vx);
+        ctx.save();
+        bossOrb(Z.x, Z.y, r, '#eaffff', '#2f6fd6');
+        if (T.smooth) {
+          // couronne de glace
+          glowOn('#bff0ff', 2.4); ctx.fillStyle = '#eafcff';
+          for (let k = -2; k <= 2; k++) {
+            const a = -1.57 + k * .33, h = r * (k % 2 ? .55 : .85);
+            ctx.beginPath(); ctx.moveTo(Z.x + Math.cos(a - .09) * r * .85, Z.y + Math.sin(a - .09) * r * .85);
+            ctx.lineTo(Z.x + Math.cos(a) * (r + h), Z.y + Math.sin(a) * (r + h));
+            ctx.lineTo(Z.x + Math.cos(a + .09) * r * .85, Z.y + Math.sin(a + .09) * r * .85);
+            ctx.closePath(); ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+          // éclats en orbite
+          ctx.globalAlpha = .75; ctx.fillStyle = '#d8f6ff';
+          for (let k = 0; k < 5; k++) { const a = t * .7 + k * TAU / 5, rr = r * 1.5 + Math.sin(t * 2 + k) * .3; ctx.beginPath(); ctx.arc(Z.x + Math.cos(a) * rr, Z.y + Math.sin(a) * rr, .17, 0, TAU); ctx.fill(); }
+          ctx.globalAlpha = 1;
+        }
+        bossEyes(Z.x, Z.y, r, face, '#7fd6ff');
+        ctx.restore();
+        return;
+      }
+      // le lien de givre vers le noyau qu'elle garde : c'est l'information clé du combat
+      if (layer === 'cores' && T.smooth) {
+        const c = Z.cores.find(x => x.id === Z.d.guard && x.alive && !x.armed);
+        if (!c) return;
+        ctx.save(); ctx.globalAlpha = .45 + .2 * Math.sin(Z.vt * 3.4);
+        glowOn('#bff0ff', 2); ctx.strokeStyle = '#cdf3ff'; ctx.lineWidth = .22; ctx.setLineDash([.7, .45]); ctx.lineDashOffset = -Z.vt * 3;
+        ctx.beginPath(); ctx.moveTo(Z.x, Z.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+        ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.restore();
+      }
+    }
+  },
+  // VOLTARIA — LA DYNAMO. Un rotor fixe : ses trois noyaux sont des électrodes qui tournent autour d'elle, et un
+  // rayon balaie le terrain en continu. Le rayon EST le signe : il est visible et sa rotation est régulière.
+  volt: {
+    name: 'LA DYNAMO', tag: 'Le cœur électrique de la tempête.',
+    tip: 'Ses électrodes tournent autour d\'elle et son rayon balaie : ferme entre deux passages.',
+    cores(Z) {
+      const R = 12;
+      return [0, 1, 2].map(k => ({ x: COLS / 2 + Math.cos(k * TAU / 3) * R, y: 26 + Math.sin(k * TAU / 3) * R, orb: k * TAU / 3 }));
+    },
+    setup(Z, tier) {
+      Z.r = 2.5; Z.x = COLS / 2; Z.y = 26;
+      Z.d = { spin: 0, beam: Math.random() * TAU, bsp: .55 * tier.sp, orbR: 12, orbA: 0, noLink: 0, zap: 4 };
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      d.spin += dt * 5;
+      if (Z.calm > 0) return;
+      // les électrodes tournent : un noyau n'attend pas sagement qu'on l'enferme
+      d.orbA += dt * (.26 + tier.phase * .1) * tier.sp;
+      for (const c of Z.cores) {
+        if (!c.alive) continue;
+        const a = (c.orb || 0) + d.orbA;
+        c.x = Math.max(B + 2, Math.min(COLS - B - 2, Z.x + Math.cos(a) * d.orbR));
+        c.y = Math.max(B + 7, Math.min(ROWS - B - 2, Z.y + Math.sin(a) * d.orbR));
+      }
+      // le rayon balaie en continu et coupe le fil qu'il croise
+      d.beam += dt * d.bsp;
+      const beams = 1 + (tier.phase >= 1 ? 1 : 0) + (tier.phase >= 2 ? 1 : 0);
+      for (let k = 0; k < beams; k++) {
+        const a = d.beam + k * TAU / beams;
+        const ex = Z.x + Math.cos(a) * 34, ey = Z.y + Math.sin(a) * 34;
+        bossCutSeg(Z.x, Z.y, ex, ey, .95);
+        if (S.phase === 'play' && P) {
+          const pp = playerPos();
+          if (segDist(pp.x, pp.y, Z.x, Z.y, ex, ey) < 1.05 && Math.hypot(pp.x - Z.x, pp.y - Z.y) > Z.r) {
+            hitSrc = 'boss'; hitPlayer(null); hitSrc = 'ring';
+            if (S.phase === 'crash') popups.push({ x: pp.x, y: Math.max(3, pp.y - 1.4), text: 'FOUDROYÉ !', age: 0, color: T.danger });
+          }
+        }
+      }
+      // elle recharge l'orage de la planète : le fil long devient vite dangereux
+      if (vt && (d.zap -= dt) <= 0) { d.zap = 6 * tier.cd; vt.charge = Math.min(1, vt.charge + .3); }
+      bossKeepMinions(dt, tier.minions, ['spark', 'coils']);
+    },
+    onCore(Z, k, tier) { Z.d.bsp = (.55 + k * .14) * tier.sp; Z.d.orbR = Math.max(8, 12 - k * 1.4); bossSpawn('spark'); },
+    draw(Z, layer) {
+      const t = Z.vt, d = Z.d;
+      if (layer === 'main') {
+        ctx.save();
+        bossOrb(Z.x, Z.y, Z.r, '#fff6c0', '#6b5410');
+        if (T.smooth) {
+          // bobines
+          ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = .18; ctx.globalAlpha = .9;
+          for (let k = 0; k < 6; k++) {
+            const a = d.spin + k * TAU / 6;
+            ctx.beginPath(); ctx.arc(Z.x + Math.cos(a) * Z.r * .6, Z.y + Math.sin(a) * Z.r * .6, Z.r * .3, 0, TAU); ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+        bossEyes(Z.x, Z.y, Z.r, 1.57, '#fffbe0');
+        ctx.restore();
+        return;
+      }
+      if (layer !== 'sky' || !T.smooth) return;
+      // les rayons, par-dessus tout : impossible de ne pas les voir
+      const beams = 1 + (Z.phase >= 1 ? 1 : 0) + (Z.phase >= 2 ? 1 : 0);
+      ctx.save();
+      ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+      for (let k = 0; k < beams; k++) {
+        const a = d.beam + k * TAU / beams, ex = Z.x + Math.cos(a) * 34, ey = Z.y + Math.sin(a) * 34;
+        const g = ctx.createLinearGradient(Z.x, Z.y, ex, ey);
+        g.addColorStop(0, 'rgba(255,250,200,.85)'); g.addColorStop(1, 'rgba(255,220,90,0)');
+        ctx.strokeStyle = g; ctx.lineWidth = 1.5; ctx.globalAlpha = .5;
+        ctx.beginPath(); ctx.moveTo(Z.x, Z.y); ctx.lineTo(ex, ey); ctx.stroke();
+        ctx.strokeStyle = '#fffdf0'; ctx.lineWidth = .22; ctx.globalAlpha = .9;
+        ctx.beginPath(); ctx.moveTo(Z.x, Z.y);
+        for (let s = 1; s <= 8; s++) { const f = s / 8, n = Math.sin(t * 22 + s * 2.2) * .5 * f; ctx.lineTo(Z.x + Math.cos(a) * 34 * f + Math.cos(a + 1.57) * n, Z.y + Math.sin(a) * 34 * f + Math.sin(a + 1.57) * n); }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  },
+  // SINGULARITÉ — LE DÉVOREUR. Il tourne autour du trou noir géant, et ses noyaux dérivent sur des orbites. Il
+  // inspire : pendant qu'il aspire, tout tombe vers lui. À chaque noyau, l'horizon grandit.
+  sing: {
+    name: 'LE DÉVOREUR', tag: 'Ce qui mange même la lumière.',
+    tip: 'Quand il inspire, tout tombe vers lui : tiens-toi loin, ou sur ton terrain.',
+    cores() {
+      const cx = COLS / 2, cy = ROWS / 2;
+      return [0, 1, 2].map(k => ({ x: cx + Math.cos(k * 2.1) * (17 + k * 2), y: cy + Math.sin(k * 2.1) * (17 + k * 2), orb: k * 2.1, rad: 17 + k * 2 }));
+    },
+    setup(Z, tier) {
+      Z.r = 2.6; Z.d = { a: 0, rad: 13, cd: 4, inhale: 0, orbA: 0 };
+      Z.x = COLS / 2 + 13; Z.y = ROWS / 2;
+    },
+    update(Z, dt, tier) {
+      const d = Z.d, cx = COLS / 2, cy = ROWS / 2;
+      // il tourne autour du trou noir géant
+      d.a += dt * .33 * tier.sp;
+      Z.x = Math.max(B + 2, Math.min(COLS - B - 2, cx + Math.cos(d.a) * d.rad));
+      Z.y = Math.max(B + 7, Math.min(ROWS - B - 2, cy + Math.sin(d.a) * d.rad));
+      // les noyaux dérivent sur leurs orbites
+      d.orbA += dt * .17 * tier.sp;
+      for (const c of Z.cores) {
+        if (!c.alive) continue;
+        const a = (c.orb || 0) + d.orbA, r = c.rad || 18;
+        c.x = Math.max(B + 2, Math.min(COLS - B - 2, cx + Math.cos(a) * r));
+        c.y = Math.max(B + 7, Math.min(ROWS - B - 2, cy + Math.sin(a) * r));
+      }
+      if (Z.calm > 0) return;
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (5.2 + Math.random() * 1.6) * tier.cd;
+        d.warn = bossTell(1.15); d.wt = 0;
+        if (!muted) tone(60, .9, 'sine', .05, -20);
+      }
+      if (d.warn > 0) {
+        // le signe : l'espace se resserre autour de lui
+        d.wt += dt;
+        if (d.wt >= d.warn) { d.warn = 0; d.inhale = 1.5; if (!muted) sfx.grab(); }
+      }
+      if (d.inhale > 0) {
+        d.inhale -= dt;
+        // il aspire : même mécanique que le trou noir, mais seulement dans la zone à conquérir
+        if (P && S.phase === 'play' && inSeaNow() && !helmet() && power.sup <= 0 && !P.shield) {
+          const pp = playerPos(), dd = Math.hypot(Z.x - pp.x, Z.y - pp.y);
+          if (dd < 20) {
+            d.acc = (d.acc || 0) + dt * (7 + 16 * (1 - dd / 20)) * G;
+            while (d.acc >= 1 && S.phase === 'play') { d.acc -= 1; suckStep(Z, .6); }
+          }
+        }
+        bossCutSeg(Z.x, Z.y, Z.x, Z.y, 7 * tier.reach);
+      }
+      bossKeepMinions(dt, tier.minions, ['nstar', 'vortex', 'hunt']);
+    },
+    onCore(Z, k, tier) {
+      Z.d.cd = Math.min(Z.d.cd, 2); Z.d.rad = Math.max(9, 13 - k);
+      // l'horizon du trou noir géant grandit, avec son propre signe
+      if (sg) { popups.push({ x: COLS / 2, y: ROWS / 2 - 5, text: 'L\'HORIZON GRANDIT', age: -.1, color: T.danger, big: true }); singGrow(); }
+      bossSpawn('nstar');
+    },
+    draw(Z, layer) {
+      const t = Z.vt, d = Z.d;
+      if (layer === 'main') {
+        ctx.save();
+        if (T.smooth) {
+          // gueule : un disque noir bordé de lumière étirée
+          const g = ctx.createRadialGradient(Z.x, Z.y, Z.r * .3, Z.x, Z.y, Z.r * 2.2);
+          g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.42, 'rgba(10,6,20,.9)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(Z.x, Z.y, Z.r * 2.2, 0, TAU); ctx.fill();
+          ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+          glowOn('#ffd98a', 2.6); ctx.strokeStyle = '#ffd98a'; ctx.lineWidth = .2; ctx.globalAlpha = .9;
+          ctx.beginPath(); ctx.arc(Z.x, Z.y, Z.r, 0, TAU); ctx.stroke();
+          // dents de lumière
+          for (let k = 0; k < 10; k++) {
+            const a = t * .5 + k * TAU / 10, h = Z.r * (.3 + .2 * Math.abs(Math.sin(t * 2 + k)));
+            ctx.beginPath(); ctx.moveTo(Z.x + Math.cos(a) * Z.r, Z.y + Math.sin(a) * Z.r);
+            ctx.lineTo(Z.x + Math.cos(a) * (Z.r + h), Z.y + Math.sin(a) * (Z.r + h)); ctx.stroke();
+          }
+          ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        } else { ctx.fillStyle = T.ball; ctx.beginPath(); ctx.arc(Z.x, Z.y, Z.r, 0, TAU); ctx.fill(); }
+        ctx.restore();
+        return;
+      }
+      if (layer !== 'sky' || !T.smooth) return;
+      // le signe de l'inspiration : des anneaux qui se resserrent, puis le souffle
+      if (d.warn > 0) {
+        const k = d.wt / d.warn;
+        ctx.save(); ctx.globalAlpha = .25 + .5 * k; ctx.strokeStyle = T.danger; ctx.lineWidth = .16;
+        for (let i = 0; i < 3; i++) {
+          const rr = (20 - i * 5) * (1 - k * .55);
+          ctx.beginPath(); ctx.arc(Z.x, Z.y, rr, 0, TAU); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      if (d.inhale > 0) {
+        ctx.save(); ctx.globalAlpha = .3 * Math.min(1, d.inhale);
+        ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+        ctx.strokeStyle = '#c9a0ff'; ctx.lineWidth = .14;
+        for (let k = 0; k < 14; k++) {
+          const a = t * 2.6 + k * TAU / 14;
+          ctx.beginPath(); ctx.moveTo(Z.x + Math.cos(a) * 18, Z.y + Math.sin(a) * 18);
+          ctx.lineTo(Z.x + Math.cos(a + .5) * Z.r * 1.4, Z.y + Math.sin(a + .5) * Z.r * 1.4); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+  },
+  // NÉBULA — LE ROI SPECTRE. Le boss final, dans le brouillard. Il est presque invisible et se téléporte, entouré de
+  // mirages inoffensifs. Ce qui le trahit : il respire, et son souffle froid se voit à travers le brouillard.
+  nebu: {
+    name: 'LE ROI SPECTRE', tag: 'Le souverain des brumes. Rien ne le retient.',
+    tip: 'Les copies ne tuent pas. Son souffle froid trahit le vrai : écoute-le respirer.',
+    setup(Z, tier) {
+      Z.r = 2.4; Z.x = COLS / 2; Z.y = 24;
+      Z.d = { vx: 4.4 * tier.sp, vy: 2.4 * tier.sp, cd: 3.4, tp: 6, fade: 0, ghosts: [], dark: 1 };
+      for (let k = 0; k < 2; k++) Z.d.ghosts.push({ x: urand(B + 6, COLS - B - 6), y: urand(B + 12, ROWS - B - 6), a: Math.random() * TAU, sp: 4 + Math.random() * 3 });
+    },
+    update(Z, dt, tier) {
+      const d = Z.d;
+      d.fade += dt;
+      if (Z.calm > 0) { bossFlee(Z, dt, 4.4 * tier.sp); return; }
+      // il dérive vers le vaisseau, lentement, et se téléporte de temps en temps
+      const pp = playerPos(), a = Math.atan2(pp.y - Z.y, pp.x - Z.x), sp = 4.4 * tier.sp;
+      d.vx += (Math.cos(a) * sp - d.vx) * Math.min(1, dt * .4);
+      d.vy += (Math.sin(a) * sp - d.vy) * Math.min(1, dt * .4);
+      bossWander(Z, dt);
+      if ((d.tp -= dt) <= 0) {
+        d.tp = (7 - tier.phase) * tier.cd;
+        burst(Z.x, Z.y, T.ghost || '#c9a0ff', 24, 9);
+        // il réapparaît à bonne distance : jamais sur le vaisseau
+        for (let n = 0; n < 30; n++) {
+          const nx = urand(B + 4, COLS - B - 4), ny = urand(B + 10, ROWS - B - 4);
+          if (Math.hypot(nx - pp.x, ny - pp.y) > 11) { Z.x = nx; Z.y = ny; break; }
+        }
+        rings.push({ x: Z.x, y: Z.y, r: 0, max: 7, age: 0, color: T.ghost || '#c9a0ff' });
+        if (!muted) sfx.cloak();
+      }
+      // les mirages errent : ils ne touchent jamais, ils brouillent la lecture
+      for (const g of d.ghosts) {
+        g.a += Math.sin(Z.vt * 1.3 + g.sp) * dt * 1.4;
+        g.x += Math.cos(g.a) * g.sp * dt; g.y += Math.sin(g.a) * g.sp * dt;
+        if (g.x < B + 3 || g.x > COLS - B - 3) { g.a = Math.PI - g.a; g.x = Math.max(B + 3, Math.min(COLS - B - 3, g.x)); }
+        if (g.y < B + 8 || g.y > ROWS - B - 3) { g.a = -g.a; g.y = Math.max(B + 8, Math.min(ROWS - B - 3, g.y)); }
+      }
+      // la plainte : un disque annoncé centré sur le vaisseau
+      if ((d.cd -= dt) <= 0) {
+        d.cd = (3.8 + Math.random() * 1.2) * tier.cd;
+        const n = tier.phase >= 2 ? 2 : 1;
+        for (let k = 0; k < n; k++) { const [x, y] = bossLead(2.6, tier.hide); bossAim(x, y, 6.4 * tier.reach, bossTell(1.05) + k * .5); }
+        if (!muted) tone(220, .7, 'sine', .04, -120);
+      }
+      bossKeepMinions(dt, tier.minions, ['ghost', 'mirage', 'fly']);
+    },
+    onCore(Z, k, tier) {
+      Z.d.cd = Math.min(Z.d.cd, 1.6); Z.d.tp = Math.min(Z.d.tp, 2);
+      Z.d.ghosts.push({ x: urand(B + 6, COLS - B - 6), y: urand(B + 12, ROWS - B - 6), a: Math.random() * TAU, sp: 4 + Math.random() * 3 });
+      bossSpawn('ghost');
+    },
+    // seul le vrai roi touche : les mirages sont décoratifs
+    hit(Z, pp) { return Math.hypot(Z.x - pp.x, Z.y - pp.y) < Z.r + .45; },
+    draw(Z, layer) {
+      const t = Z.vt, d = Z.d;
+      // le souffle froid, dessiné par-dessus le brouillard : c'est ce qui le rend trouvable
+      if (layer === 'cores') {
+        if (!T.smooth) return;
+        const b = Math.max(0, Math.sin(t * 1.45));
+        ctx.save();
+        ctx.globalCompositeOperation = T.glow ? 'lighter' : 'source-over';
+        ctx.globalAlpha = .1 + .3 * b * b;
+        const g = ctx.createRadialGradient(Z.x, Z.y, 0, Z.x, Z.y, Z.r * 4.5);
+        g.addColorStop(0, 'rgba(190,150,255,.9)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(Z.x, Z.y, Z.r * 4.5, 0, TAU); ctx.fill();
+        ctx.restore();
+        return;
+      }
+      if (layer !== 'main') return;
+      const spectre = (x, y, al, r) => {
+        ctx.save(); ctx.globalAlpha = al;
+        if (!T.smooth) { if ((t * 3 | 0) % 2) { ctx.fillStyle = T.ball; ctx.fillRect(x - r, y - r, r * 2, r * 2); } ctx.restore(); return; }
+        // voile : une goutte qui ondule
+        glowOn('#c9a0ff', 2.6);
+        const g = ctx.createLinearGradient(x, y - r, x, y + r * 1.8);
+        g.addColorStop(0, 'rgba(240,225,255,.95)'); g.addColorStop(.6, 'rgba(170,120,255,.6)'); g.addColorStop(1, 'rgba(90,50,160,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(x, y - r);
+        ctx.quadraticCurveTo(x + r, y - r * .2, x + r * .8, y + r * .9);
+        for (let k = 0; k < 4; k++) ctx.quadraticCurveTo(x + r * (.5 - k * .35), y + r * (1.5 + .25 * Math.sin(t * 3 + k)), x + r * (.3 - k * .4), y + r * .95);
+        ctx.quadraticCurveTo(x - r, y - r * .2, x, y - r); ctx.fill();
+        ctx.shadowBlur = 0;
+        // couronne
+        glowOn('#ffd68a', 2.2); ctx.fillStyle = '#ffe9b8';
+        for (let k = -2; k <= 2; k++) {
+          const px = x + k * r * .32;
+          ctx.beginPath(); ctx.moveTo(px - r * .13, y - r * .72); ctx.lineTo(px, y - r * (1.05 + (k % 2 ? 0 : .2))); ctx.lineTo(px + r * .13, y - r * .72); ctx.closePath(); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+        // yeux vides
+        ctx.fillStyle = '#1a0f2a';
+        for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + s * r * .26, y - r * .18, r * .13, r * .2, 0, 0, TAU); ctx.fill(); }
+        ctx.restore();
+      };
+      for (const g of d.ghosts) spectre(g.x, g.y, .3 + .12 * Math.sin(t * 2 + g.sp), Z.r * .85);
+      // le vrai s'efface et revient, comme le spectre, mais il ne disparaît jamais tout à fait
+      spectre(Z.x, Z.y, .35 + .5 * (.5 + .5 * Math.sin(t * .98)), Z.r);
+    }
+  }
+};
+
 /* ---------- Bonus ---------- */
 // Apparition imprévisible (demande de Fabien : ne pas pouvoir s'y préparer, juste réagir) :
 // sur tous les niveaux, de 0 à 3 bonus (1,5 en moyenne), à des moments tirés au hasard
@@ -5853,6 +7008,7 @@ function itemSpot(type = pickType()) {
     const cx = (x + .5) / G, cy = (y + .5) / G;
     if (Math.hypot(cx - pp.x, cy - pp.y) < 7) continue;
     if (medium === 'sea' && foes.some(e => isSea(e) && Math.hypot(e.x - cx, e.y - cy) < 4)) continue;
+    if (bs && (bs.cores.some(c => c.alive && Math.hypot(c.x - cx, c.y - cy) < CORE_KEEP) || bossNear(cx, cy))) continue;
     cands.push([cx - .5, cy - .5]);
   }
   // Veinard, Trouvaille : les bonus apparaissent près du vaisseau
@@ -6039,6 +7195,7 @@ function territoryBurst(it, frac = 0.1, big = false) {
     sfx.terr();
   }
   if (q.length) awardCells(q.length, { x: wox, y: woy }, big);
+  if (bs) bossCheckCores();
   checkGoal();
 }
 function pushOut(e, ox, oy, R) {
@@ -6087,11 +7244,12 @@ let powersSig = '', bloodBt = '';
 function powersHud() {
   const guard = P && P.guard > 0 && SH().key === 'enc';
   const bl = SH().key === 'pred' && S.phase !== 'title';
-  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc + !!ic + !!vt;
+  const sig = bl + '' + (power.inv > 0) + '' + (power.spd > 0) + (power.sup > 0) + (power.hyp > 0) + (power.chr > 0) + (power.schr > 0) + frenzyOn() + guard + (power.frag > 0) + gam.snail + pred.combo + !!oc + !!ic + !!vt + (bs ? bs.left + '' + bs.phase + bs.cores.map(c => c.alive ? (c.armed ? 2 : 1) : 0).join('') : '');
   const el = $('powers');
   if (sig !== powersSig) {
     powersSig = sig; bloodBt = '';
     el.innerHTML = (bl ? `<div class="blood" id="blood" role="meter" aria-label="Sang"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 C12 2 4.5 10.5 4.5 15.2 A7.5 7.5 0 0 0 19.5 15.2 C19.5 10.5 12 2 12 2 Z"/></svg>SANG !<div class="bm"><i id="bfill"></i></div></div>` : '')
+      + (bs ? `<div class="chip cores${bs.left < 3 ? ' hit' : ''}" id="ccore"><b></b><span>NOYAUX</span><i class="cdots">${bs.cores.map(c => `<em class="${c.alive ? (c.armed ? 'on' : 'off') : 'dead'}"></em>`).join('')}</i></div>` : '')
       + (oc ? '<div class="chip oxy" id="coxy"><b></b><span>OXYGÈNE</span><div class="t"><i id="toxy"></i></div></div>' : '')
       + (ic ? '<div class="chip heat" id="cheat"><b></b><span>CHALEUR</span><div class="t"><i id="theat"></i></div></div>' : '')
       + (vt ? '<div class="chip storm" id="cstorm"><b></b><span>ORAGE</span><div class="t"><i id="tstorm"></i></div></div>' : '')
@@ -6437,6 +7595,7 @@ function render() {
   drawEdgeGlow();
   drawAste();
   drawSing();
+  drawBoss('back');
   drawStains();
   drawDrops();
   drawGround();
@@ -6502,7 +7661,10 @@ function render() {
   }
   // les trous noirs en dernier : ils engloutissent tout ce qui est dessiné autour d'eux (sauf le vaisseau)
   for (const e of foes) if (e.kind === 'amph') drawAmph(e);
+  drawBoss('main');
   if (fg) { drawFog(pp); for (const it of items) drawItem(it); for (const e of foes) if (e.kind === 'comet') drawFoe(e); }
+  // les noyaux passent par-dessus le brouillard : c'est l'objectif du niveau, il doit toujours se voir
+  drawBoss('cores');
   // Temps mort : tout passe en noir et blanc (presque, pour le ralenti) sauf le fil, redessiné en couleur, et le vaisseau
   if (tm.k > .01) {
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -6516,6 +7678,7 @@ function render() {
   drawOcean('sky', pp);
   drawFrost('sky', pp);
   drawVolt('sky', pp);
+  drawBoss('sky');
   drawAmb('front');
   drawFx();
 }
@@ -7792,15 +8955,16 @@ function tweenScore(dt) {
 function hud() {
   xpHud();
   $('lab').textContent = S.phase === 'title' ? 'SPACE CONQUEST' : S.test ? 'MODE TEST · ' + SH().name
-    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL}${S.comp && S.comp.eco ? ' · ' + S.comp.eco.name : ''}`;
+    : `NIVEAU ${pad2(S.level)}/${MAX_LEVEL}${S.comp && S.comp.eco ? ' · ' + S.comp.eco.name : ''}${bs ? (S.comp.final ? ' · BOSS FINAL' : ' · BOSS') : ''}`;
   if (S.score < scoreShown) { scoreShown = S.score; $('score').textContent = fmt(S.score); }
   const max = Math.max(SH().lives, S.lives);
   $('lives').innerHTML = Array.from({ length: max }, (_, i) => `<i class="${i < S.lives ? '' : 'off'}"></i>`).join('');
   const goal = Math.round((S.test ? TEST_GOAL : DIFFS[S.diff].goal) * 100);
   const p = Math.min(100, Math.floor(S.filled / S.interior * 100));
   $('bar').style.width = p + '%';
-  $('goal').style.left = goal + '%';
-  $('pct').innerHTML = `${p}%<small>/${goal}</small>`;
+  // pendant un boss il n'y a pas d'objectif : le repère part au bout et la jauge annonce les noyaux restants
+  $('goal').style.left = (bs ? 100 : goal) + '%';
+  $('pct').innerHTML = bs ? `${p}%<small>NOYAUX ${bs.left}/3</small>` : `${p}%<small>/${goal}</small>`;
 }
 let onGo = null;
 function showOverlay(html, cb) {
@@ -7820,10 +8984,11 @@ function hideOverlay() {
 function infoRows(done) {
   const D = DIFFS[S.diff];
   return `<div class="rows">
-      ${S.test || !S.comp.eco ? '' : `<div><span>Planète</span><span>${S.comp.eco.name} · ${S.comp.boss ? 'FINAL' : S.comp.rank + '/8'}</span></div>`}
+      ${S.test || !S.comp.eco ? '' : `<div><span>Planète</span><span>${S.comp.eco.name} · ${S.comp.boss ? (S.comp.final ? 'BOSS FINAL' : 'BOSS ' + S.comp.rank + '/8') : S.comp.rank + '/8'}</span></div>`}
       <div><span>Vaisseau</span><span>${SH().name}</span></div>
       <div><span>Vies</span><span>${S.lives}</span></div>
-      <div><span>${done ? 'Réalisé' : 'Objectif'}</span><span>${done ? Math.floor(S.filled / S.interior * 100) + ' %' : Math.round(D.goal * 100) + ' %'}</span></div>
+      ${bs ? `<div><span>Boss</span><span>${S.comp.name}</span></div><div><span>Noyaux</span><span>${bs.left} / 3</span></div>`
+        : `<div><span>${done ? 'Réalisé' : 'Objectif'}</span><span>${done ? Math.floor(S.filled / S.interior * 100) + ' %' : Math.round(D.goal * 100) + ' %'}</span></div>`}
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
     </div>`;
 }
@@ -7831,7 +8996,7 @@ function infoRows(done) {
 function ecoLabel() {
   const c = S.comp;
   if (!c.eco) return 'NIVEAU';
-  if (c.boss) return 'NIVEAU FINAL · ' + c.eco.name;
+  if (c.boss) return c.eco.name + (c.final ? ' · BOSS FINAL' : ' · BOSS') + (c.name ? ' « ' + c.name + ' »' : '');
   return c.eco.name + ' · ' + (c.name ? STAGES[c.stage] + ' « ' + c.name + ' »' : STAGES[c.stage]);
 }
 function newcomers() {
@@ -7842,7 +9007,12 @@ function newcomers() {
   for (let l = 1; l < S.level; l++) { const c = comp(l, S.diff); for (const k of FOES) if (c[k]) seen[k] = 1; }
   let html = '';
   // arrivée sur une planète
-  if (now.eco && (now.stage === 0 || now.boss || S.shipTip)) html += `<p class="keys"><b>${now.boss ? 'NIVEAU FINAL · ' : ''}${now.eco.name}</b> · ${now.eco.tag}</p>` + (now.eco.rule ? `<p class="keys">${now.eco.rule}</p>` : '');
+  if (now.eco && (now.stage === 0 || S.shipTip)) html += `<p class="keys"><b>${now.eco.name}</b> · ${now.eco.tag}</p>` + (now.eco.rule ? `<p class="keys">${now.eco.rule}</p>` : '');
+  // niveau boss : qui on affronte et comment on le tue
+  if (bs) { const B = bs.def;
+    html += `<p class="new boss"><b>${now.final ? 'BOSS FINAL · ' : 'BOSS · '}${now.name}</b><br>${B.tag}<br>${B.tip}<br>`
+      + `Trois noyaux battent autour de lui : enferme chacun dans une zone de ton terrain pour le détruire. Au troisième, il explose. Son corps tue au contact et rien ne l'entame — mais chaque attaque s'annonce : apprends ses signes.</p>`;
+  }
   // rappel du pouvoir du vaisseau, au premier niveau de la partie
   if (S.shipTip) {
     S.shipTip = false;
@@ -7914,7 +9084,7 @@ function showClear() {
   const extra = Math.max(0, Math.floor((pct - D.goal) * 100)) * 150 * S.level;
   const diffB = 1000 * (S.diff + 1) * S.level;
   S.score += extra + diffB;
-  const xpB = 200 * (S.diff + 1); gainXp(xpB);
+  const xpB = 200 * (S.diff + 1) * (S.comp.boss ? 3 : 1); gainXp(xpB);   // un boss vaut trois niveaux de maîtrise
   if (sk('intact') && S.lives >= (S.lives0 ?? 0) && S.lives < maxLives()) { S.lives++; hud(); }
   if (SH().key === 'rob' && sk('maint')) armor.hp = Math.min(armorMax(), armor.hp + (sk('revision') ? .1 : .05));
   power.inv = 0; power.spd = 0; power.sup = 0; power.hyp = 0; power.chr = 0; power.schr = 0; power.frag = 0;
@@ -7923,19 +9093,20 @@ function showClear() {
   powersHud(); pwHud();
   hud();
   if (S.level >= MAX_LEVEL) { victory(); return; }
-  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos });
+  store.set('save', { d: S.diff, L: S.level + 1, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos, v: 2 });
   // réaffiché au retour de l'arbre
   S.reshow = () => { showOverlay(`
-    <h2><span>${S.comp.eco ? S.comp.eco.name : 'SPACE CONQUEST'}</span>NIVEAU ${pad2(S.level)} CONQUIS</h2>
+    <h2><span>${S.comp.eco ? S.comp.eco.name : 'SPACE CONQUEST'}</span>${S.comp.boss ? 'PLANÈTE CONQUISE' : `NIVEAU ${pad2(S.level)} CONQUIS`}</h2>
     <div class="rows">
+      ${S.comp.boss ? `<div><span>Boss vaincu</span><span>${S.comp.name}</span></div><div><span>Noyaux</span><span>3 / 3</span></div>` : ''}
       <div><span>Terrain</span><span>${Math.floor(pct * 100)} %</span></div>
       <div><span>Bonus niveau</span><span>+${fmt(diffB)}</span></div>
       <div><span>Bonus dépassement</span><span>+${fmt(extra)}</span></div>
       <div class="total"><span>Score</span><span>${fmt(S.score)}</span></div>
-      ${S.level % 3 === 0 ? `<div><span>${S.level === 24 ? 'Niveau final' : 'Prochaine planète'}</span><span>${ecoAt(S.level + 1).name}</span></div>` : ''}
+      ${S.level % 4 === 0 ? `<div><span>Prochaine planète</span><span>${ecoAt(S.level + 1).name}</span></div>` : ''}
     </div>
     ${masteryRow()}
-    <button class="btn" id="go">${S.level % 3 === 0 && S.level < 24 ? 'CAP SUR ' + ecoAt(S.level + 1).name : 'NIVEAU SUIVANT'}</button>`, () => setupLevel(S.level + 1));
+    <button class="btn" id="go">${S.level % 4 === 0 ? 'CAP SUR ' + ecoAt(S.level + 1).name : 'NIVEAU SUIVANT'}</button>`, () => setupLevel(S.level + 1));
     const ct = $('ctree'); if (ct) ct.addEventListener('click', () => { menuShip = S.ship; showTree(false, 'run'); });
   };
   S.reshow();
@@ -7963,7 +9134,7 @@ function endScreen(title, sub) {
     <button class="btn" id="go">MENU</button>`, titleScreen);
 }
 function gameOver() { S.phase = 'over'; playJingle('over', sfx.over); endScreen('GAME OVER', ''); }
-function victory() { S.phase = 'over'; playJingle('victory', sfx.level); endScreen('LES 25 NIVEAUX', 'Tu as conquis les 25 niveaux.'); }
+function victory() { S.phase = 'over'; playJingle('victory', sfx.level); endScreen('LES ' + MAX_LEVEL + ' NIVEAUX', 'Tu as vaincu ' + (S.comp && S.comp.name ? S.comp.name : 'le boss final') + ' et conquis les 8 planètes.'); }
 
 // Écran titre plein écran (demande de Fabien) : il recouvre tout, HUD compris. Fond animé dans son propre canvas
 // (ciel de nuit, étoiles qui défilent, grille néon en perspective, vaisseaux du jeu qui passent), logo en lettres
@@ -8414,6 +9585,15 @@ scr.addEventListener('click', () => {
   drawBg(); drawBoard();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && S.phase === 'play') togglePause(); });
+// Les niveaux sont passés de 25 à 32 (un boss par planète) : une sauvegarde ou un record d'avant doit retomber sur la
+// même planète à la même étape, sinon le joueur est téléporté sur une autre planète. 1→1, 3→3, 4→5, 24→31, 25→32.
+if (!store.get('v32', 0)) {
+  const L32 = L => L >= 25 ? MAX_LEVEL : (Math.ceil(L / 3) - 1) * 4 + ((L - 1) % 3) + 1;
+  for (const k of ['max0', 'max1', 'max2']) { const v = store.get(k, 0); if (v > 1) store.set(k, L32(v)); }
+  const sv = store.get('save', null);
+  if (sv && sv.L && !sv.v) { sv.L = L32(sv.L); sv.v = 2; store.set('save', sv); }
+  store.set('v32', 1);
+}
 // L'écran reste fixe : pas de zoom au double tap ni au pincement (iOS ignore parfois le viewport)
 let lastTouchEnd = 0;
 document.addEventListener('touchend', e => {

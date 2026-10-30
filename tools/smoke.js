@@ -5,7 +5,7 @@ const html = fs.readFileSync(process.argv[2], 'utf8');
 let src = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 src = src.replace('titleScreen();\nrequestAnimationFrame(frame);', `titleScreen();
 globalThis.__g = { newGame, setDir, S, comp, get P() { return P; }, get foes() { return foes; }, get trail() { return trail; },
-  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, tmStart, get tm() { return tm; }, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow(), ensureAudio, get mx() { return mx; }, SONGS, songPrep, PATCH, playJingle, musicLive };
+  get wave() { return wave; }, get grab() { return grab; }, get grid() { return grid; }, onTrailHit, at, collect, announce, power, go, crash, get crashPos() { return crashPos; }, get items() { return items; }, DIFFS, usePower, ab, SHIPS, makeFoe, FOES, planStart, planTo, planLaunch, get plan() { return plan; }, get dash() { return dash; }, collect, pickType, seaStep, get rw() { return rw; }, camo, huntSees, usePower, setupLevel, showClear, armor, gam, get slot() { return slot; }, SLOT, slotDraw, testReset, testShip, testRefill, checkGoal, G, pred, lightFire, furyGain, get fires() { return fires; }, SKILLS, MASTERY, get mxp() { return mxp; }, mLevel, skBuild, skSave, loadSkills, get skills() { return skills; }, sk, showTree, showShips, setSkills: l => { skills = new Set(l); }, spawnItem, hitPlayer, dropShield, get invuln() { return invuln; }, superOn, armorHit, showClearX: showClear, get armor() { return armor; }, burnFoe, get slow() { return slow; }, get S_() { return S; }, onTrailHitX: onTrailHit, maxLives, startLives, foeSlow, planSlow, planMax, get wave_() { return wave; }, awardCells, trapFoes, get grab_() { return grab; }, rwSpan, rwWin, canRewind, rewind, tmStart, get tm() { return tm; }, supDur, chipsMax, slotPrize, slotStop, spinSlot, cheatLit, bloodMax, biteReach, predWin, predMax, get xpUp() { return xpUp; }, armorMax, GC, GR, ECOS, ecoSetup, lavaG, get pools() { return pools; }, get rocks() { return rocks; }, rockG, get meteors() { return meteors; }, get amb() { return amb; }, get hz() { return hz; }, get oc() { return oc; }, get fg() { return fg; }, get ic() { return ic; }, iceG, campG, FROST_MAX, get vt() { return vt; }, get sg() { return sg; }, holeG, sg_grow: () => singGrow(), get bs() { return bs; }, BOSSES, bossCheckCores, bossTier, ecoRank, MAX_LEVEL, STAGES, ensureAudio, get mx() { return mx; }, SONGS, songPrep, PATCH, playJingle, musicLive };
 requestAnimationFrame(frame);`);
 if (!src.includes('__g')) throw new Error('hook non injecté');
 
@@ -84,7 +84,7 @@ function play(d, L, frames, seed, ship = 0) {
 for (let d = 0; d < 3; d++) {
   const rows = [];
   let amphMax = 0;
-  for (let L = 1; L <= 25; L++) { const c = g.comp(L, d); amphMax = Math.max(amphMax, c.amph); rows.push(`${L}:${g.FOES.reduce((a, k) => a + c[k], 0)}`); }
+  for (let L = 1; L <= 32; L++) { const c = g.comp(L, d); amphMax = Math.max(amphMax, c.amph); rows.push(`${L}:${g.FOES.reduce((a, k) => a + c[k], 0)}`); }
   console.log(g.DIFFS[d].short.padEnd(4), rows.join(' '), '| trous noirs max', amphMax);
 }
 
@@ -701,7 +701,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
       for (let f = 0; f < 2500; f++) {
         if (g.S.phase === 'ready') g.go();
         if (g.S.phase === 'over') { g.newGame(2, L, i); g.setSkills(all); g.setupLevel(L); g.go(); }
-        if (g.S.phase === 'clear') { levels++; g.setupLevel(Math.min(25, g.S.level + 1)); g.go(); }
+        if (g.S.phase === 'clear') { levels++; g.setupLevel(Math.min(32, g.S.level + 1)); g.go(); }
         if (rnd() < .02) g.usePower();
         if (rnd() < .04) g.setDir(DIRS[(rnd() * 4) | 0]);
         step();
@@ -980,7 +980,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const OC = g.ECOS.findIndex(e => e.key === 'ocea');
   const order = [0, OC, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== OC)];
   const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
-  const ocea = (L = 4, ship = 0) => {
+  const ocea = (L = 5, ship = 0) => {
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 25; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
   };
@@ -999,7 +999,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   ocea(); dive(); const lv = g.S.lives; g.oc.o2 = .3; let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
   const drowned = g.S.phase; n = 0; while (g.S.phase === 'crash' && n++ < 400) step();
   console.log(`sous Casque : ${helm.toFixed(1)} s d'air après 2 s (sur 10) ; à sec -> ${drowned}, vies ${lv} -> ${g.S.lives}, reprise ${g.S.phase} avec ${g.oc.o2} s d'air`);
-  ocea(4, shipIdx('rob')); dive(); g.armor.hp = 1; g.oc.o2 = .2; step(30);
+  ocea(5, shipIdx('rob')); dive(); g.armor.hp = 1; g.oc.o2 = .2; step(30);
   console.log(`Blindé à sec : ${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %, air ${g.oc.o2.toFixed(1)} s`);
   // poche d'air sur le trajet du vaisseau, puis poche enfermée devenue station
   ocea(); const p0 = g.oc.pockets[0]; p0.x = 25.25; p0.y = 12;
@@ -1012,7 +1012,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`poche enfermée : station ${p1.station}, air près d'elle ${g.oc.o2.toFixed(1)} s en 1 s (5 avant)`);
   let s = 99; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '', low = 99;
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1031,15 +1031,15 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
 {
   const NB = g.ECOS.findIndex(e => e.key === 'nebu');
   const order = [0, NB, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== NB)];
-  const radii = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.fg ? g.fg.r : 'aucun'; });
-  g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(4); g.go(); g.setDir('down');
+  const radii = [5, 6, 7].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.fg ? g.fg.r : 'aucun'; });
+  g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(5); g.go(); g.setDir('down');
   let flashes = 0, prev = 0;
   for (let f = 0; f < 1200; f++) { step(); const n = g.fg.flashes.length; if (n > prev) flashes++; prev = n; }
   g.newGame(2, 1, 0); g.go(); const terra = g.fg;
   console.log(`Nébula : vision ${radii.join(' / ')} cases selon l'étape, ${flashes} éclairs en 20 s, pas de brouillard sur Terra Nova ${terra === null}`);
   let s = 123; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (const sh of [0, 4, 10]) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '';
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1059,13 +1059,13 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const GL = g.ECOS.findIndex(e => e.key === 'glace');
   const order = [0, GL, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== GL)];
   const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
-  const glace = (L = 4, ship = 0) => {
+  const glace = (L = 5, ship = 0) => {
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 5; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
     g.iceG.fill(0);
   };
   const dive = () => { g.setDir('down'); let n = 0; while (!g.P.drawing && n++ < 200) step(); };
-  const plates = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.ic.plates.length + ' (' + g.ic.plates.reduce((a, p) => a + p.cells.length, 0) + ' cases)'; });
+  const plates = [5, 6, 7].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.ic.plates.length + ' (' + g.ic.plates.reduce((a, p) => a + p.cells.length, 0) + ' cases)'; });
   glace();
   console.log(`Glacia : camp de ${g.ic.n} cases (${(g.S.filled / g.S.interior * 100).toFixed(1)} % au départ), plaques de glace par étape ${plates.join(' / ')}`);
   glace(); dive(); let f0 = g.ic.frost; step(120); const seaUp = g.ic.frost - f0;
@@ -1079,9 +1079,9 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   glace(); dive(); const lv = g.S.lives; g.ic.frost = 59.7; let n = 0; while (g.S.phase === 'play' && n++ < 120) step();
   const froze = g.S.phase; n = 0; while (g.S.phase === 'crash' && n++ < 400) step();
   console.log(`sous Casque : ${helm.toFixed(1)} s de gel après 2 s (10 avant) ; gelé -> ${froze}, vies ${lv} -> ${g.S.lives}, reprise ${g.S.phase} avec ${g.ic.frost} s de gel`);
-  glace(4, shipIdx('rob')); dive(); g.armor.hp = 1; g.ic.frost = 59.9; step(30);
+  glace(5, shipIdx('rob')); dive(); g.armor.hp = 1; g.ic.frost = 59.9; step(30);
   console.log(`Blindé gelé : ${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %, gel ${g.ic.frost.toFixed(1)} s`);
-  glace(4, shipIdx('fre')); dive(); g.ab.on = 8; g.ic.frost = 20; step(60);
+  glace(5, shipIdx('fre')); dive(); g.ab.on = 8; g.ic.frost = 20; step(60);
   console.log(`furie du Frénétique : gel ${g.ic.frost.toFixed(1)} s après 1 s (20 avant)`);
   // une plaque de glace sous le vaisseau : il file tout droit, plus vite, le virage attend la sortie
   const sheet = () => { const cx = g.GC >> 1; for (let y = 24; y < 70; y++) for (let x = cx - 8; x <= cx + 8; x++) g.iceG[g.at(x, y)] = 1; };
@@ -1098,7 +1098,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   step(30); console.log(`ennemis : ${(a.y - 40).toFixed(2)} cases sur la glace, ${(b.y - 40).toFixed(2)} à côté en 0,5 s`);
   let s = 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '', hi = 0;
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1118,12 +1118,12 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const VT = g.ECOS.findIndex(e => e.key === 'volt');
   const order = [0, VT, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== VT)];
   const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
-  const volt = (L = 4, ship = 0) => {
+  const volt = (L = 5, ship = 0) => {
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 5; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
     g.vt.pyl.length = 0;
   };
-  const pyl = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.vt.pyl.length; });
+  const pyl = [5, 6, 7].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.vt.pyl.length; });
   // un long fil vers le bas : la charge monte, la cible se pose, l'éclair coupe le fil
   volt(); g.setDir('down'); let n = 0, c15 = -1, aim = -1, hit = -1, len = 0, wave = false;
   while (n++ < 400 && g.S.phase === 'play') {
@@ -1139,7 +1139,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`après l'éclair : ${g.S.phase}, en train de tracer ${g.P.drawing}, vies ${g.S.lives}`);
   // sous Casque, avec le Furtif : pas de charge
   volt(); g.power.inv = 30; g.setDir('down'); step(200); const helm = g.vt.charge;
-  volt(4, shipIdx('fur')); g.setDir('down'); step(200); const fur = g.vt.charge;
+  volt(5, shipIdx('fur')); g.setDir('down'); step(200); const fur = g.vt.charge;
   console.log(`charge après 3,3 s de fil : sous Casque ${helm.toFixed(2)}, Furtif ${fur.toFixed(2)}`);
   // globe à soi : il protège le fil autour de lui ; libre : il attire la foudre
   const chargeAt = (mine, free) => {
@@ -1155,7 +1155,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`globe enfermé : à soi ${p.mine}, ennemi à 3,5 cases foudroyé ${!!e.dead || !g.foes.includes(e)}`);
   // Prédateur : la cible se pose sur lui, il s'en écarte (ou pas)
   for (const flee of [true, false]) {
-    volt(4, shipIdx('pred')); g.setDir('down'); step(40); n = 0; while (g.vt.warn <= 0 && n++ < 600) { g.P.dir = { x: 0, y: 0 }; step(); }
+    volt(5, shipIdx('pred')); g.setDir('down'); step(40); n = 0; while (g.vt.warn <= 0 && n++ < 600) { g.P.dir = { x: 0, y: 0 }; step(); }
     const lv = g.S.lives;
     if (!flee) { g.P.dir = { x: 0, y: 0 }; g.P.next = null; }
     else g.setDir('right');
@@ -1165,7 +1165,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   }
   let s = 55; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '', bolts = 0, prev = 0;
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1185,11 +1185,11 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
 {
   const AS = g.ECOS.findIndex(e => e.key === 'aste');
   const order = [0, AS, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== AS)];
-  const aste = (L = 4, ship = 0) => {
+  const aste = (L = 5, ship = 0) => {
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 3; b.y = 63; b.vx = b.vy = 0; g.foes.push(b);
   };
-  const per = [4, 5, 6].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.rocks.length + ' (' + (g.S.filled / g.S.interior * 100).toFixed(1) + ' %)'; });
+  const per = [5, 6, 7].map(L => { g.newGame(2, 1, 0); g.S.ecos = order.slice(); g.setupLevel(L); return g.rocks.length + ' (' + (g.S.filled / g.S.interior * 100).toFixed(1) + ' %)'; });
   // on part du haut, juste au-dessus d'un astéroïde, et on descend : le fil se referme sur lui
   aste(); const r = g.rocks[0];
   g.P.x = g.P.px = Math.floor(r.x * G); g.P.y = g.P.py = G * 2 - 1;
@@ -1214,7 +1214,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`astéroïde entouré : annexé ${a.done}, score +${g.S.score - sc} ; les autres ${g.rocks.slice(1).map(o => o.done).join(', ')}`);
   let s = 77; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '', landed = 0, prevD = false;
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1240,10 +1240,10 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 3; b.y = 63; b.vx = b.vy = 0; g.foes.push(b);
   };
-  const info = [4, 5, 6].map(L => { sing(L); return `rayon ${g.sg.R} (${g.sg.cells.length} cases, ${(g.S.filled / g.S.interior * 100).toFixed(1)} % comptés)`; });
+  const info = [5, 6, 7].map(L => { sing(L); return `rayon ${g.sg.R} (${g.sg.cells.length} cases, ${(g.S.filled / g.S.interior * 100).toFixed(1)} % comptés)`; });
   console.log(`Singularité : découverte ${info[0]}, plus dur ${info[1]}, épreuve ${info[2]} ; niveau 6 = ${g.S.comp.eco.name}`);
   const flag = (n, ok) => { console.log(`${n} : ${ok ? 'ok' : 'ÉCHEC'}`); if (!ok) { console.log('ÉCHEC Singularité'); process.exit(1); } };
-  sing(5); const sg = g.sg;
+  sing(6); const sg = g.sg;
   flag('trou noir : cases conquises, hors du pourcentage', sg.cells.length > 0 && sg.cells.every(i => g.grid[i] === 1 && g.holeG[i]) && g.S.filled === 0);
   // le vaisseau qui entre dans le trou noir est englouti
   const above = () => { g.P.x = g.P.px = Math.floor(sg.x * G); g.P.y = g.P.py = Math.floor((sg.y - sg.R - 2) * G); };
@@ -1251,40 +1251,40 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   let n = 0; while (n++ < 400 && g.S.phase === 'play') step();
   flag('vaisseau dans le trou noir : crash', g.S.phase === 'crash');
   // sous Casque il s'arrête net
-  sing(5); above(); g.P.shield = false; g.power.inv = 10; g.setDir('down');
+  sing(6); above(); g.P.shield = false; g.power.inv = 10; g.setDir('down');
   n = 0; while (n++ < 400 && (g.P.dir.x || g.P.dir.y || g.P.next)) step();
   flag('Casque : arrêt net au bord', g.S.phase === 'play' && !g.holeG[g.at(g.P.x, g.P.y)] && Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y) < sg.R + 1);
   // attraction : un Prédateur (vole dans la zone à conquérir sans fil) arrêté à 9 cases du centre
-  sing(5, shipIdx('pred')); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg.x + 9) * G); g.P.y = g.P.py = Math.floor(sg.y * G);
+  sing(6, shipIdx('pred')); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg.x + 9) * G); g.P.y = g.P.py = Math.floor(sg.y * G);
   const d0 = Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y);
   for (let k = 0; k < 150; k++) step();
   const d1 = Math.hypot((g.P.x + .5) / G - sg.x, (g.P.y + .5) / G - sg.y);
   flag(`attraction du vaisseau (${d0.toFixed(1)} -> ${d1.toFixed(1)} cases)`, d1 < d0 - 1);
   // sur son terrain, rien ne le tire
-  sing(5); g.P.shield = false; const x0 = g.P.x, y0 = g.P.y;
+  sing(6); g.P.shield = false; const x0 = g.P.x, y0 = g.P.y;
   for (let k = 0; k < 60; k++) step();
   flag('terrain conquis : pas d\'attraction', g.P.x === x0 && g.P.y === y0);
   // un ennemi lancé de biais voit sa route se courber vers le centre sans changer de vitesse
-  sing(6); const e = g.foes[0]; e.x = sg.x + 10; e.y = sg.y - 6; e.vx = 0; e.vy = 7; e.kind = 'out';
+  sing(7); const e = g.foes[0]; e.x = sg.x + 10; e.y = sg.y - 6; e.vx = 0; e.vy = 7; e.kind = 'out';
   const sp0 = Math.hypot(e.vx, e.vy); g.P.shield = true;
   for (let k = 0; k < 40; k++) step();
   const toC = Math.atan2(sg.y - e.y, sg.x - e.x), hd = Math.atan2(e.vy, e.vx);
   flag(`ennemi courbé : cap ${(hd * 57.3).toFixed(0)}°, vitesse ${sp0} -> ${Math.hypot(e.vx, e.vy).toFixed(2)}`, Math.abs(Math.hypot(e.vx, e.vy) - sp0) < .3 && e.vx < -.5);
   // l'ennemi rebondit sur l'horizon sans jamais y entrer
-  sing(5); const f = g.foes[0]; f.x = sg.x + sg.R + 4; f.y = sg.y; f.vx = -7; f.vy = 0; g.P.shield = true;
+  sing(6); const f = g.foes[0]; f.x = sg.x + sg.R + 4; f.y = sg.y; f.vx = -7; f.vy = 0; g.P.shield = true;
   let inside = 0; for (let k = 0; k < 200; k++) { step(); if (g.holeG[g.at(Math.floor(f.x * G), Math.floor(f.y * G))]) inside++; }
   flag(`boule sur l'horizon : ${inside} images dedans`, inside === 0);
   // épreuve : l'horizon grandit, sans toucher au pourcentage compté, et reste franchissable le 85 %
-  sing(6); const R0 = g.sg.R, c0 = g.sg.cells.length; g.P.x = g.P.px = 0; g.P.y = g.P.py = 0;
+  sing(7); const R0 = g.sg.R, c0 = g.sg.cells.length; g.P.x = g.P.px = 0; g.P.y = g.P.py = 0;
   for (let k = 0; k < 20; k++) g.sg_grow();
   flag(`horizon qui grandit : ${R0} -> ${g.sg.R.toFixed(2)}, ${c0} -> ${g.sg.cells.length} cases, 85 % possible ${((g.S.interior - g.sg.cells.length) / g.S.interior * 100).toFixed(1)} %`, g.sg.R > R0 + 2 && g.sg.cells.length > c0 && (g.S.interior - g.sg.cells.length) / g.S.interior > .9);
   // l'horizon qui s'étend englobe le vaisseau posé près de lui
-  sing(6); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg_x() + g.sg.R + .1) * G); g.P.y = g.P.py = Math.floor(g.sg.y * G); g.grid[g.at(g.P.x, g.P.y)] = 1;
+  sing(7); g.P.shield = false; g.P.x = g.P.px = Math.floor((sg_x() + g.sg.R + .1) * G); g.P.y = g.P.py = Math.floor(g.sg.y * G); g.grid[g.at(g.P.x, g.P.y)] = 1;
   g.sg_grow(); flag('horizon qui engloutit le vaisseau voisin', g.S.phase === 'crash' || g.holeG[g.at(g.P.x, g.P.y)] === 0);
   function sg_x() { return g.sg.x; }
   let s = 99; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '';
     for (let fr = 0; fr < 2500; fr++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1305,12 +1305,12 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   const order = [0, PYR, ...[1, 2, 3, 4, 5, 6, 7].filter(i => i !== PYR)];
   const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
   // une partie dont la 2e planète est Pyros (niveaux 4 à 6), une boule immobile en bas, pas de météore imprévu
-  const pyros = (L = 4, ship = 0) => {
+  const pyros = (L = 5, ship = 0) => {
     g.newGame(2, 1, ship); g.S.ecos = order.slice(); g.setupLevel(L); g.go();
     g.foes.length = 0; const b = g.makeFoe('out', 1); b.x = 25; b.y = 62; b.vx = b.vy = 0; g.foes.push(b);
     g.hz.next = 999;
   };
-  const counts = [4, 5, 6].map(L => { pyros(L); return `${g.pools.length} gouffres (${g.pools.reduce((a, p) => a + p.cells.length, 0)} cases)`; });
+  const counts = [5, 6, 7].map(L => { pyros(L); return `${g.pools.length} gouffres (${g.pools.reduce((a, p) => a + p.cells.length, 0)} cases)`; });
   console.log(`Pyros : découverte ${counts[0]}, plus dur ${counts[1]}, épreuve ${counts[2]} ; niveau 6 = ${g.S.comp.eco.name}, étape ${g.S.comp.stage}`);
   // un couloir de terrain conquis du haut jusqu'au bord du premier gouffre
   const corridor = () => {
@@ -1328,9 +1328,9 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   pyros(); let p0 = corridor(); g.power.inv = 30; g.setDir('down'); reach(p0);
   const helm = g.S.phase; n = 0; while (g.P.drawing && n++ < 400) step(); step(3);
   console.log(`gouffre : le vaisseau qui y entre -> ${burned} ; sous Casque -> ${helm}, refroidi en refermant le fil posé dessus ${!p0.live}`);
-  pyros(4, shipIdx('rob')); g.armor.hp = 1; p0 = corridor(); g.setDir('down'); reach(p0); step(10);
+  pyros(5, shipIdx('rob')); g.armor.hp = 1; p0 = corridor(); g.setDir('down'); reach(p0); step(10);
   const rob = `${g.S.phase}, blindage ${Math.round(g.armor.hp * 100)} %`;
-  pyros(4, shipIdx('enc')); p0 = corridor(); g.setDir('down'); reach(p0);
+  pyros(5, shipIdx('enc')); p0 = corridor(); g.setDir('down'); reach(p0);
   const enc = `${g.S.phase}, arrêté hors de la lave ${!g.lavaG[g.at(g.P.x, g.P.y)]}`;
   console.log(`gouffre : Blindé -> ${rob} ; Encaisseur -> ${enc}`);
   pyros(); p0 = g.pools[0]; const s0 = g.S.score; g.grid[p0.cells[0]] = 1; step(2);
@@ -1372,7 +1372,7 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   console.log(`reprise après un crash : phase ${g.S.phase} après ${(n / 60).toFixed(1)} s, zone protégée ${g.P.shield}, vies ${lv} -> ${g.S.lives}, repart à ${Math.abs(PX() - cx).toFixed(1)} case(s) du crash`);
   // Pyros épreuve avec chaque vaisseau, au hasard
   for (let sh = 0; sh < g.SHIPS.length; sh++) {
-    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(6); g.go(); };
+    const start = () => { g.newGame(2, 1, sh); g.S.ecos = order.slice(); g.setupLevel(7); g.go(); };
     start(); let cr = 0, last = '', met = 0;
     for (let f = 0; f < 2500; f++) {
       if (g.S.phase === 'ready') g.setDir('down');
@@ -1388,6 +1388,110 @@ const SHIPI = k => g.SHIPS.findIndex(s => s.key === k);
   }
 }
 
+// 5z) Les boss : un par planète, au 4e niveau de chacune. Trois noyaux à enfermer, le boss monte d'une phase à chaque
+// noyau, le troisième le tue et finit le niveau. On vérifie aussi que toute attaque est annoncée (plancher de 0,45 s).
+{
+  const shipIdx = k => g.SHIPS.findIndex(s => s.key === k);
+  const idxOf = key => g.ECOS.findIndex(e => e.key === key);
+  // la planète visée est mise au rang voulu, pour jouer son niveau boss (rang × 4)
+  const setBoss = (key, rank, ship = 0) => {
+    const i = idxOf(key);
+    const rest = [0, 1, 2, 3, 4, 5, 6, 7].filter(x => x !== i);
+    const order = rest.slice(0, rank - 1).concat([i], rest.slice(rank - 1));
+    g.newGame(2, 1, ship); g.S.ecos = order; g.setupLevel(rank * 4); g.go();
+    return g.bs;
+  };
+  const coreIdx = c => g.at(Math.floor(c.x * G), Math.floor(c.y * G));
+  // enferme un noyau : sa case devient du terrain conquis, comme à la fermeture d'une zone
+  const enclose = c => { g.grid[coreIdx(c)] = 1; g.bossCheckCores(); };
+
+  const rows = [];
+  let warnMin = 9, aimSeen = 0;
+  for (const key of ['terra', 'aste', 'ocea', 'pyros', 'glace', 'volt', 'sing', 'nebu']) {
+    const rank = g.ECOS.findIndex(e => e.key === key) >= 0 ? (['terra', 'aste', 'ocea', 'pyros', 'glace', 'volt', 'sing', 'nebu'].indexOf(key) + 1) : 1;
+    const B0 = setBoss(key, rank);
+    if (!B0) throw new Error('pas de boss sur ' + key);
+    if (!g.S.comp.boss) throw new Error('le niveau ' + rank * 4 + ' n\'est pas un niveau boss');
+    if (B0.cores.length !== 3) throw new Error('il faut 3 noyaux sur ' + key);
+    // les noyaux naissent dans la zone à conquérir et loin du départ
+    for (const c of B0.cores) {
+      if (g.grid[coreIdx(c)] !== 0) throw new Error('noyau hors de la zone à conquérir sur ' + key);
+      if (Math.hypot(c.x - 25, c.y - 1) < 11) throw new Error('noyau trop près du départ sur ' + key);
+    }
+    // on laisse le combat tourner : rien ne doit planter, et chaque attaque doit être annoncée
+    g.power.inv = 999;                      // sous Casque : le vaisseau survit, on observe le boss
+    for (let i = 0; i < 900; i++) {
+      step();
+      const B = g.bs;
+      if (!B) break;
+      for (const a of B.aims) { warnMin = Math.min(warnMin, a.max); aimSeen++; }
+      if (B.x < 2 || B.x > 48 || B.y < 2 || B.y > 64) throw new Error('le boss sort du terrain sur ' + key);
+      for (const c of B.cores) if (c.alive && (c.x < 1 || c.x > 49 || c.y < 1 || c.y > 65)) throw new Error('noyau hors terrain sur ' + key);
+    }
+    // les trois noyaux, un par un : la phase monte, et le troisième gagne le niveau
+    const B = setBoss(key, rank);
+    g.power.inv = 999;
+    const ph = [];
+    for (let k = 0; k < 3; k++) {
+      const c = g.bs.cores.find(x => x.alive);
+      c.armed = true; enclose(c);
+      for (let i = 0; i < 120; i++) step();
+      ph.push(g.bs ? g.bs.phase : 3);
+    }
+    if (!g.bs.won) throw new Error('le boss de ' + key + ' n\'est pas mort après 3 noyaux (phases ' + ph.join(',') + ')');
+    if (g.S.phase !== 'clearing' && g.S.phase !== 'clear') throw new Error('le niveau boss de ' + key + ' ne se termine pas (' + g.S.phase + ')');
+    for (let i = 0; i < 300 && g.S.phase === 'clearing'; i++) step();
+    // au niveau 32 (le boss final) on passe directement a l'ecran de victoire, sans « planete conquise »
+    if (g.S.phase !== 'clear' && g.S.phase !== 'over') throw new Error('pas d ecran de fin apres le boss de ' + key + ' (' + g.S.phase + ')');
+    rows.push(`${g.ECOS[idxOf(key)].name} « ${g.S.comp.name} » niv.${rank * 4}`);
+  }
+  console.log('boss : ' + rows.join(' | '));
+  console.log(`boss : ${aimSeen} attaques observées, signe le plus court ${warnMin.toFixed(2)} s`);
+  if (!aimSeen) throw new Error('aucune attaque de boss observée');
+  if (warnMin < .45) throw new Error('une attaque de boss est annoncée en moins de 0,45 s : ' + warnMin);
+
+  // le Prédateur ne trace pas de fil : il détruit un noyau en le dévorant pendant son bond
+  {
+    setBoss('terra', 1, shipIdx('pred'));
+    g.P.shield = false; g.power.inv = 999;
+    const c = g.bs.cores[0];
+    // on le pose juste à côté du noyau, tourné vers lui
+    g.P.x = g.P.px = Math.floor((c.x - 1.2) * G); g.P.y = g.P.py = Math.floor(c.y * G);
+    g.setDir('right'); step(2); g.usePower();
+    let n = 0; while (g.bs && g.bs.cores[0].alive && n++ < 120) step();
+    if (g.bs && g.bs.cores[0].alive) throw new Error('le Prédateur ne peut pas dévorer un noyau');
+    console.log('boss : le Prédateur dévore un noyau pendant son bond (combo ' + g.pred.combo + ')');
+  }
+  // ni le Super Casque ni le piège du Piégeur ne touchent le boss (il n'est pas dans foes)
+  {
+    setBoss('terra', 1);
+    const n0 = g.bs.left;
+    g.power.sup = 10; step(120);
+    if (g.bs.left !== n0) throw new Error('le Super Casque ne doit pas entamer le boss');
+    console.log('boss : le Super Casque ne l\'entame pas (' + g.bs.left + '/3 noyaux)');
+  }
+  // un rembobinage rend le noyau détruit (on revient sur son erreur, on ne garde pas le gain)
+  {
+    setBoss('terra', 1, shipIdx('rew'));
+    g.power.inv = 999;
+    step(120);
+    const c = g.bs.cores.find(x => x.alive);
+    c.armed = true; enclose(c); for (let i = 0; i < 120; i++) step();
+    const left = g.bs.left;
+    g.rw.charge = g.rwSpan(); g.rewind();
+    for (let i = 0; i < 600 && g.S.phase === 'rewind'; i++) step();
+    console.log(`boss : noyaux ${left}/3 puis ${g.bs.left}/3 après un rembobinage`);
+    if (g.bs.left <= left) throw new Error('le rembobinage doit rendre le noyau détruit');
+  }
+  // une sauvegarde de la version à 25 niveaux retombe sur la même planète, à la même étape
+  {
+    const L32 = L => L >= 25 ? 32 : (Math.ceil(L / 3) - 1) * 4 + ((L - 1) % 3) + 1;
+    const pairs = [[1, 1], [3, 3], [4, 5], [24, 31], [25, 32]];
+    for (const [a, b] of pairs) if (L32(a) !== b) throw new Error('migration 25->32 : ' + a + ' donne ' + L32(a) + ' au lieu de ' + b);
+    for (let L = 1; L <= 24; L++) if (Math.ceil(L32(L) / 4) !== Math.ceil(L / 3)) throw new Error('migration : le rang de planète change au niveau ' + L);
+    console.log('boss : migration des sauvegardes 25 -> 32 niveaux, même planète et même étape');
+  }
+}
 // 6) Parties aléatoires
 let tot = 0;
 for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 7], [2, 25, 3], [0, 25, 1], [1, 15, 7], [1, 9, 9], [2, 18, 9], [1, 11, 10], [2, 22, 10]]) {
@@ -1397,8 +1501,8 @@ for (const [d, L, sh] of [[0, 1, 0], [1, 1, 1], [1, 13, 2], [2, 13, 3], [2, 21, 
 // 6b) Les 25 niveaux, un par un
 {
   let maxFoes = 0;
-  for (let L = 1; L <= 25; L++) { play(1, L, 1500, 777 + L, L % 11); maxFoes = Math.max(maxFoes, g.foes.length); }
-  console.log(`25 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
+  for (let L = 1; L <= 32; L++) { play(1, L, 1500, 777 + L, L % 11); maxFoes = Math.max(maxFoes, g.foes.length); }
+  console.log(`32 niveaux joués sans erreur, jusqu'à ${maxFoes} ennemis à l'écran (diviseurs compris)`);
 }
 // musique : morceau de la planète, couches qui suivent le jeu, Super Casque, jingles
 {
