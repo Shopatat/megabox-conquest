@@ -132,11 +132,15 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .chip .t{position:relative;width:44px;height:4px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
 .chip .t i{position:absolute;left:0;top:0;bottom:0;background:currentColor;border-radius:99px}
 .chip span{color:var(--text)}
+/* le bouton rond de pouvoir prend la classe « chip » pour le jeton du Flambeur : il garde sa forme ronde et son anneau */
+.pw.chip{display:block;gap:0;padding:3px;border:0;border-radius:50%;letter-spacing:normal;
+  background:conic-gradient(var(--c) calc(var(--p) * 1turn),rgba(255,255,255,.1) 0)}
 
 /* ---- Terrain ---- */
 .stage{flex:1;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;position:relative}
-canvas{display:block;border-radius:16px;touch-action:none;
-  box-shadow:0 0 0 1px rgba(170,178,255,.18),0 24px 60px rgba(0,0,0,.55),0 0 70px rgba(120,100,255,.2)}
+canvas{display:block;border-radius:16px;touch-action:none}
+/* l'ombre et le halo sont au terrain seul : sinon ils débordent sur les petits canvas du HUD et des cartes */
+#cv{box-shadow:0 0 0 1px rgba(170,178,255,.18),0 24px 60px rgba(0,0,0,.55),0 0 70px rgba(120,100,255,.2)}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;
   background:radial-gradient(80% 60% at 50% 50%,rgba(7,9,22,.15),rgba(7,9,22,.55));animation:ovin .3s ease both;transition:opacity .2s ease}
 .overlay.out{opacity:0;pointer-events:none}
@@ -360,6 +364,8 @@ details li b{color:var(--text);font-weight:600}
 .seg button:active{transform:scale(.95)}
 @media (prefers-reduced-motion:reduce){.card h1,.btn::after,.pw.ready,.pw.chip.on .in,.meter .fill::after,.chip,.overlay{animation:none}}
 @media (prefers-reduced-motion:reduce){.stage.super canvas,.chip.sup{animation:none;box-shadow:0 0 0 2px #ffd23f}.chip.hyp,.lives.boost i,.card.in{animation:none}}
+/* les puces qui clignotent ont une classe plus précise que .chip : il faut les citer pour que « réduire les animations » les arrête */
+@media (prefers-reduced-motion:reduce){.chip.schr,.chip.rage,.chip.oxy.low,.chip.heat.low,.chip.storm.low{animation:none}}
 </style>
 </head>
 <body>
@@ -930,8 +936,10 @@ const SKILLS = {
 // à 499 500 XP, soit 2 niveaux pour le premier, une partie complète pour le 5e, environ 7 parties pour le 15e) ; l'ultime
 // (6e rang) coûte ULT_COST points et demande la maîtrise ULT_LV
 const MASTERY = Array.from({ length: 15 }, (_, i) => Math.round(5000 * Math.pow(i + 1, 1.7) / 500) * 500), ULT_COST = 3, ULT_LV = 10, ULT_R = 5;
-const skCost = list => list.reduce((a, id) => a + (isUlt(id) ? ULT_COST : 1), 0);
-const isUlt = id => Object.values(SKILLS).some(br => br.some(b => b[2][ULT_R][0] === id));
+// Le coût se lit dans l'arbre DU VAISSEAU : quelques identifiants sont partagés par deux vaisseaux (souffle, double,
+// geant…), et chercher l'ultime dans tous les arbres faisait payer 3 points une compétence de rang 1.
+const isUlt = (k, id) => (SKILLS[k] || []).some(b => b[2][ULT_R][0] === id);
+const skCost = (k, list) => list.reduce((a, id) => a + (isUlt(k, id) ? ULT_COST : 1), 0);
 var mxp = store.get('mxp', {});
 const mLevel = k => MASTERY.filter(v => (mxp[k] || 0) >= v).length;
 const skAll = test => store.get(test ? 'sktest' : 'sk', {});
@@ -1072,7 +1080,7 @@ function tone(f, dur, type = 'square', vol = 0.045, slide = 0, delay = 0) {
 const sfx = {
   start(){ [523,659,784].forEach((f,i)=>tone(f,.09,'square',.04,0,i*.07)); },
   draw(){ tone(880,.03,'triangle',.02); },
-  capture(n){ const k=Math.min(6,2+Math.floor(n/120)); for(let i=0;i<k;i++) tone(392*Math.pow(1.26,i),.08,'square',.04,0,i*.05); },
+  capture(n){ const k=Math.min(6,2+Math.floor(n/(G*G)/120)); for(let i=0;i<k;i++) tone(392*Math.pow(1.26,i),.08,'square',.04,0,i*.05); },
   mega(){ [784,988,1175,1568].forEach((f,i)=>tone(f,.12,'triangle',.05,0,.25+i*.06)); },
   shock(){ tone(1400,.6,'sawtooth',.03,-1200); },
   cancel(){ tone(500,.3,'square',.035,-300); },
@@ -1769,8 +1777,7 @@ function resetGrid() {
 // Ennemis du jeu ; les universels (étincelle, serpent, mine, comète, aimant, écho, scarabée, chapardeur) vont partout.
 const FOES = ['out', 'perf', 'inn', 'amph', 'puls', 'hunt', 'div', 'ghost', 'spark', 'snake', 'mine', 'comet', 'mag', 'echo', 'scar', 'thief'];
 // Les écosystèmes (planètes, demande de Fabien) : 8 planètes de 3 niveaux (découverte, plus dur, épreuve), puis un
-// boss au niveau 25, celui de la dernière planète traversée. Terra Nova vient toujours en premier, les 7 autres dans un
-// ordre tiré au sort à chaque partie (S.ecos). Les niveaux sont écrits pour l'Expert, seule difficulté proposée.
+// boss au niveau 25, celui de la dernière planète traversée. Ordre fixe, du plus facile au plus dur (ECO_ORDER, S.ecos). Les niveaux sont écrits pour l'Expert, seule difficulté proposée.
 // Chaque planète aura sa mécanique et deux ennemis à elle : en attendant, ceux qui n'existent pas encore sont joués par
 // leur plus proche cousin (STANDIN). sig : l'ennemi qu'elle envoie en visiteur aux planètes des rangs 7 et 8.
 // look : couleurs du thème COULEUR (terrain, espace, nébuleuses) ; le thème MYX-3 ne change pas.
@@ -1841,11 +1848,11 @@ const ECOS = [
 const STANDIN = { ricoch: 'out', ambush: 'hunt', frost: 'spark', skate: 'perf', sala: 'spark', magma: 'div', jelly: 'snake', piranha: 'hunt',
   mirage: 'ghost', fly: 'out', coils: 'puls', capa: 'puls', nstar: 'mag', vortex: 'out' };
 const STAGES = ['DÉCOUVERTE', 'PLUS DUR', 'ÉPREUVE'];
-function ecoOrder() {
-  const r = [1, 2, 3, 4, 5, 6, 7];
-  for (let i = r.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [r[i], r[j]] = [r[j], r[i]]; }
-  return [0, ...r];
-}
+// Ordre fixe des planètes, de la plus facile à la plus dure (demande de Fabien : une progression jusqu'au boss final ;
+// tomber sur Nébula trop tôt était bien trop dur) : Terra Nova, Astéria, Océania, Pyros, Glacia, Voltaria, Singularité,
+// et Nébula en dernier (on n'y voit rien).
+const ECO_ORDER = [0, 1, 4, 3, 2, 6, 7, 5];
+const ecoOrder = () => [...ECO_ORDER];
 const ECO0 = [0, 1, 2, 3, 4, 5, 6, 7];
 // rang de la planète (1 à 8) et son étape (0 découverte, 1 plus dur, 2 épreuve) ; le niveau 25 est le boss de la 8e
 const ecoRank = L => Math.min(8, Math.ceil(L / 3));
@@ -1909,6 +1916,9 @@ function continueGame() {
   ensureAudio(); S.test = false;
   S.diff = menuDiff; S.score = sv.score; S.ecos = Array.isArray(sv.eco) && sv.eco.length === 8 ? sv.eco : ecoOrder(); S.lives = sv.lives; S.ship = sv.ship || 0; S.shipTip = true; S.usedGame = sv.used || {}; loadSkills();
   const pw = sv.pow || {}; S.tresor = pw.tresor || null; S.tresor2 = pw.tresor2 || null; rw.charge = pw.rw ?? RW_SPAN; ab.fury = pw.fury || 0; armor.hp = pw.hp ?? 1; gam.chips = pw.chips ?? 1; carry = { guard: pw.guard || 0 };
+  // une sauvegarde d'une version précédente (ou d'un autre vaisseau) peut dépasser les plafonds du vaisseau repris
+  S.lives = Math.max(1, Math.min(maxLives(), S.lives || startLives()));
+  armor.hp = Math.min(armorMax(), Math.max(0, armor.hp)); rw.charge = Math.min(rwSpan(), Math.max(0, rw.charge)); gam.chips = Math.min(chipsMax(), Math.max(0, gam.chips));
   setupLevel(sv.L);
 }
 function setupLevel(L, instant) {
@@ -1950,7 +1960,7 @@ function setupLevel(L, instant) {
   if (!S.test) {
     const maxKey = 'max' + S.diff;
     if (L > store.get(maxKey, 1)) store.set(maxKey, L);
-    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), eco: S.ecos });
+    store.set('save', { d: S.diff, L, score: S.score, lives: S.lives, ship: S.ship, pow: powState(), used: S.usedGame, eco: S.ecos });
   }
   $('testbar').hidden = !S.test; S.testWipe = 0;
   if (S.test) testSync();
@@ -2018,8 +2028,9 @@ function onTrailHit(e, i) {
   // Encaisseur, Après-coup : juste après un coup encaissé, le fil ne déclenche plus d'onde de choc
   if (S.noWave > 0) return;
   if (SH().key === 'enc' && sk('miroir') && !(P.guard > 0)) return;
-  // Flambeur, « fil fragile » de la machine à sous : un ennemi qui touche le fil tue sur le coup
-  if (power.frag > 0) { crash(); return; }
+  // Flambeur, « fil fragile » de la machine à sous : un ENNEMI qui touche le fil tue sur le coup (pas la foudre
+  // de Voltaria ni un météore de Pyros, qui coupent le fil en passant par ici sans être des ennemis)
+  if (power.frag > 0 && FOES.includes(e.kind)) { crash(); return; }
   const k = trailPos[i];
   if (k < 0) return;
   // mine : le contact l'arme (l'explosion soufflera le fil) ; étincelle : elle se pose sur le fil et le remonte
@@ -2051,7 +2062,10 @@ function updateWave(dt) {
   if (wave.hi >= last) {
     if (SH().key === 'enc' && absorb(null)) waveStop();
     else if (SH().key === 'rob') { const f = wave.fast; waveStop(); if (!(armor.cd > 0) && !foeTouching()) armorHit(f ? 'fastWave' : 'wave'); }
-    else crash('wave');
+    // invincible : l'onde ne tue pas, mais il faut quand même la solder — sinon elle reste active et rase chaque
+    // nouvelle case tracée, puis tue d'un coup à la fin du pouvoir
+    else if (helmet() || power.sup > 0 || S.safe > 0) waveStop();
+    else { crash('wave'); if (wave && S.phase === 'play') waveStop(); }
   }
 }
 
@@ -2063,7 +2077,8 @@ function setDir(d) {
   if (d === 'stop') { if (onIce()) return; if (!P.drawing || chronoOn() || (sk('freins') && ab.on > 0)) { P.dir = {x:0,y:0}; P.next = null; } return; }
   const v = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} }[d];
   if (!v) return;
-  dropShield();
+  // la zone protégée ne se lève qu'au premier déplacement RÉEL : une direction qui donne dans le mur ne compte pas
+  if (inB(P.x + v.x, P.y + v.y)) dropShield();
   P.next = v;
   if (!P.dir.x && !P.dir.y) P.acc = stepTime();
 }
@@ -2171,9 +2186,8 @@ function updatePull(dt) {
   const s = 1 - bd / PULL_R;
   P.pull = s;
   P.pullAcc += dt * (4 + 26 * s * s) * G;
-  if (P.pullAcc < 1) return;
-  P.pullAcc = 0;
-  suckStep(best, s);
+  // on garde le reste de l'accumulateur, comme l'emprise et singPull : sinon l'aspiration de près perd des pas
+  while (P.pullAcc >= 1 && S.phase === 'play') { P.pullAcc -= 1; suckStep(best, s); }
 }
 // Déplace le vaisseau d'une case vers le trou (jamais sur son propre fil)
 // sgn = -1 : le vaisseau est repoussé (aimant bleu)
@@ -3564,7 +3578,8 @@ function waveStop() {
   if (P.drawing) {
     const ci = at(P.x, P.y);
     if (grid[ci] === 0) pushTrail(ci);
-    P.start = { x: P.x, y: P.y }; P.noFill = !sk('rafist');
+    // la pénalité « le fil devient terrain sans refermer de zone » est propre à l'Encaisseur
+    P.start = { x: P.x, y: P.y }; P.noFill = SH().key === 'enc' && !sk('rafist');
   }
 }
 
@@ -7929,7 +7944,7 @@ function showClear() {
 function masteryRow() {
   if (S.test) return '';
   const k = SH().key, lv = mLevel(k), up = lv > (S.mlv0 ?? lv);
-  const free = lv - skCost(skBuild(k, false));
+  const free = lv - skCost(k, skBuild(k, false));
   return `<div class="mrow${up ? ' up' : ''}"><span>Maîtrise ${SH().name}</span><b>+${fmt(Math.round(S.xp || 0))} XP</b>${up ? `<em>MAÎTRISE ${lv} ! ${lv - S.mlv0 > 1 ? lv - S.mlv0 + ' points' : 'Un point'} à placer dans son arbre</em>` : ''}${free > 0 && S.phase === 'clear' ? `<button class="mini mtree" id="ctree">COMPÉTENCES<b>${free}</b></button>` : ''}</div>`;
 }
 function endScreen(title, sub) {
@@ -8133,7 +8148,7 @@ function showShips(test) {
 }
 // barre de maîtrise sous la description du vaisseau, et le bouton de son arbre (avec les points à placer)
 function masteryBar(k, test) {
-  const lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv], free = test ? 0 : lv - skCost(skBuild(k, test));
+  const lv = mLevel(k), x = mxp[k] || 0, lo = lv ? MASTERY[lv - 1] : 0, hi = MASTERY[lv], free = test ? 0 : lv - skCost(k, skBuild(k, test));
   const p = hi ? (x - lo) / (hi - lo) : 1;
   return `<div class="smast"><span class="k">${test ? 'ARBRE LIBRE' : 'MAÎTRISE ' + lv + (hi ? '' : ' MAX')}</span>
     <span class="mbar"><i style="width:${test ? 100 : (p * 100).toFixed(1)}%"></i></span>
@@ -8147,7 +8162,7 @@ function showTree(test, mode) {
   let list = skBuild(k, test);
   const kept = new Set(run ? list : []);
   const render = msg => {
-    const set = new Set(list), ult = tree.some(b => set.has(b[2][ULT_R][0])), used = skCost(list);
+    const set = new Set(list), ult = tree.some(b => set.has(b[2][ULT_R][0])), used = skCost(k, list);
     showOverlay(`
       <div class="shead">
         <button class="back" id="tback" aria-label="Retour">${ARROW('M15 5 L8 12 L15 19')}</button>
